@@ -1,0 +1,362 @@
+:root {
+  font-family:
+    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+    "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  color: #111827;
+  background: #f5f7fb;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+}
+
+button,
+a {
+  font: inherit;
+}
+
+button {
+  border: 0;
+}
+
+.app-shell {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+}
+
+.challenge-card {
+  width: min(100%, 560px);
+  min-height: min(900px, calc(100vh - 36px));
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 24px 80px rgba(17, 24, 39, 0.08);
+  padding: clamp(18px, 5vw, 34px);
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: clamp(20px, 5vh, 46px);
+}
+
+.brand-button {
+  min-height: 38px;
+  padding: 0;
+  background: transparent;
+  color: #111827;
+  font-size: 19px;
+  font-weight: 900;
+  letter-spacing: 0;
+  cursor: pointer;
+}
+
+.mode-switch {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  padding: 4px;
+  border: 1px solid #d8dce3;
+  border-radius: 8px;
+  background: #f9fafb;
+}
+
+.mode-button {
+  min-width: 48px;
+  height: 32px;
+  border-radius: 6px;
+  background: transparent;
+  color: #667085;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.mode-button.active {
+  background: #111827;
+  color: #ffffff;
+}
+
+.mode-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
+}
+
+.title-block {
+  text-align: center;
+}
+
+.title-block h1 {
+  margin: 0;
+  color: #111827;
+  font-size: clamp(30px, 7.4vw, 46px);
+  font-weight: 950;
+  line-height: 1.12;
+  letter-spacing: 0;
+}
+
+.title-block h1 span {
+  color: #dc342f;
+  font-size: 1.18em;
+}
+
+.timer-line {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 14px;
+  margin-top: clamp(18px, 4vh, 28px);
+}
+
+.timer-line strong {
+  color: #111827;
+  font-size: clamp(22px, 5.4vw, 30px);
+  font-weight: 900;
+}
+
+.timer-line time {
+  color: #007783;
+  font-size: clamp(44px, 12vw, 66px);
+  font-weight: 950;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.grid-board {
+  display: grid;
+  gap: 1px;
+  width: 100%;
+  aspect-ratio: 1;
+  margin-top: clamp(18px, 4vh, 30px);
+  border: 1px solid #b9bec7;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #c4c8d0;
+}
+
+.grid-board.shake {
+  animation: shake 170ms ease-out;
+}
+
+.grid-cell {
+  display: grid;
+  place-items: center;
+  min-width: 0;
+  min-height: 0;
+  background: #ffffff;
+  font-size: clamp(29px, 9.1vw, 48px);
+  font-weight: 950;
+  line-height: 1;
+  cursor: pointer;
+  transition:
+    background-color 130ms ease,
+    transform 130ms ease,
+    opacity 130ms ease;
+}
+
+.grid-cell:hover:not(:disabled) {
+  background: #f3fbfb;
+}
+
+.grid-cell:active:not(:disabled) {
+  transform: scale(0.96);
+}
+
+.grid-cell:focus-visible,
+.mode-button:focus-visible,
+.brand-button:focus-visible,
+.primary-action:focus-visible,
+.secondary-action:focus-visible,
+.result-panel button:focus-visible,
+.result-panel a:focus-visible {
+  outline: 3px solid rgba(0, 119, 131, 0.28);
+  outline-offset: 2px;
+}
+
+.grid-cell.completed {
+  background: rgba(0, 119, 131, 0.08);
+}
+
+.grid-cell:disabled {
+  cursor: default;
+}
+
+.number-dark {
+  color: #111827;
+}
+
+.number-red {
+  color: #dc342f;
+}
+
+.number-blue {
+  color: #1268ad;
+}
+
+.number-green {
+  color: #007f67;
+}
+
+.status-row {
+  min-height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  margin-top: 18px;
+  color: #111827;
+  font-size: clamp(15px, 3.8vw, 18px);
+  font-weight: 900;
+}
+
+.status-row span + span {
+  color: #667085;
+}
+
+.actions {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.primary-action,
+.secondary-action,
+.result-panel button,
+.result-panel a {
+  min-height: 46px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  padding: 0 18px;
+  font-size: 16px;
+  font-weight: 900;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.primary-action {
+  min-width: 132px;
+  background: #007783;
+  color: #ffffff;
+  box-shadow: 0 10px 24px rgba(0, 119, 131, 0.2);
+}
+
+.secondary-action,
+.result-panel button,
+.result-panel a {
+  background: #f3f4f6;
+  color: #111827;
+}
+
+.result-panel {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  gap: 10px;
+  margin-top: 18px;
+  padding: 14px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #fbfcfe;
+}
+
+.result-panel p {
+  margin: 0 0 2px;
+  color: #667085;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.result-panel strong {
+  color: #007783;
+  font-size: 24px;
+  font-weight: 950;
+  font-variant-numeric: tabular-nums;
+}
+
+.error-text {
+  color: #dc342f;
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.share-caption {
+  margin-top: clamp(18px, 4vh, 28px);
+  text-align: center;
+  color: #111827;
+  font-size: clamp(17px, 4.5vw, 22px);
+  font-weight: 950;
+}
+
+@keyframes shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+
+  30% {
+    transform: translateX(-8px);
+  }
+
+  65% {
+    transform: translateX(7px);
+  }
+}
+
+@media (max-width: 520px) {
+  .app-shell {
+    padding: 0;
+    background: #ffffff;
+  }
+
+  .challenge-card {
+    width: 100%;
+    min-height: 100svh;
+    border: 0;
+    box-shadow: none;
+  }
+
+  .topbar {
+    margin-bottom: 26px;
+  }
+
+  .grid-cell {
+    font-size: clamp(26px, 8.8vw, 40px);
+  }
+
+  .result-panel {
+    grid-template-columns: 1fr;
+  }
+
+  .result-panel button,
+  .result-panel a {
+    width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    scroll-behavior: auto !important;
+    transition-duration: 1ms !important;
+  }
+}
