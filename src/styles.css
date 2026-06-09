@@ -17,6 +17,8 @@
   --rose: #c83f70;
   --heading-accent: #ef6f48;
   --timer-accent: #0d7a70;
+  --switch-bg: rgba(255, 255, 255, 0.62);
+  --control-bg: #edf2ee;
   font-family:
     Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
     "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
@@ -60,6 +62,48 @@ button {
     var(--shell);
 }
 
+.theme-ocean {
+  --ink: #142134;
+  --muted: #65758d;
+  --paper: #f8fbff;
+  --shell: #eaf1f8;
+  --line: #cfdae8;
+  --primary: #185c8f;
+  --primary-dark: #0f3e63;
+  --primary-soft: #e3f0fb;
+  --coral: #d95550;
+  --blue: #1c66d2;
+  --green: #17806d;
+  --gold: #b57c10;
+  --purple: #6652c7;
+  --teal: #007c8f;
+  --rose: #b94672;
+  --heading-accent: #e45f4f;
+  --timer-accent: #12697e;
+  --control-bg: #e7eef6;
+}
+
+.theme-vivid {
+  --ink: #1d1a2e;
+  --muted: #756f86;
+  --paper: #fffaf4;
+  --shell: #f7efe8;
+  --line: #e2d8cc;
+  --primary: #b5531f;
+  --primary-dark: #7c3918;
+  --primary-soft: #fff0df;
+  --coral: #e2473f;
+  --blue: #1668d9;
+  --green: #11885d;
+  --gold: #c47a00;
+  --purple: #8053cf;
+  --teal: #00848f;
+  --rose: #cf3d7d;
+  --heading-accent: #f05f38;
+  --timer-accent: #0a7a69;
+  --control-bg: #f2e6d8;
+}
+
 .challenge-card {
   width: min(100%, 560px);
   max-width: 100%;
@@ -100,7 +144,7 @@ button {
   padding: 4px;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.62);
+  background: var(--switch-bg);
 }
 
 .mode-button {
@@ -120,6 +164,57 @@ button {
 }
 
 .mode-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
+}
+
+.settings-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: clamp(18px, 4vh, 28px);
+}
+
+.setting-group {
+  min-width: 0;
+}
+
+.setting-group > span {
+  display: block;
+  margin-bottom: 7px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.option-switch {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--switch-bg);
+}
+
+.option-button {
+  min-width: 0;
+  height: 30px;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.option-button.active {
+  background: var(--primary-dark);
+  color: #ffffff;
+}
+
+.option-button:disabled {
   cursor: not-allowed;
   opacity: 0.58;
 }
@@ -208,6 +303,7 @@ button {
 
 .grid-cell:focus-visible,
 .mode-button:focus-visible,
+.option-button:focus-visible,
 .brand-button:focus-visible,
 .primary-action:focus-visible,
 .secondary-action:focus-visible,
@@ -308,7 +404,7 @@ button {
 .secondary-action,
 .result-panel button,
 .result-panel a {
-  background: #edf2ee;
+  background: var(--control-bg);
   color: var(--ink);
 }
 
@@ -385,7 +481,21 @@ button {
   }
 
   .topbar {
-    margin-bottom: 26px;
+    margin-bottom: 18px;
+  }
+
+  .settings-row {
+    gap: 8px;
+    margin-bottom: 18px;
+  }
+
+  .setting-group > span {
+    font-size: 11px;
+  }
+
+  .option-button {
+    height: 28px;
+    font-size: 11px;
   }
 
   .title-block h1 {

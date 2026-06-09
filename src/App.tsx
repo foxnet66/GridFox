@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   DEFAULT_MODE,
+  COLOR_COUNTS,
   MODES,
+  THEMES,
   createGrid,
   formatTime,
   getAccentClass,
@@ -10,6 +12,8 @@ import {
   type FinishedRun,
   type GameMode,
   type TapRecord,
+  type ColorCount,
+  type ThemeOption,
 } from "./game";
 
 type Screen = "ready" | "playing" | "finished";
@@ -24,6 +28,8 @@ export default function App() {
   const [taps, setTaps] = useState<TapRecord[]>([]);
   const [finishedRun, setFinishedRun] = useState<FinishedRun | null>(null);
   const [bestMs, setBestMs] = useState<number | null>(() => getBestTime(DEFAULT_MODE));
+  const [colorCount, setColorCount] = useState<ColorCount>(4);
+  const [theme, setTheme] = useState<ThemeOption["id"]>("fresh");
   const boardRef = useRef<HTMLDivElement | null>(null);
 
   const total = mode.size * mode.size;
@@ -121,7 +127,7 @@ export default function App() {
   }
 
   return (
-    <main className="app-shell">
+    <main className={`app-shell theme-${theme}`}>
       <section className="challenge-card" aria-label="GridFox 舒尔特方格挑战">
         <header className="topbar">
           <button className="brand-button" type="button" onClick={() => resetGame(mode)}>
@@ -142,6 +148,41 @@ export default function App() {
           </div>
         </header>
 
+        <div className="settings-row" aria-label="挑战参数">
+          <div className="setting-group">
+            <span>颜色数量</span>
+            <div className="option-switch" aria-label="选择数字颜色数量">
+              {COLOR_COUNTS.map((count) => (
+                <button
+                  className={count === colorCount ? "option-button active" : "option-button"}
+                  key={count}
+                  type="button"
+                  onClick={() => setColorCount(count)}
+                  disabled={screen === "playing"}
+                >
+                  {count}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="setting-group">
+            <span>主题</span>
+            <div className="option-switch" aria-label="选择主题">
+              {THEMES.map((item) => (
+                <button
+                  className={item.id === theme ? "option-button active" : "option-button"}
+                  key={item.id}
+                  type="button"
+                  onClick={() => setTheme(item.id)}
+                  disabled={screen === "playing"}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
         <div className="title-block">
           <h1>
             {titleParts.before} <span>{titleParts.start}</span> {titleParts.middle} <span>{titleParts.end}</span>
@@ -161,7 +202,7 @@ export default function App() {
             const completed = screen === "playing" && number < target;
             return (
               <button
-                className={`grid-cell ${getAccentClass(number)} ${completed ? "completed" : ""}`}
+                className={`grid-cell ${getAccentClass(number, colorCount)} ${completed ? "completed" : ""}`}
                 key={`${number}-${index}`}
                 type="button"
                 onClick={() => handleCellClick(number, index)}

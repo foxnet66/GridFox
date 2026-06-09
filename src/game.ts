@@ -4,6 +4,13 @@ export type GameMode = {
   title: string;
 };
 
+export type ColorCount = 1 | 2 | 4 | 8;
+
+export type ThemeOption = {
+  id: "fresh" | "ocean" | "vivid";
+  label: string;
+};
+
 export type TapRecord = {
   number: number;
   target: number;
@@ -33,6 +40,14 @@ export const MODES: GameMode[] = [
   DEFAULT_MODE,
 ];
 
+export const COLOR_COUNTS: ColorCount[] = [1, 2, 4, 8];
+
+export const THEMES: ThemeOption[] = [
+  { id: "fresh", label: "清爽" },
+  { id: "ocean", label: "深海" },
+  { id: "vivid", label: "活力" },
+];
+
 export function createGrid(size: number): number[] {
   const values = Array.from({ length: size * size }, (_, index) => index + 1);
 
@@ -59,7 +74,7 @@ export function formatTime(ms: number, withCenti = false): string {
   return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
 }
 
-export function getAccentClass(number: number): string {
+export function getAccentClass(number: number, colorCount: ColorCount): string {
   const accents = [
     "number-dark",
     "number-blue",
@@ -70,7 +85,7 @@ export function getAccentClass(number: number): string {
     "number-teal",
     "number-rose",
   ];
-  return accents[number % accents.length];
+  return accents[number % colorCount];
 }
 
 export function getBestTime(mode: GameMode): number | null {
