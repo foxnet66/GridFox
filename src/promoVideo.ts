@@ -134,7 +134,6 @@ function drawFrame(
   const gridTop = 540;
   const gridSize = WIDTH - gridLeft * 2;
   const cellSize = gridSize / 6;
-  const target = Math.min(36, Math.floor((elapsedMs / DURATION_MS) * 36) + 1);
 
   context.fillStyle = palette.paper;
   context.fillRect(0, 0, WIDTH, HEIGHT);
@@ -168,23 +167,10 @@ function drawFrame(
     const col = index % 6;
     const x = gridLeft + col * cellSize;
     const y = gridTop + row * cellSize;
-    const tapped = number < target;
-    const active = number === target;
 
     context.strokeStyle = palette.grid;
     context.lineWidth = 2;
     context.strokeRect(x, y, cellSize, cellSize);
-
-    if (tapped) {
-      context.fillStyle = "rgba(17, 107, 93, 0.08)";
-      context.fillRect(x + 3, y + 3, cellSize - 6, cellSize - 6);
-    }
-
-    if (active) {
-      context.strokeStyle = palette.accent;
-      context.lineWidth = 9;
-      context.strokeRect(x + 10, y + 10, cellSize - 20, cellSize - 20);
-    }
 
     context.fillStyle = palette.colors[getAccentClass(number, options.colorCount)];
     context.font = "900 66px Arial, sans-serif";
@@ -193,19 +179,11 @@ function drawFrame(
 
   context.fillStyle = palette.ink;
   context.font = "900 48px Arial, sans-serif";
-  context.fillText(`当前目标：${target}`, WIDTH / 2, 1518);
-
-  context.fillStyle = palette.accent;
-  context.font = "900 64px Arial, sans-serif";
-  context.fillText("你能比视频更快吗？", WIDTH / 2, 1628);
-
-  context.fillStyle = palette.ink;
-  context.font = "800 42px Arial, sans-serif";
-  context.fillText("评论区留下年龄和成绩", WIDTH / 2, 1716);
+  context.fillText("评论区留下年龄和成绩", WIDTH / 2, 1588);
 
   context.fillStyle = palette.muted;
   context.font = "700 30px Arial, sans-serif";
-  context.fillText("打开 GridFox，开始计时挑战", WIDTH / 2, 1792);
+  context.fillText("计时挑战@大小爱玩", WIDTH / 2, 1682);
 }
 
 function drawRichTitle(
