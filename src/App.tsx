@@ -15,6 +15,7 @@ import {
   type ColorCount,
   type ThemeOption,
 } from "./game";
+import { createPromoVideo } from "./promoVideo";
 
 type Screen = "ready" | "playing" | "finished";
 
@@ -30,6 +31,8 @@ export default function App() {
   const [bestMs, setBestMs] = useState<number | null>(() => getBestTime(DEFAULT_MODE));
   const [colorCount, setColorCount] = useState<ColorCount>(4);
   const [theme, setTheme] = useState<ThemeOption["id"]>("fresh");
+  const [promoStatus, setPromoStatus] = useState<"idle" | "recording" | "done" | "error">("idle");
+  const [promoUrl, setPromoUrl] = useState<string | null>(null);
   const boardRef = useRef<HTMLDivElement | null>(null);
 
   const total = mode.size * mode.size;
@@ -59,6 +62,12 @@ export default function App() {
   useEffect(() => {
     setBestMs(getBestTime(mode));
   }, [mode]);
+
+  useEffect(() => {
+    return () => {
+      if (promoUrl) URL.revokeObjectURL(promoUrl);
+    };
+  }, [promoUrl]);
 
   function resetGame(nextMode = mode) {
     setMode(nextMode);
@@ -124,6 +133,19 @@ export default function App() {
       true,
     )}。来测测你的眼力和反应。`;
     void navigator.clipboard?.writeText(text);
+  }
+
+  async function handleCreatePromoVideo() {
+    setPromoStatus("recording");
+    try {
+      const blob = await createPromoVideo({ colorCount, theme });
+      if (promoUrl) URL.revokeObjectURL(promoUrl);
+      setPromoUrl(URL.createObjectURL(blob));
+      setPromoStatus("done");
+    } catch (error) {
+      console.error(error);
+      setPromoStatus("error");
+    }
   }
 
   return (
@@ -267,6 +289,28 @@ export default function App() {
             </button>
           </section>
         )}
+
+        <section className="promo-panel" aria-label="小红书发布素材">
+          <div>
+            <p>发布素材</p>
+            <strong>两分钟竖屏自动演示</strong>
+            <span>生成约需 2 分钟</span>
+          </div>
+          <button
+            className="secondary-action"
+            type="button"
+            onClick={handleCreatePromoVideo}
+            disabled={promoStatus === "recording"}
+          >
+            {promoStatus === "recording" ? "录制中..." : "生成视频"}
+          </button>
+          {promoStatus === "done" && promoUrl && (
+            <a href={promoUrl} download={`gridfox-xiaohongshu-${theme}-${colorCount}color.webm`}>
+              下载 WebM
+            </a>
+          )}
+          {promoStatus === "error" && <span className="error-text">当前浏览器不支持录制</span>}
+        </section>
 
         <footer className="share-caption">留下年龄和成绩，看看谁更快</footer>
       </section>

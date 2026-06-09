@@ -1,0 +1,252 @@
+import { createGrid, formatTime, getAccentClass, type ColorCount, type ThemeOption } from "./game";
+
+const WIDTH = 1080;
+const HEIGHT = 1920;
+const FPS = 30;
+const DURATION_MS = 120_000;
+
+type PromoVideoOptions = {
+  colorCount: ColorCount;
+  theme: ThemeOption["id"];
+};
+
+const themePalettes: Record<
+  ThemeOption["id"],
+  {
+    ink: string;
+    paper: string;
+    primary: string;
+    accent: string;
+    muted: string;
+    grid: string;
+    colors: Record<string, string>;
+  }
+> = {
+  fresh: {
+    ink: "#18212f",
+    paper: "#fffdf8",
+    primary: "#116b5d",
+    accent: "#ef6f48",
+    muted: "#6d7789",
+    grid: "#c9d3ce",
+    colors: {
+      "number-dark": "#18212f",
+      "number-blue": "#2369c9",
+      "number-red": "#df4f3f",
+      "number-green": "#138a66",
+      "number-purple": "#7b4cc2",
+      "number-gold": "#c78919",
+      "number-teal": "#00858a",
+      "number-rose": "#c83f70",
+    },
+  },
+  ocean: {
+    ink: "#142134",
+    paper: "#f8fbff",
+    primary: "#185c8f",
+    accent: "#e45f4f",
+    muted: "#65758d",
+    grid: "#cfdae8",
+    colors: {
+      "number-dark": "#142134",
+      "number-blue": "#1c66d2",
+      "number-red": "#d95550",
+      "number-green": "#17806d",
+      "number-purple": "#6652c7",
+      "number-gold": "#b57c10",
+      "number-teal": "#007c8f",
+      "number-rose": "#b94672",
+    },
+  },
+  vivid: {
+    ink: "#1d1a2e",
+    paper: "#fffaf4",
+    primary: "#b5531f",
+    accent: "#f05f38",
+    muted: "#756f86",
+    grid: "#e2d8cc",
+    colors: {
+      "number-dark": "#1d1a2e",
+      "number-blue": "#1668d9",
+      "number-red": "#e2473f",
+      "number-green": "#11885d",
+      "number-purple": "#8053cf",
+      "number-gold": "#c47a00",
+      "number-teal": "#00848f",
+      "number-rose": "#cf3d7d",
+    },
+  },
+};
+
+export async function createPromoVideo(options: PromoVideoOptions): Promise<Blob> {
+  const canvas = document.createElement("canvas");
+  canvas.width = WIDTH;
+  canvas.height = HEIGHT;
+
+  const context = canvas.getContext("2d");
+  if (!context) throw new Error("无法创建视频画布");
+  const ctx = context;
+
+  const stream = canvas.captureStream(FPS);
+  const mimeType = getSupportedMimeType();
+  const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
+  const chunks: Blob[] = [];
+  const grid = createGrid(6);
+  const started = performance.now();
+
+  recorder.addEventListener("dataavailable", (event) => {
+    if (event.data.size > 0) chunks.push(event.data);
+  });
+
+  recorder.start(1000);
+
+  await new Promise<void>((resolve) => {
+    function frame(now: number) {
+      const elapsedMs = Math.min(now - started, DURATION_MS);
+      drawFrame(ctx, grid, elapsedMs, options);
+
+      if (elapsedMs < DURATION_MS) {
+        requestAnimationFrame(frame);
+      } else {
+        recorder.stop();
+        resolve();
+      }
+    }
+
+    requestAnimationFrame(frame);
+  });
+
+  await new Promise<void>((resolve) => {
+    recorder.addEventListener("stop", () => resolve(), { once: true });
+  });
+
+  return new Blob(chunks, { type: mimeType || "video/webm" });
+}
+
+function drawFrame(
+  context: CanvasRenderingContext2D,
+  grid: number[],
+  elapsedMs: number,
+  options: PromoVideoOptions,
+) {
+  const palette = themePalettes[options.theme];
+  const gridLeft = 76;
+  const gridTop = 540;
+  const gridSize = WIDTH - gridLeft * 2;
+  const cellSize = gridSize / 6;
+  const target = Math.min(36, Math.floor((elapsedMs / DURATION_MS) * 36) + 1);
+
+  context.fillStyle = palette.paper;
+  context.fillRect(0, 0, WIDTH, HEIGHT);
+
+  context.textAlign = "center";
+  context.textBaseline = "middle";
+  context.fillStyle = palette.primary;
+  context.font = "900 46px Arial, sans-serif";
+  context.fillText("GridFox 舒尔特方格挑战", WIDTH / 2, 116);
+
+  context.font = "900 78px Arial, sans-serif";
+  drawRichTitle(context, palette, 36);
+
+  context.fillStyle = palette.muted;
+  context.font = "800 38px Arial, sans-serif";
+  context.fillText("从 1 到 36，看看你需要多久", WIDTH / 2, 326);
+
+  context.fillStyle = palette.primary;
+  context.font = "900 78px Arial, sans-serif";
+  context.fillText(formatTime(elapsedMs), WIDTH / 2, 424);
+
+  roundRect(context, gridLeft, gridTop, gridSize, gridSize, 18);
+  context.fillStyle = "#ffffff";
+  context.fill();
+  context.strokeStyle = palette.grid;
+  context.lineWidth = 3;
+  context.stroke();
+
+  grid.forEach((number, index) => {
+    const row = Math.floor(index / 6);
+    const col = index % 6;
+    const x = gridLeft + col * cellSize;
+    const y = gridTop + row * cellSize;
+    const tapped = number < target;
+    const active = number === target;
+
+    context.strokeStyle = palette.grid;
+    context.lineWidth = 2;
+    context.strokeRect(x, y, cellSize, cellSize);
+
+    if (tapped) {
+      context.fillStyle = "rgba(17, 107, 93, 0.08)";
+      context.fillRect(x + 3, y + 3, cellSize - 6, cellSize - 6);
+    }
+
+    if (active) {
+      context.strokeStyle = palette.accent;
+      context.lineWidth = 9;
+      context.strokeRect(x + 10, y + 10, cellSize - 20, cellSize - 20);
+    }
+
+    context.fillStyle = palette.colors[getAccentClass(number, options.colorCount)];
+    context.font = "900 66px Arial, sans-serif";
+    context.fillText(String(number), x + cellSize / 2, y + cellSize / 2 + 2);
+  });
+
+  context.fillStyle = palette.ink;
+  context.font = "900 48px Arial, sans-serif";
+  context.fillText(`当前目标：${target}`, WIDTH / 2, 1518);
+
+  context.fillStyle = palette.accent;
+  context.font = "900 64px Arial, sans-serif";
+  context.fillText("你能比视频更快吗？", WIDTH / 2, 1628);
+
+  context.fillStyle = palette.ink;
+  context.font = "800 42px Arial, sans-serif";
+  context.fillText("评论区留下年龄和成绩", WIDTH / 2, 1716);
+
+  context.fillStyle = palette.muted;
+  context.font = "700 30px Arial, sans-serif";
+  context.fillText("打开 GridFox，开始计时挑战", WIDTH / 2, 1792);
+}
+
+function drawRichTitle(
+  context: CanvasRenderingContext2D,
+  palette: (typeof themePalettes)[ThemeOption["id"]],
+  total: number,
+) {
+  const parts = [
+    { text: "请按顺序从 ", color: palette.ink },
+    { text: "1", color: palette.accent },
+    { text: " 找到 ", color: palette.ink },
+    { text: String(total), color: palette.accent },
+  ];
+  const widths = parts.map((part) => context.measureText(part.text).width);
+  let cursor = (WIDTH - widths.reduce((sum, width) => sum + width, 0)) / 2;
+
+  parts.forEach((part, index) => {
+    context.fillStyle = part.color;
+    context.fillText(part.text, cursor + widths[index] / 2, 232);
+    cursor += widths[index];
+  });
+}
+
+function getSupportedMimeType(): string {
+  const candidates = ["video/webm;codecs=vp9", "video/webm;codecs=vp8", "video/webm"];
+  return candidates.find((candidate) => MediaRecorder.isTypeSupported(candidate)) || "";
+}
+
+function roundRect(
+  context: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  radius: number,
+) {
+  context.beginPath();
+  context.moveTo(x + radius, y);
+  context.arcTo(x + width, y, x + width, y + height, radius);
+  context.arcTo(x + width, y + height, x, y + height, radius);
+  context.arcTo(x, y + height, x, y, radius);
+  context.arcTo(x, y, x + width, y, radius);
+  context.closePath();
+}

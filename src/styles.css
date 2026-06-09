@@ -308,7 +308,9 @@ button {
 .primary-action:focus-visible,
 .secondary-action:focus-visible,
 .result-panel button:focus-visible,
-.result-panel a:focus-visible {
+.result-panel a:focus-visible,
+.promo-panel button:focus-visible,
+.promo-panel a:focus-visible {
   outline: 3px solid rgba(0, 119, 131, 0.28);
   outline-offset: 2px;
 }
@@ -381,7 +383,9 @@ button {
 .primary-action,
 .secondary-action,
 .result-panel button,
-.result-panel a {
+.result-panel a,
+.promo-panel button,
+.promo-panel a {
   min-height: 46px;
   display: inline-flex;
   align-items: center;
@@ -403,14 +407,22 @@ button {
 
 .secondary-action,
 .result-panel button,
-.result-panel a {
+.result-panel a,
+.promo-panel button,
+.promo-panel a {
   background: var(--control-bg);
   color: var(--ink);
 }
 
-.result-panel {
+.secondary-action:disabled,
+.promo-panel button:disabled {
+  cursor: not-allowed;
+  opacity: 0.62;
+}
+
+.result-panel,
+.promo-panel {
   display: grid;
-  grid-template-columns: 1fr auto;
   align-items: center;
   gap: 10px;
   margin-top: 18px;
@@ -420,18 +432,41 @@ button {
   background: rgba(255, 255, 255, 0.7);
 }
 
-.result-panel p {
+.result-panel {
+  grid-template-columns: 1fr auto;
+}
+
+.promo-panel {
+  grid-template-columns: 1fr auto auto;
+  margin-top: 16px;
+}
+
+.result-panel p,
+.promo-panel p {
   margin: 0 0 2px;
   color: var(--muted);
   font-size: 13px;
   font-weight: 800;
 }
 
-.result-panel strong {
+.result-panel strong,
+.promo-panel strong {
   color: var(--primary);
   font-size: 24px;
   font-weight: 950;
   font-variant-numeric: tabular-nums;
+}
+
+.promo-panel strong {
+  font-size: 16px;
+}
+
+.promo-panel span {
+  display: block;
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
 }
 
 .error-text {
@@ -516,8 +551,14 @@ button {
   }
 
   .result-panel button,
-  .result-panel a {
+  .result-panel a,
+  .promo-panel button,
+  .promo-panel a {
     width: 100%;
+  }
+
+  .promo-panel {
+    grid-template-columns: 1fr;
   }
 }
 
