@@ -8,8 +8,8 @@
 - 实时计时、错误点击反馈、完成用时和本地最佳成绩。
 - 完成后复制分享文案。
 - 可选择数字颜色数量和页面主题。
-- 生成 9:16 WebM 非交互式自动演示视频，可下载发布。
-- 本地离线生成 9:16 MP4 发布素材。
+- 生成 9:16 WebM 非交互式自动演示视频，含 3 秒倒计时前导，可下载发布。
+- 本地离线生成 9:16 MP4 发布素材，含 3 秒倒计时前导。
 
 ## 开发
 
@@ -41,3 +41,5 @@ npm run video:promo
 ```bash
 npm run video:promo -- --size 6 --theme vivid --colors 4 --duration 120 --output dist/gridfox-xiaohongshu.mp4
 ```
+
+`--duration` 是正式计时段长度；输出视频会额外包含 3 秒前导倒计时。

@@ -6,6 +6,7 @@ import { spawn } from "node:child_process";
 const WIDTH = 1080;
 const HEIGHT = 1920;
 const FPS = 30;
+const INTRO_SECONDS = 3;
 const ROOT = resolve(new URL("..", import.meta.url).pathname);
 const CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
 const FFMPEG = "/opt/homebrew/bin/ffmpeg";
@@ -61,6 +62,7 @@ await mkdir(framesDir, { recursive: true });
 await mkdir(dirname(output), { recursive: true });
 
 const grid = createGrid(size, 20260609);
+const totalFrames = INTRO_SECONDS + duration;
 const chrome = await launchChrome(chromeProfile);
 
 try {
@@ -73,13 +75,16 @@ try {
     mobile: false,
   });
 
-  for (let second = 0; second < duration; second += 1) {
+  for (let second = 0; second < totalFrames; second += 1) {
     const framePath = resolve(framesDir, `frame-${String(second).padStart(4, "0")}.png`);
-    const html = renderHtml({ elapsedMs: second * 1000, grid, theme, colorCount, size });
+    const html =
+      second < INTRO_SECONDS
+        ? renderIntroHtml({ countdown: INTRO_SECONDS - second, theme, size })
+        : renderChallengeHtml({ elapsedMs: (second - INTRO_SECONDS) * 1000, grid, theme, colorCount, size });
     await setHtml(client, html);
     const screenshot = await client.send("Page.captureScreenshot", { format: "png", fromSurface: true });
     await writeFile(framePath, Buffer.from(screenshot.data, "base64"));
-    process.stdout.write(`\rRendered frame ${second + 1}/${duration}`);
+    process.stdout.write(`\rRendered frame ${second + 1}/${totalFrames}`);
   }
 
   process.stdout.write("\nEncoding MP4...\n");
@@ -90,7 +95,7 @@ try {
     "-i",
     resolve(framesDir, "frame-%04d.png"),
     "-t",
-    String(duration),
+    String(totalFrames),
     "-r",
     String(FPS),
     "-c:v",
@@ -112,7 +117,76 @@ if (completed) {
 
 console.log(`Done: ${output}`);
 
-function renderHtml({ elapsedMs, grid, theme, colorCount, size }) {
+function renderIntroHtml({ countdown, theme, size }) {
+  const total = size * size;
+
+  return `<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <style>
+      * { box-sizing: border-box; }
+      body {
+        width: ${WIDTH}px;
+        height: ${HEIGHT}px;
+        margin: 0;
+        overflow: hidden;
+        background: ${theme.paper};
+        font-family: Inter, -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", Arial, sans-serif;
+      }
+      .stage { position: relative; width: ${WIDTH}px; height: ${HEIGHT}px; color: ${theme.ink}; }
+      .ghost-grid {
+        position: absolute; left: 126px; top: 512px; width: 828px; height: 828px;
+        opacity: 0.16;
+        background:
+          linear-gradient(${theme.grid} 2px, transparent 2px),
+          linear-gradient(90deg, ${theme.grid} 2px, transparent 2px);
+        background-size: ${828 / size}px ${828 / size}px;
+        border: 2px solid ${theme.grid};
+        border-radius: 22px;
+      }
+      .title {
+        position: absolute; top: 232px; left: 0; width: 100%;
+        text-align: center; color: ${theme.ink}; font-size: 86px; font-weight: 950;
+      }
+      .project {
+        position: absolute; top: 358px; left: 0; width: 100%;
+        text-align: center; color: ${theme.primary}; font-size: 46px; font-weight: 900;
+      }
+      .ring {
+        position: absolute; left: 340px; top: 690px; width: 400px; height: 400px;
+        border: 12px solid ${theme.grid}; border-top-color: ${theme.accent};
+        border-radius: 50%;
+      }
+      .count {
+        position: absolute; top: 744px; left: 0; width: 100%;
+        text-align: center; color: ${theme.accent}; font-size: 228px; font-weight: 950;
+      }
+      .ready {
+        position: absolute; top: 1148px; left: 0; width: 100%;
+        text-align: center; color: ${theme.muted}; font-size: 42px; font-weight: 850;
+      }
+      .credit {
+        position: absolute; top: 1668px; left: 0; width: 100%;
+        text-align: center; color: ${theme.muted}; font-size: 34px; font-weight: 800;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="stage">
+      <div class="ghost-grid"></div>
+      <div class="title">每日专注力训练</div>
+      <div class="project">舒尔特方格 ${size}×${size}</div>
+      <div class="ring"></div>
+      <div class="count">${countdown}</div>
+      <div class="ready">准备开始</div>
+      <div class="credit">计时挑战@新加坡大小AI玩</div>
+    </main>
+  </body>
+</html>`;
+}
+
+function renderChallengeHtml({ elapsedMs, grid, theme, colorCount, size }) {
   const total = size * size;
   const gridSize = 928;
   const cellSize = gridSize / size;

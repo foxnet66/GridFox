@@ -4,6 +4,7 @@ const WIDTH = 1080;
 const HEIGHT = 1920;
 const FPS = 30;
 const DURATION_MS = 120_000;
+const INTRO_MS = 3_000;
 
 type PromoVideoOptions = {
   size: number;
@@ -103,10 +104,14 @@ export async function createPromoVideo(options: PromoVideoOptions): Promise<Blob
 
   await new Promise<void>((resolve) => {
     function frame(now: number) {
-      const elapsedMs = Math.min(now - started, DURATION_MS);
-      drawFrame(ctx, grid, elapsedMs, options);
+      const progressMs = Math.min(now - started, INTRO_MS + DURATION_MS);
+      if (progressMs < INTRO_MS) {
+        drawIntroFrame(ctx, Math.max(1, 3 - Math.floor(progressMs / 1000)), options);
+      } else {
+        drawFrame(ctx, grid, progressMs - INTRO_MS, options);
+      }
 
-      if (elapsedMs < DURATION_MS) {
+      if (progressMs < INTRO_MS + DURATION_MS) {
         requestAnimationFrame(frame);
       } else {
         recorder.stop();
@@ -122,6 +127,65 @@ export async function createPromoVideo(options: PromoVideoOptions): Promise<Blob
   });
 
   return new Blob(chunks, { type: mimeType || "video/webm" });
+}
+
+function drawIntroFrame(context: CanvasRenderingContext2D, countdown: number, options: PromoVideoOptions) {
+  const palette = themePalettes[options.theme];
+  const total = options.size * options.size;
+  const ghostLeft = 126;
+  const ghostTop = 512;
+  const ghostSize = 828;
+  const ghostCell = ghostSize / options.size;
+
+  context.fillStyle = palette.paper;
+  context.fillRect(0, 0, WIDTH, HEIGHT);
+
+  context.globalAlpha = 0.16;
+  context.strokeStyle = palette.grid;
+  context.lineWidth = 2;
+  roundRect(context, ghostLeft, ghostTop, ghostSize, ghostSize, 22);
+  context.stroke();
+  for (let index = 1; index < options.size; index += 1) {
+    const offset = index * ghostCell;
+    context.beginPath();
+    context.moveTo(ghostLeft + offset, ghostTop);
+    context.lineTo(ghostLeft + offset, ghostTop + ghostSize);
+    context.moveTo(ghostLeft, ghostTop + offset);
+    context.lineTo(ghostLeft + ghostSize, ghostTop + offset);
+    context.stroke();
+  }
+  context.globalAlpha = 1;
+
+  context.textAlign = "center";
+  context.textBaseline = "middle";
+  context.fillStyle = palette.ink;
+  context.font = "950 86px Arial, sans-serif";
+  context.fillText("每日专注力训练", WIDTH / 2, 278);
+
+  context.fillStyle = palette.primary;
+  context.font = "900 46px Arial, sans-serif";
+  context.fillText(`舒尔特方格 ${options.size}×${options.size}`, WIDTH / 2, 382);
+
+  context.strokeStyle = palette.grid;
+  context.lineWidth = 12;
+  context.beginPath();
+  context.arc(WIDTH / 2, 890, 200, 0, Math.PI * 2);
+  context.stroke();
+  context.strokeStyle = palette.accent;
+  context.beginPath();
+  context.arc(WIDTH / 2, 890, 200, -Math.PI / 2, Math.PI / 4);
+  context.stroke();
+
+  context.fillStyle = palette.accent;
+  context.font = "950 228px Arial, sans-serif";
+  context.fillText(String(countdown), WIDTH / 2, 900);
+
+  context.fillStyle = palette.muted;
+  context.font = "850 42px Arial, sans-serif";
+  context.fillText("准备开始", WIDTH / 2, 1168);
+
+  context.font = "800 34px Arial, sans-serif";
+  context.fillText("计时挑战@新加坡大小AI玩", WIDTH / 2, 1688);
 }
 
 function drawFrame(
