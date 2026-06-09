@@ -155,42 +155,50 @@ export default function App() {
           <button className="brand-button" type="button" onClick={() => resetGame(mode)}>
             GridFox
           </button>
-          <div className="mode-switch" aria-label="选择难度">
-            {MODES.map((item) => (
-              <button
-                className={item.size === mode.size ? "mode-button active" : "mode-button"}
-                key={item.size}
-                type="button"
-                onClick={() => resetGame(item)}
-                disabled={screen === "playing"}
-              >
-                {item.label}
-              </button>
-            ))}
-          </div>
         </header>
 
-        <div className="settings-row" aria-label="挑战参数">
-          <div className="setting-group">
-            <span>颜色数量</span>
-            <div className="option-switch" aria-label="选择数字颜色数量">
-              {COLOR_COUNTS.map((count) => (
-                <button
-                  className={count === colorCount ? "option-button active" : "option-button"}
-                  key={count}
-                  type="button"
-                  onClick={() => setColorCount(count)}
-                  disabled={screen === "playing"}
-                >
-                  {count}
-                </button>
-              ))}
-            </div>
+        <section className="settings-panel" aria-label="基本设置">
+          <div className="settings-heading">
+            <h2>基本设置</h2>
+            <span>开始前调整挑战参数</span>
           </div>
-          <div className="setting-group">
-            <span>主题</span>
-            <div className="option-switch" aria-label="选择主题">
-              {THEMES.map((item) => (
+          <div className="settings-grid">
+            <div className="setting-group">
+              <span>难度</span>
+              <div className="option-switch" aria-label="选择难度">
+                {MODES.map((item) => (
+                  <button
+                    className={item.size === mode.size ? "option-button active" : "option-button"}
+                    key={item.size}
+                    type="button"
+                    onClick={() => resetGame(item)}
+                    disabled={screen === "playing"}
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="setting-group">
+              <span>颜色数量</span>
+              <div className="option-switch" aria-label="选择数字颜色数量">
+                {COLOR_COUNTS.map((count) => (
+                  <button
+                    className={count === colorCount ? "option-button active" : "option-button"}
+                    key={count}
+                    type="button"
+                    onClick={() => setColorCount(count)}
+                    disabled={screen === "playing"}
+                  >
+                    {count}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="setting-group wide">
+              <span>主题</span>
+              <div className="option-switch" aria-label="选择主题">
+                {THEMES.map((item) => (
                 <button
                   className={item.id === theme ? "option-button active" : "option-button"}
                   key={item.id}
@@ -201,9 +209,10 @@ export default function App() {
                   {item.label}
                 </button>
               ))}
+              </div>
             </div>
           </div>
-        </div>
+        </section>
 
         <div className="title-block">
           <h1>
