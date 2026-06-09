@@ -175,13 +175,13 @@ function renderHtml({ elapsedMs, grid, theme, colorCount }) {
   </head>
   <body>
     <main class="stage">
-      <div class="brand">GridFox 舒尔特方格挑战</div>
+      <div class="brand">舒尔特方格挑战</div>
       <div class="title">请按顺序从 <span>1</span> 找到 <span>36</span></div>
       <div class="subtitle">从 1 到 36，看看你需要多久</div>
       <div class="timer">${formatTime(elapsedMs)}</div>
       <div class="grid">${cells}</div>
       <div class="prompt">评论区留下年龄和成绩</div>
-      <div class="credit">计时挑战@大小爱玩</div>
+      <div class="credit">舒尔特计时挑战@新加坡大小AI爱玩</div>
     </main>
   </body>
 </html>`;
