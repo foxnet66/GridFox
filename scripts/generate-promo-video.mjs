@@ -45,6 +45,7 @@ const args = parseArgs(process.argv.slice(2));
 const duration = clamp(Number(args.duration ?? 120), 1, 600);
 const themeName = String(args.theme ?? "fresh");
 const colorCount = clamp(Number(args.colors ?? 4), 1, 8);
+const size = clamp(Number(args.size ?? 6), 4, 6);
 const output = resolve(ROOT, args.output ?? DEFAULT_OUTPUT);
 const theme = themes[themeName] ?? themes.fresh;
 const tempDir = resolve(ROOT, ".tmp/promo-video");
@@ -59,7 +60,7 @@ await rm(tempDir, { recursive: true, force: true });
 await mkdir(framesDir, { recursive: true });
 await mkdir(dirname(output), { recursive: true });
 
-const grid = createGrid(6, 20260609);
+const grid = createGrid(size, 20260609);
 const chrome = await launchChrome(chromeProfile);
 
 try {
@@ -74,7 +75,7 @@ try {
 
   for (let second = 0; second < duration; second += 1) {
     const framePath = resolve(framesDir, `frame-${String(second).padStart(4, "0")}.png`);
-    const html = renderHtml({ elapsedMs: second * 1000, grid, theme, colorCount });
+    const html = renderHtml({ elapsedMs: second * 1000, grid, theme, colorCount, size });
     await setHtml(client, html);
     const screenshot = await client.send("Page.captureScreenshot", { format: "png", fromSurface: true });
     await writeFile(framePath, Buffer.from(screenshot.data, "base64"));
@@ -111,13 +112,17 @@ if (completed) {
 
 console.log(`Done: ${output}`);
 
-function renderHtml({ elapsedMs, grid, theme, colorCount }) {
+function renderHtml({ elapsedMs, grid, theme, colorCount, size }) {
+  const total = size * size;
+  const gridSize = 928;
+  const cellSize = gridSize / size;
+  const fontSize = size >= 6 ? 66 : 82;
   const cells = grid
     .map((number, index) => {
-      const row = Math.floor(index / 6);
-      const col = index % 6;
+      const row = Math.floor(index / size);
+      const col = index % size;
       const color = theme.colors[number % colorCount];
-      return `<div class="cell" style="left:${col * 154.6667}px;top:${row * 154.6667}px;color:${color}">${number}</div>`;
+      return `<div class="cell" style="left:${col * cellSize}px;top:${row * cellSize}px;color:${color}">${number}</div>`;
     })
     .join("");
 
@@ -158,10 +163,10 @@ function renderHtml({ elapsedMs, grid, theme, colorCount }) {
         border: 3px solid ${theme.grid}; border-radius: 18px; overflow: hidden; background: white;
       }
       .cell {
-        position: absolute; width: 154.6667px; height: 154.6667px;
+        position: absolute; width: ${cellSize}px; height: ${cellSize}px;
         display: flex; align-items: center; justify-content: center;
         border-right: 2px solid ${theme.grid}; border-bottom: 2px solid ${theme.grid};
-        font-size: 66px; font-weight: 900; line-height: 1;
+        font-size: ${fontSize}px; font-weight: 900; line-height: 1;
       }
       .prompt {
         position: absolute; top: 1548px; left: 0; width: 100%;
@@ -176,8 +181,8 @@ function renderHtml({ elapsedMs, grid, theme, colorCount }) {
   <body>
     <main class="stage">
       <div class="brand">舒尔特方格挑战</div>
-      <div class="title">请按顺序从 <span>1</span> 找到 <span>36</span></div>
-      <div class="subtitle">从 1 到 36，看看你需要多久</div>
+      <div class="title">请按顺序从 <span>1</span> 找到 <span>${total}</span></div>
+      <div class="subtitle">从 1 到 ${total}，看看你需要多久</div>
       <div class="timer">${formatTime(elapsedMs)}</div>
       <div class="grid">${cells}</div>
       <div class="prompt">评论区留下年龄和成绩</div>

@@ -6,6 +6,7 @@ const FPS = 30;
 const DURATION_MS = 120_000;
 
 type PromoVideoOptions = {
+  size: number;
   colorCount: ColorCount;
   theme: ThemeOption["id"];
 };
@@ -91,7 +92,7 @@ export async function createPromoVideo(options: PromoVideoOptions): Promise<Blob
   const mimeType = getSupportedMimeType();
   const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
   const chunks: Blob[] = [];
-  const grid = createGrid(6);
+  const grid = createGrid(options.size);
   const started = performance.now();
 
   recorder.addEventListener("dataavailable", (event) => {
@@ -133,7 +134,8 @@ function drawFrame(
   const gridLeft = 76;
   const gridTop = 540;
   const gridSize = WIDTH - gridLeft * 2;
-  const cellSize = gridSize / 6;
+  const cellSize = gridSize / options.size;
+  const total = options.size * options.size;
 
   context.fillStyle = palette.paper;
   context.fillRect(0, 0, WIDTH, HEIGHT);
@@ -145,11 +147,11 @@ function drawFrame(
   context.fillText("GridFox 舒尔特方格挑战", WIDTH / 2, 116);
 
   context.font = "900 78px Arial, sans-serif";
-  drawRichTitle(context, palette, 36);
+  drawRichTitle(context, palette, total);
 
   context.fillStyle = palette.muted;
   context.font = "800 38px Arial, sans-serif";
-  context.fillText("从 1 到 36，看看你需要多久", WIDTH / 2, 326);
+  context.fillText(`从 1 到 ${total}，看看你需要多久`, WIDTH / 2, 326);
 
   context.fillStyle = palette.primary;
   context.font = "900 78px Arial, sans-serif";
@@ -163,8 +165,8 @@ function drawFrame(
   context.stroke();
 
   grid.forEach((number, index) => {
-    const row = Math.floor(index / 6);
-    const col = index % 6;
+    const row = Math.floor(index / options.size);
+    const col = index % options.size;
     const x = gridLeft + col * cellSize;
     const y = gridTop + row * cellSize;
 
@@ -173,7 +175,7 @@ function drawFrame(
     context.strokeRect(x, y, cellSize, cellSize);
 
     context.fillStyle = palette.colors[getAccentClass(number, options.colorCount)];
-    context.font = "900 66px Arial, sans-serif";
+    context.font = `900 ${options.size >= 6 ? 66 : 82}px Arial, sans-serif`;
     context.fillText(String(number), x + cellSize / 2, y + cellSize / 2 + 2);
   });
 

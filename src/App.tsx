@@ -138,7 +138,7 @@ export default function App() {
   async function handleCreatePromoVideo() {
     setPromoStatus("recording");
     try {
-      const blob = await createPromoVideo({ colorCount, theme });
+      const blob = await createPromoVideo({ size: mode.size, colorCount, theme });
       if (promoUrl) URL.revokeObjectURL(promoUrl);
       setPromoUrl(URL.createObjectURL(blob));
       setPromoStatus("done");
