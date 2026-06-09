@@ -1,9 +1,22 @@
 :root {
+  --ink: #18212f;
+  --muted: #6d7789;
+  --paper: #fffdf8;
+  --shell: #eef4f1;
+  --line: #d9e1dc;
+  --panel: #ffffff;
+  --primary: #116b5d;
+  --primary-dark: #0a4d45;
+  --primary-soft: #e6f4ee;
+  --coral: #df4f3f;
+  --blue: #2369c9;
+  --green: #138a66;
+  --gold: #c78919;
   font-family:
     Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
     "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
-  color: #111827;
-  background: #f5f7fb;
+  color: var(--ink);
+  background: var(--shell);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -17,6 +30,7 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
+  overflow-x: hidden;
 }
 
 button,
@@ -33,17 +47,24 @@ button {
   display: grid;
   place-items: center;
   padding: 18px;
+  width: 100%;
+  background:
+    linear-gradient(135deg, rgba(17, 107, 93, 0.1), transparent 38%),
+    linear-gradient(315deg, rgba(223, 79, 63, 0.1), transparent 42%),
+    var(--shell);
 }
 
 .challenge-card {
   width: min(100%, 560px);
+  max-width: 100%;
+  min-width: 0;
   min-height: min(900px, calc(100vh - 36px));
   display: flex;
   flex-direction: column;
   justify-content: center;
-  background: #ffffff;
-  border: 1px solid #e5e7eb;
-  box-shadow: 0 24px 80px rgba(17, 24, 39, 0.08);
+  background: var(--paper);
+  border: 1px solid rgba(24, 33, 47, 0.1);
+  box-shadow: 0 24px 80px rgba(24, 33, 47, 0.12);
   padding: clamp(18px, 5vw, 34px);
 }
 
@@ -59,7 +80,7 @@ button {
   min-height: 38px;
   padding: 0;
   background: transparent;
-  color: #111827;
+  color: var(--ink);
   font-size: 19px;
   font-weight: 900;
   letter-spacing: 0;
@@ -71,9 +92,9 @@ button {
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 6px;
   padding: 4px;
-  border: 1px solid #d8dce3;
+  border: 1px solid var(--line);
   border-radius: 8px;
-  background: #f9fafb;
+  background: rgba(255, 255, 255, 0.62);
 }
 
 .mode-button {
@@ -81,14 +102,14 @@ button {
   height: 32px;
   border-radius: 6px;
   background: transparent;
-  color: #667085;
+  color: var(--muted);
   font-size: 13px;
   font-weight: 800;
   cursor: pointer;
 }
 
 .mode-button.active {
-  background: #111827;
+  background: var(--ink);
   color: #ffffff;
 }
 
@@ -103,7 +124,7 @@ button {
 
 .title-block h1 {
   margin: 0;
-  color: #111827;
+  color: var(--ink);
   font-size: clamp(30px, 7.4vw, 46px);
   font-weight: 950;
   line-height: 1.12;
@@ -111,7 +132,7 @@ button {
 }
 
 .title-block h1 span {
-  color: #dc342f;
+  color: var(--coral);
   font-size: 1.18em;
 }
 
@@ -124,13 +145,13 @@ button {
 }
 
 .timer-line strong {
-  color: #111827;
+  color: var(--ink);
   font-size: clamp(22px, 5.4vw, 30px);
   font-weight: 900;
 }
 
 .timer-line time {
-  color: #007783;
+  color: var(--primary);
   font-size: clamp(44px, 12vw, 66px);
   font-weight: 950;
   line-height: 1;
@@ -141,12 +162,14 @@ button {
   display: grid;
   gap: 1px;
   width: 100%;
+  max-width: 100%;
   aspect-ratio: 1;
   margin-top: clamp(18px, 4vh, 30px);
-  border: 1px solid #b9bec7;
+  border: 1px solid rgba(24, 33, 47, 0.22);
   border-radius: 8px;
   overflow: hidden;
-  background: #c4c8d0;
+  background: rgba(24, 33, 47, 0.22);
+  box-shadow: 0 14px 34px rgba(24, 33, 47, 0.1);
 }
 
 .grid-board.shake {
@@ -158,7 +181,7 @@ button {
   place-items: center;
   min-width: 0;
   min-height: 0;
-  background: #ffffff;
+  background: var(--panel);
   font-size: clamp(29px, 9.1vw, 48px);
   font-weight: 950;
   line-height: 1;
@@ -170,7 +193,7 @@ button {
 }
 
 .grid-cell:hover:not(:disabled) {
-  background: #f3fbfb;
+  background: var(--primary-soft);
 }
 
 .grid-cell:active:not(:disabled) {
@@ -189,7 +212,9 @@ button {
 }
 
 .grid-cell.completed {
-  background: rgba(0, 119, 131, 0.08);
+  background: var(--primary-soft);
+  color: var(--primary-dark);
+  opacity: 0.72;
 }
 
 .grid-cell:disabled {
@@ -197,19 +222,19 @@ button {
 }
 
 .number-dark {
-  color: #111827;
+  color: var(--ink);
 }
 
 .number-red {
-  color: #dc342f;
+  color: var(--coral);
 }
 
 .number-blue {
-  color: #1268ad;
+  color: var(--blue);
 }
 
 .number-green {
-  color: #007f67;
+  color: var(--green);
 }
 
 .status-row {
@@ -219,13 +244,13 @@ button {
   justify-content: center;
   gap: 18px;
   margin-top: 18px;
-  color: #111827;
+  color: var(--ink);
   font-size: clamp(15px, 3.8vw, 18px);
   font-weight: 900;
 }
 
 .status-row span + span {
-  color: #667085;
+  color: var(--muted);
 }
 
 .actions {
@@ -253,16 +278,16 @@ button {
 
 .primary-action {
   min-width: 132px;
-  background: #007783;
+  background: var(--primary);
   color: #ffffff;
-  box-shadow: 0 10px 24px rgba(0, 119, 131, 0.2);
+  box-shadow: 0 12px 28px rgba(17, 107, 93, 0.24);
 }
 
 .secondary-action,
 .result-panel button,
 .result-panel a {
-  background: #f3f4f6;
-  color: #111827;
+  background: #edf2ee;
+  color: var(--ink);
 }
 
 .result-panel {
@@ -272,27 +297,27 @@ button {
   gap: 10px;
   margin-top: 18px;
   padding: 14px;
-  border: 1px solid #e5e7eb;
+  border: 1px solid var(--line);
   border-radius: 8px;
-  background: #fbfcfe;
+  background: rgba(255, 255, 255, 0.7);
 }
 
 .result-panel p {
   margin: 0 0 2px;
-  color: #667085;
+  color: var(--muted);
   font-size: 13px;
   font-weight: 800;
 }
 
 .result-panel strong {
-  color: #007783;
+  color: var(--primary);
   font-size: 24px;
   font-weight: 950;
   font-variant-numeric: tabular-nums;
 }
 
 .error-text {
-  color: #dc342f;
+  color: var(--coral);
   font-size: 13px;
   font-weight: 800;
 }
@@ -300,7 +325,7 @@ button {
 .share-caption {
   margin-top: clamp(18px, 4vh, 28px);
   text-align: center;
-  color: #111827;
+  color: var(--ink);
   font-size: clamp(17px, 4.5vw, 22px);
   font-weight: 950;
 }
@@ -323,22 +348,35 @@ button {
 @media (max-width: 520px) {
   .app-shell {
     padding: 0;
-    background: #ffffff;
+    background: var(--paper);
+    overflow: hidden;
+    justify-items: start;
   }
 
   .challenge-card {
-    width: 100%;
+    width: min(100vw, 390px);
+    max-width: 390px;
     min-height: 100svh;
     border: 0;
     box-shadow: none;
+    overflow: hidden;
   }
 
   .topbar {
     margin-bottom: 26px;
   }
 
+  .title-block h1 {
+    font-size: clamp(28px, 8vw, 36px);
+    overflow-wrap: anywhere;
+  }
+
+  .timer-line time {
+    font-size: clamp(42px, 12vw, 56px);
+  }
+
   .grid-cell {
-    font-size: clamp(26px, 8.8vw, 40px);
+    font-size: clamp(24px, 8vw, 36px);
   }
 
   .result-panel {

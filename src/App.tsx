@@ -32,9 +32,9 @@ export default function App() {
   const total = mode.size * mode.size;
   const titleParts = useMemo(
     () => ({
-      before: "按顺序从",
+      before: "按顺序点亮",
       start: "1",
-      middle: "找到",
+      middle: "到",
       end: String(total),
     }),
     [total],
@@ -143,10 +143,10 @@ export default function App() {
 
   function copyShareText() {
     if (!finishedRun) return;
-    const text = `我完成了 ${mode.label} 舒尔特方格挑战，用时 ${formatTime(
+    const text = `我完成了 GridFox ${mode.label} 专注力挑战，用时 ${formatTime(
       finishedRun.elapsedMs,
       true,
-    )}。你能超过我吗？`;
+    )}。来测测你的眼力和反应。`;
     void navigator.clipboard?.writeText(text);
   }
 
@@ -207,19 +207,19 @@ export default function App() {
         <div className="status-row">
           {screen === "ready" && (
             <>
-              <span>准备挑战</span>
-              {bestMs !== null && <span>最佳 {formatTime(bestMs, true)}</span>}
+              <span>准备开始</span>
+              {bestMs !== null && <span>历史最佳 {formatTime(bestMs, true)}</span>}
             </>
           )}
           {screen === "playing" && (
             <>
-              <span>当前目标 {target}</span>
-              <span>{mode.label}</span>
+              <span>下一个数字 {target}</span>
+              <span>保持节奏</span>
             </>
           )}
           {screen === "finished" && finishedRun && (
             <>
-              <span>完成 {formatTime(finishedRun.elapsedMs, true)}</span>
+              <span>本次 {formatTime(finishedRun.elapsedMs, true)}</span>
               <span>最佳 {bestMs !== null ? formatTime(bestMs, true) : "--:--.--"}</span>
             </>
           )}
@@ -228,7 +228,7 @@ export default function App() {
         <div className="actions">
           {screen === "ready" && (
             <button className="primary-action" type="button" onClick={startGame}>
-              开始挑战
+              开始计时
             </button>
           )}
           {screen === "playing" && (
@@ -242,7 +242,7 @@ export default function App() {
                 再来一次
               </button>
               <button className="primary-action" type="button" onClick={handleCreateVideo}>
-                {videoStatus === "rendering" ? "生成中..." : "生成视频"}
+                {videoStatus === "rendering" ? "正在生成..." : "生成战绩视频"}
               </button>
             </>
           )}
@@ -251,22 +251,22 @@ export default function App() {
         {screen === "finished" && finishedRun && (
           <section className="result-panel" aria-label="挑战结果">
             <div>
-              <p>完成用时</p>
+              <p>专注成绩</p>
               <strong>{formatTime(finishedRun.elapsedMs, true)}</strong>
             </div>
             <button type="button" onClick={copyShareText}>
-              复制文案
+              复制分享语
             </button>
             {videoStatus === "done" && videoUrl && (
               <a href={videoUrl} download={`gridfox-${mode.label}-${Math.round(finishedRun.elapsedMs)}.webm`}>
                 下载视频
               </a>
             )}
-            {videoStatus === "error" && <span className="error-text">当前浏览器不支持视频生成</span>}
+            {videoStatus === "error" && <span className="error-text">当前浏览器暂不支持视频导出</span>}
           </section>
         )}
 
-        <footer className="share-caption">评论区留下年龄 + 用时</footer>
+        <footer className="share-caption">留下年龄和成绩，看看谁更快</footer>
       </section>
     </main>
   );
