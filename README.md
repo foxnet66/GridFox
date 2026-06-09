@@ -9,6 +9,7 @@
 - 完成后复制分享文案。
 - 可选择数字颜色数量和页面主题。
 - 生成 9:16 WebM 非交互式自动演示视频，可下载发布。
+- 本地离线生成 9:16 MP4 发布素材。
 
 ## 开发
 
@@ -27,4 +28,16 @@ http://127.0.0.1:5173/
 
 ```bash
 npm run build
+```
+
+生成小红书 MP4：
+
+```bash
+npm run video:promo
+```
+
+可选参数：
+
+```bash
+npm run video:promo -- --theme vivid --colors 4 --duration 120 --output dist/gridfox-xiaohongshu.mp4
 ```
