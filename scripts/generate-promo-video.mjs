@@ -186,7 +186,7 @@ function renderHtml({ elapsedMs, grid, theme, colorCount, size }) {
       <div class="timer">${formatTime(elapsedMs)}</div>
       <div class="grid">${cells}</div>
       <div class="prompt">评论区留下年龄和成绩</div>
-      <div class="credit">舒尔特计时挑战@新加坡大小AI爱玩</div>
+      <div class="credit">计时挑战@新加坡大小AI玩</div>
     </main>
   </body>
 </html>`;

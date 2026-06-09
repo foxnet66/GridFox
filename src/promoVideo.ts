@@ -185,7 +185,7 @@ function drawFrame(
 
   context.fillStyle = palette.muted;
   context.font = "700 30px Arial, sans-serif";
-  context.fillText("舒尔特计时挑战@新加坡大小AI玩", WIDTH / 2, 1682);
+  context.fillText("计时挑战@新加坡大小AI玩", WIDTH / 2, 1682);
 }
 
 function drawRichTitle(
