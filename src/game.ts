@@ -60,10 +60,17 @@ export function formatTime(ms: number, withCenti = false): string {
 }
 
 export function getAccentClass(number: number): string {
-  if ([2, 4, 5, 14, 17, 19].includes(number)) return "number-red";
-  if ([7, 11, 12, 20, 22, 23].includes(number)) return "number-blue";
-  if ([3, 6, 10, 13, 16, 18].includes(number)) return "number-green";
-  return "number-dark";
+  const accents = [
+    "number-dark",
+    "number-blue",
+    "number-red",
+    "number-green",
+    "number-purple",
+    "number-gold",
+    "number-teal",
+    "number-rose",
+  ];
+  return accents[number % accents.length];
 }
 
 export function getBestTime(mode: GameMode): number | null {

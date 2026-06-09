@@ -11,7 +11,6 @@ import {
   type GameMode,
   type TapRecord,
 } from "./game";
-import { createChallengeVideo } from "./video";
 
 type Screen = "ready" | "playing" | "finished";
 
@@ -25,16 +24,14 @@ export default function App() {
   const [taps, setTaps] = useState<TapRecord[]>([]);
   const [finishedRun, setFinishedRun] = useState<FinishedRun | null>(null);
   const [bestMs, setBestMs] = useState<number | null>(() => getBestTime(DEFAULT_MODE));
-  const [videoStatus, setVideoStatus] = useState<"idle" | "rendering" | "done" | "error">("idle");
-  const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const boardRef = useRef<HTMLDivElement | null>(null);
 
   const total = mode.size * mode.size;
   const titleParts = useMemo(
     () => ({
-      before: "按顺序点亮",
+      before: "请按顺序从",
       start: "1",
-      middle: "到",
+      middle: "找到",
       end: String(total),
     }),
     [total],
@@ -57,12 +54,6 @@ export default function App() {
     setBestMs(getBestTime(mode));
   }, [mode]);
 
-  useEffect(() => {
-    return () => {
-      if (videoUrl) URL.revokeObjectURL(videoUrl);
-    };
-  }, [videoUrl]);
-
   function resetGame(nextMode = mode) {
     setMode(nextMode);
     setGrid(createGrid(nextMode.size));
@@ -71,9 +62,6 @@ export default function App() {
     setElapsedMs(0);
     setTaps([]);
     setFinishedRun(null);
-    setVideoStatus("idle");
-    if (videoUrl) URL.revokeObjectURL(videoUrl);
-    setVideoUrl(null);
     setScreen("ready");
   }
 
@@ -84,9 +72,6 @@ export default function App() {
     setElapsedMs(0);
     setTaps([]);
     setFinishedRun(null);
-    setVideoStatus("idle");
-    if (videoUrl) URL.revokeObjectURL(videoUrl);
-    setVideoUrl(null);
     setScreen("playing");
   }
 
@@ -124,21 +109,6 @@ export default function App() {
     }
 
     setTarget(target + 1);
-  }
-
-  async function handleCreateVideo() {
-    if (!finishedRun) return;
-
-    setVideoStatus("rendering");
-    try {
-      const blob = await createChallengeVideo(finishedRun);
-      if (videoUrl) URL.revokeObjectURL(videoUrl);
-      setVideoUrl(URL.createObjectURL(blob));
-      setVideoStatus("done");
-    } catch (error) {
-      console.error(error);
-      setVideoStatus("error");
-    }
   }
 
   function copyShareText() {
@@ -241,9 +211,6 @@ export default function App() {
               <button className="secondary-action" type="button" onClick={startGame}>
                 再来一次
               </button>
-              <button className="primary-action" type="button" onClick={handleCreateVideo}>
-                {videoStatus === "rendering" ? "正在生成..." : "生成战绩视频"}
-              </button>
             </>
           )}
         </div>
@@ -257,12 +224,6 @@ export default function App() {
             <button type="button" onClick={copyShareText}>
               复制分享语
             </button>
-            {videoStatus === "done" && videoUrl && (
-              <a href={videoUrl} download={`gridfox-${mode.label}-${Math.round(finishedRun.elapsedMs)}.webm`}>
-                下载视频
-              </a>
-            )}
-            {videoStatus === "error" && <span className="error-text">当前浏览器暂不支持视频导出</span>}
           </section>
         )}
 
