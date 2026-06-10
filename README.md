@@ -45,3 +45,8 @@ npm run video:promo -- --size 6 --theme vivid --colors 4 --music soft --duration
 `--duration` 是正式计时段长度；输出视频会额外包含 3 秒前导倒计时。
 默认每次生成随机方格；如需复现同一版方格，可传 `--seed 1234`。
 音乐可选 `soft`、`focus`、`energy`、`none`；默认 `soft`。
+也可以使用自己的音乐文件：
+
+```bash
+npm run video:promo -- --music-file /path/to/music.mp3 --output dist/gridfox-with-music.mp4
+```

@@ -15,16 +15,22 @@ const DEFAULT_OUTPUT = resolve(ROOT, "dist/gridfox-xiaohongshu.mp4");
 const musicProfiles = {
   none: null,
   soft: {
-    frequencies: [392, 523.25, 659.25],
-    volume: 0.045,
+    bpm: 86,
+    melody: [392, 440, 523.25, 587.33, 659.25, 587.33, 523.25, 440],
+    bass: [196, 261.63, 293.66, 261.63],
+    volume: 0.28,
   },
   focus: {
-    frequencies: [261.63, 392, 523.25],
-    volume: 0.05,
+    bpm: 102,
+    melody: [329.63, 392, 493.88, 523.25, 493.88, 392, 440, 523.25],
+    bass: [164.81, 196, 246.94, 196],
+    volume: 0.26,
   },
   energy: {
-    frequencies: [440, 660, 880],
-    volume: 0.04,
+    bpm: 124,
+    melody: [440, 523.25, 659.25, 783.99, 659.25, 523.25, 587.33, 659.25],
+    bass: [220, 261.63, 329.63, 293.66],
+    volume: 0.24,
   },
 };
 
@@ -66,6 +72,7 @@ const size = clamp(Number(args.size ?? 6), 4, 6);
 const seed = Number.isFinite(Number(args.seed)) ? Number(args.seed) : Date.now();
 const musicName = String(args.music ?? "soft");
 const music = musicProfiles[musicName] ?? musicProfiles.soft;
+const musicFile = args["music-file"] ? resolve(ROOT, String(args["music-file"])) : null;
 const output = resolve(ROOT, args.output ?? DEFAULT_OUTPUT);
 const theme = themes[themeName] ?? themes.fresh;
 const tempDir = resolve(ROOT, ".tmp/promo-video");
@@ -107,21 +114,22 @@ try {
   }
 
   process.stdout.write("\nEncoding MP4...\n");
+  const audio = await prepareAudioInput({ music, musicFile, duration: totalFrames });
   await run(FFMPEG, [
     "-y",
     "-framerate",
     "1",
     "-i",
     resolve(framesDir, "frame-%04d.png"),
-    ...getMusicInputArgs(music, totalFrames),
+    ...audio.inputArgs,
     "-t",
     String(totalFrames),
     "-r",
     String(FPS),
-    ...getMusicFilterArgs(music, totalFrames),
+    ...audio.filterArgs,
     "-c:v",
     "libx264",
-    ...(music ? ["-c:a", "aac", "-b:a", "128k"] : []),
+    ...audio.codecArgs,
     "-pix_fmt",
     "yuv420p",
     "-movflags",
@@ -139,28 +147,95 @@ if (completed) {
 
 console.log(`Done: ${output}`);
 
-function getMusicInputArgs(music, duration) {
-  if (!music) return [];
-  return music.frequencies.flatMap((frequency) => [
-    "-f",
-    "lavfi",
-    "-i",
-    `sine=frequency=${frequency}:sample_rate=44100:duration=${duration}`,
-  ]);
+async function prepareAudioInput({ music, musicFile, duration }) {
+  if (musicFile) {
+    if (!existsSync(musicFile)) throw new Error(`Music file not found: ${musicFile}`);
+    return {
+      inputArgs: ["-stream_loop", "-1", "-i", musicFile],
+      filterArgs: getAudioMapArgs(duration, 0.72),
+      codecArgs: ["-c:a", "aac", "-b:a", "160k", "-shortest"],
+    };
+  }
+
+  if (!music) {
+    return {
+      inputArgs: [],
+      filterArgs: ["-an"],
+      codecArgs: [],
+    };
+  }
+
+  const audioPath = resolve(tempDir, "music.wav");
+  await writeGeneratedMusicWav(audioPath, duration, music);
+  return {
+    inputArgs: ["-i", audioPath],
+    filterArgs: getAudioMapArgs(duration, 1),
+    codecArgs: ["-c:a", "aac", "-b:a", "128k", "-shortest"],
+  };
 }
 
-function getMusicFilterArgs(music, duration) {
-  if (!music) return ["-an"];
-  const inputLabels = music.frequencies.map((_, index) => `[${index + 1}:a]`).join("");
+function getAudioMapArgs(duration, volume) {
   const fadeOutStart = Math.max(0, duration - 2);
   return [
-    "-filter_complex",
-    `${inputLabels}amix=inputs=${music.frequencies.length}:normalize=0,volume=${music.volume},afade=t=in:st=0:d=1,afade=t=out:st=${fadeOutStart}:d=2[a]`,
     "-map",
     "0:v",
     "-map",
-    "[a]",
+    "1:a",
+    "-af",
+    `volume=${volume},afade=t=in:st=0:d=1,afade=t=out:st=${fadeOutStart}:d=2`,
   ];
+}
+
+async function writeGeneratedMusicWav(path, duration, profile) {
+  const sampleRate = 44100;
+  const channelCount = 1;
+  const bytesPerSample = 2;
+  const sampleCount = Math.ceil(duration * sampleRate);
+  const dataSize = sampleCount * channelCount * bytesPerSample;
+  const buffer = Buffer.alloc(44 + dataSize);
+  const beatDuration = 60 / profile.bpm;
+
+  writeAscii(buffer, 0, "RIFF");
+  buffer.writeUInt32LE(36 + dataSize, 4);
+  writeAscii(buffer, 8, "WAVE");
+  writeAscii(buffer, 12, "fmt ");
+  buffer.writeUInt32LE(16, 16);
+  buffer.writeUInt16LE(1, 20);
+  buffer.writeUInt16LE(channelCount, 22);
+  buffer.writeUInt32LE(sampleRate, 24);
+  buffer.writeUInt32LE(sampleRate * channelCount * bytesPerSample, 28);
+  buffer.writeUInt16LE(channelCount * bytesPerSample, 32);
+  buffer.writeUInt16LE(bytesPerSample * 8, 34);
+  writeAscii(buffer, 36, "data");
+  buffer.writeUInt32LE(dataSize, 40);
+
+  for (let index = 0; index < sampleCount; index += 1) {
+    const time = index / sampleRate;
+    const beat = Math.floor(time / beatDuration);
+    const beatPosition = (time % beatDuration) / beatDuration;
+    const melodyFrequency = profile.melody[beat % profile.melody.length];
+    const bassFrequency = profile.bass[Math.floor(beat / 2) % profile.bass.length];
+    const melodyEnvelope = Math.min(1, beatPosition / 0.08) * Math.exp(-beatPosition * 2.6);
+    const bassEnvelope = 0.42 + 0.2 * Math.sin(Math.PI * beatPosition);
+    const shimmerFrequency = profile.melody[(beat + 2) % profile.melody.length] * 2;
+
+    const melody =
+      Math.sin(Math.PI * 2 * melodyFrequency * time) * 0.62 +
+      Math.sin(Math.PI * 4 * melodyFrequency * time) * 0.14;
+    const bass = Math.sin(Math.PI * 2 * bassFrequency * time) * 0.34 * bassEnvelope;
+    const shimmer = Math.sin(Math.PI * 2 * shimmerFrequency * time) * 0.08 * Math.exp(-beatPosition * 3.8);
+    const fadeIn = Math.min(1, time / 1.2);
+    const fadeOut = Math.min(1, Math.max(0, (duration - time) / 2));
+    const value = (melody * melodyEnvelope + bass + shimmer) * profile.volume * fadeIn * fadeOut;
+    const sample = Math.max(-1, Math.min(1, value));
+    buffer.writeInt16LE(Math.round(sample * 32767), 44 + index * 2);
+  }
+
+  await writeFile(path, buffer);
+}
+
+function writeAscii(buffer, offset, value) {
+  buffer.write(value, offset, value.length, "ascii");
 }
 
 function renderIntroHtml({ countdown, theme, size }) {
