@@ -47,6 +47,7 @@ const duration = clamp(Number(args.duration ?? 120), 1, 600);
 const themeName = String(args.theme ?? "fresh");
 const colorCount = clamp(Number(args.colors ?? 4), 1, 8);
 const size = clamp(Number(args.size ?? 6), 4, 6);
+const seed = Number.isFinite(Number(args.seed)) ? Number(args.seed) : Date.now();
 const output = resolve(ROOT, args.output ?? DEFAULT_OUTPUT);
 const theme = themes[themeName] ?? themes.fresh;
 const tempDir = resolve(ROOT, ".tmp/promo-video");
@@ -61,7 +62,7 @@ await rm(tempDir, { recursive: true, force: true });
 await mkdir(framesDir, { recursive: true });
 await mkdir(dirname(output), { recursive: true });
 
-const grid = createGrid(size, 20260609);
+const grid = createGrid(size, seed);
 const totalFrames = INTRO_SECONDS + duration;
 const chrome = await launchChrome(chromeProfile);
 
