@@ -39,8 +39,9 @@ npm run video:promo
 可选参数：
 
 ```bash
-npm run video:promo -- --size 6 --theme vivid --colors 4 --duration 120 --output dist/gridfox-xiaohongshu.mp4
+npm run video:promo -- --size 6 --theme vivid --colors 4 --music soft --duration 120 --output dist/gridfox-xiaohongshu.mp4
 ```
 
 `--duration` 是正式计时段长度；输出视频会额外包含 3 秒前导倒计时。
 默认每次生成随机方格；如需复现同一版方格，可传 `--seed 1234`。
+音乐可选 `soft`、`focus`、`energy`、`none`；默认 `soft`。

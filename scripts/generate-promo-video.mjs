@@ -12,6 +12,22 @@ const CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
 const FFMPEG = "/opt/homebrew/bin/ffmpeg";
 const DEFAULT_OUTPUT = resolve(ROOT, "dist/gridfox-xiaohongshu.mp4");
 
+const musicProfiles = {
+  none: null,
+  soft: {
+    frequencies: [392, 523.25, 659.25],
+    volume: 0.045,
+  },
+  focus: {
+    frequencies: [261.63, 392, 523.25],
+    volume: 0.05,
+  },
+  energy: {
+    frequencies: [440, 660, 880],
+    volume: 0.04,
+  },
+};
+
 const themes = {
   fresh: {
     ink: "#18212f",
@@ -48,6 +64,8 @@ const themeName = String(args.theme ?? "fresh");
 const colorCount = clamp(Number(args.colors ?? 4), 1, 8);
 const size = clamp(Number(args.size ?? 6), 4, 6);
 const seed = Number.isFinite(Number(args.seed)) ? Number(args.seed) : Date.now();
+const musicName = String(args.music ?? "soft");
+const music = musicProfiles[musicName] ?? musicProfiles.soft;
 const output = resolve(ROOT, args.output ?? DEFAULT_OUTPUT);
 const theme = themes[themeName] ?? themes.fresh;
 const tempDir = resolve(ROOT, ".tmp/promo-video");
@@ -95,12 +113,15 @@ try {
     "1",
     "-i",
     resolve(framesDir, "frame-%04d.png"),
+    ...getMusicInputArgs(music, totalFrames),
     "-t",
     String(totalFrames),
     "-r",
     String(FPS),
+    ...getMusicFilterArgs(music, totalFrames),
     "-c:v",
     "libx264",
+    ...(music ? ["-c:a", "aac", "-b:a", "128k"] : []),
     "-pix_fmt",
     "yuv420p",
     "-movflags",
@@ -117,6 +138,30 @@ if (completed) {
 }
 
 console.log(`Done: ${output}`);
+
+function getMusicInputArgs(music, duration) {
+  if (!music) return [];
+  return music.frequencies.flatMap((frequency) => [
+    "-f",
+    "lavfi",
+    "-i",
+    `sine=frequency=${frequency}:sample_rate=44100:duration=${duration}`,
+  ]);
+}
+
+function getMusicFilterArgs(music, duration) {
+  if (!music) return ["-an"];
+  const inputLabels = music.frequencies.map((_, index) => `[${index + 1}:a]`).join("");
+  const fadeOutStart = Math.max(0, duration - 2);
+  return [
+    "-filter_complex",
+    `${inputLabels}amix=inputs=${music.frequencies.length}:normalize=0,volume=${music.volume},afade=t=in:st=0:d=1,afade=t=out:st=${fadeOutStart}:d=2[a]`,
+    "-map",
+    "0:v",
+    "-map",
+    "[a]",
+  ];
+}
 
 function renderIntroHtml({ countdown, theme, size }) {
   const total = size * size;
