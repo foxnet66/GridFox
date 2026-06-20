@@ -36,6 +36,19 @@ npm run build
 npm run video:promo
 ```
 
+常用预设：
+
+```bash
+# 5x5，无音乐，适合发布后自行配小红书音乐
+npm run video:xhs
+
+# 5x5，内置轻音乐
+npm run video:xhs:music
+
+# 6x6，无音乐，难度更高
+npm run video:xhs:6x6
+```
+
 可选参数：
 
 ```bash
