@@ -63,3 +63,11 @@ npm run video:promo -- --size 6 --theme vivid --colors 4 --music soft --duration
 ```bash
 npm run video:promo -- --music-file /path/to/music.mp3 --output dist/gridfox-with-music.mp4
 ```
+
+快速检查视频导出：
+
+```bash
+npm run video:check
+```
+
+该命令会生成两个短样片，检查 `--music none` 是否没有音轨，以及输出时长是否包含 3 秒前导倒计时。
