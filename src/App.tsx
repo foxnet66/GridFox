@@ -157,61 +157,77 @@ export default function App() {
           </button>
         </header>
 
-        <section className="settings-panel" aria-label="基本设置">
-          <div className="settings-heading">
-            <h2>基本设置</h2>
-            <span>开始前调整挑战参数</span>
-          </div>
-          <div className="settings-grid">
-            <div className="setting-group">
-              <span>难度</span>
-              <div className="option-switch" aria-label="选择难度">
-                {MODES.map((item) => (
-                  <button
-                    className={item.size === mode.size ? "option-button active" : "option-button"}
-                    key={item.size}
-                    type="button"
-                    onClick={() => resetGame(item)}
-                    disabled={screen === "playing"}
-                  >
-                    {item.label}
-                  </button>
-                ))}
+        <section className="settings-stack" aria-label="挑战设置">
+          <section className="settings-panel compact" aria-label="玩法">
+            <div className="settings-heading">
+              <h2>玩法</h2>
+              <span>后续玩法会放在这里</span>
+            </div>
+            <div className="play-mode-row">
+              <div>
+                <strong>顺序查找</strong>
+                <span>请按顺序从 1 找到 {total}</span>
+              </div>
+              <span className="mode-badge">{mode.label}</span>
+            </div>
+          </section>
+
+          <section className="settings-panel" aria-label="基本设置">
+            <div className="settings-heading">
+              <h2>基本设置</h2>
+              <span>尺寸、颜色和主题</span>
+            </div>
+            <div className="settings-grid">
+              <div className="setting-group">
+                <span>方格尺寸</span>
+                <div className="option-switch" aria-label="选择方格尺寸">
+                  {MODES.map((item) => (
+                    <button
+                      className={item.size === mode.size ? "option-button active" : "option-button"}
+                      key={item.size}
+                      type="button"
+                      onClick={() => resetGame(item)}
+                      disabled={screen === "playing"}
+                    >
+                      {item.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="setting-group">
+                <span>颜色数量</span>
+                <div className="option-switch" aria-label="选择数字颜色数量">
+                  {COLOR_COUNTS.map((count) => (
+                    <button
+                      className={count === colorCount ? "option-button active" : "option-button"}
+                      key={count}
+                      type="button"
+                      onClick={() => setColorCount(count)}
+                      disabled={screen === "playing"}
+                    >
+                      {count}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="setting-group wide">
+                <span>主题</span>
+                <div className="option-switch" aria-label="选择主题">
+                  {THEMES.map((item) => (
+                    <button
+                      className={item.id === theme ? "option-button active" : "option-button"}
+                      key={item.id}
+                      type="button"
+                      onClick={() => setTheme(item.id)}
+                      disabled={screen === "playing"}
+                    >
+                      {item.label}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
-            <div className="setting-group">
-              <span>颜色数量</span>
-              <div className="option-switch" aria-label="选择数字颜色数量">
-                {COLOR_COUNTS.map((count) => (
-                  <button
-                    className={count === colorCount ? "option-button active" : "option-button"}
-                    key={count}
-                    type="button"
-                    onClick={() => setColorCount(count)}
-                    disabled={screen === "playing"}
-                  >
-                    {count}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div className="setting-group wide">
-              <span>主题</span>
-              <div className="option-switch" aria-label="选择主题">
-                {THEMES.map((item) => (
-                <button
-                  className={item.id === theme ? "option-button active" : "option-button"}
-                  key={item.id}
-                  type="button"
-                  onClick={() => setTheme(item.id)}
-                  disabled={screen === "playing"}
-                >
-                  {item.label}
-                </button>
-              ))}
-              </div>
-            </div>
-          </div>
+          </section>
         </section>
 
         <div className="title-block">
@@ -222,28 +238,6 @@ export default function App() {
             <strong>用时</strong>
             <time>{formatTime(screen === "finished" && finishedRun ? finishedRun.elapsedMs : elapsedMs)}</time>
           </div>
-        </div>
-
-        <div
-          className="grid-board"
-          ref={boardRef}
-          style={{ gridTemplateColumns: `repeat(${mode.size}, minmax(0, 1fr))` }}
-        >
-          {grid.map((number, index) => {
-            const completed = screen === "playing" && number < target;
-            return (
-              <button
-                className={`grid-cell ${getAccentClass(number, colorCount)} ${completed ? "completed" : ""}`}
-                key={`${number}-${index}`}
-                type="button"
-                onClick={() => handleCellClick(number, index)}
-                disabled={screen !== "playing"}
-                aria-label={`数字 ${number}`}
-              >
-                {number}
-              </button>
-            );
-          })}
         </div>
 
         <div className="status-row">
@@ -287,6 +281,28 @@ export default function App() {
           )}
         </div>
 
+        <div
+          className="grid-board"
+          ref={boardRef}
+          style={{ gridTemplateColumns: `repeat(${mode.size}, minmax(0, 1fr))` }}
+        >
+          {grid.map((number, index) => {
+            const completed = screen === "playing" && number < target;
+            return (
+              <button
+                className={`grid-cell ${getAccentClass(number, colorCount)} ${completed ? "completed" : ""}`}
+                key={`${number}-${index}`}
+                type="button"
+                onClick={() => handleCellClick(number, index)}
+                disabled={screen !== "playing"}
+                aria-label={`数字 ${number}`}
+              >
+                {number}
+              </button>
+            );
+          })}
+        </div>
+
         {screen === "finished" && finishedRun && (
           <section className="result-panel" aria-label="挑战结果">
             <div>
@@ -299,11 +315,11 @@ export default function App() {
           </section>
         )}
 
-        <section className="promo-panel" aria-label="小红书发布素材">
+        <section className="promo-panel" aria-label="发布导出">
           <div>
-            <p>发布素材</p>
-            <strong>两分钟竖屏自动演示</strong>
-            <span>生成约需 2 分钟</span>
+            <p>发布导出</p>
+            <strong>竖屏自动演示 WebM</strong>
+            <span>MP4 建议使用离线预设命令</span>
           </div>
           <button
             className="secondary-action"

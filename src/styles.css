@@ -137,12 +137,21 @@ button {
   cursor: pointer;
 }
 
-.settings-panel {
+.settings-stack {
+  display: grid;
+  gap: 10px;
   margin-bottom: clamp(18px, 4vh, 28px);
+}
+
+.settings-panel {
   padding: 14px;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.42);
+}
+
+.settings-panel.compact {
+  padding: 12px 14px;
 }
 
 .settings-heading {
@@ -164,6 +173,46 @@ button {
   color: var(--muted);
   font-size: 12px;
   font-weight: 800;
+}
+
+.play-mode-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--primary-soft);
+}
+
+.play-mode-row strong {
+  display: block;
+  color: var(--primary-dark);
+  font-size: 15px;
+  font-weight: 950;
+}
+
+.play-mode-row span {
+  display: block;
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.play-mode-row .mode-badge {
+  margin: 0;
+  min-width: 54px;
+  min-height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  background: var(--primary-dark);
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 950;
 }
 
 .settings-grid {
@@ -519,9 +568,17 @@ button {
     margin-bottom: 14px;
   }
 
+  .settings-stack {
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+
   .settings-panel {
     padding: 10px;
-    margin-bottom: 14px;
+  }
+
+  .settings-panel.compact {
+    padding: 10px;
   }
 
   .settings-heading {
@@ -543,6 +600,24 @@ button {
   .setting-group > span {
     margin-bottom: 4px;
     font-size: 10px;
+  }
+
+  .play-mode-row {
+    padding: 8px 10px;
+  }
+
+  .play-mode-row strong {
+    font-size: 13px;
+  }
+
+  .play-mode-row span {
+    font-size: 10px;
+  }
+
+  .play-mode-row .mode-badge {
+    min-width: 48px;
+    min-height: 26px;
+    font-size: 11px;
   }
 
   .option-button {
