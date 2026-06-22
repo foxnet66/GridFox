@@ -69,6 +69,7 @@ const duration = clamp(Number(args.duration ?? 120), 1, 600);
 const themeName = String(args.theme ?? "fresh");
 const colorCount = clamp(Number(args.colors ?? 4), 1, 8);
 const size = clamp(Number(args.size ?? 6), 4, 6);
+const order = String(args.order ?? "asc") === "desc" ? "desc" : "asc";
 const seed = Number.isFinite(Number(args.seed)) ? Number(args.seed) : Date.now();
 const musicName = String(args.music ?? "soft");
 const music = Object.hasOwn(musicProfiles, musicName) ? musicProfiles[musicName] : musicProfiles.soft;
@@ -106,7 +107,7 @@ try {
     const html =
       second < INTRO_SECONDS
         ? renderIntroHtml({ countdown: INTRO_SECONDS - second, theme, size })
-        : renderChallengeHtml({ elapsedMs: (second - INTRO_SECONDS) * 1000, grid, theme, colorCount, size });
+        : renderChallengeHtml({ elapsedMs: (second - INTRO_SECONDS) * 1000, grid, theme, colorCount, size, order });
     await setHtml(client, html);
     const screenshot = await client.send("Page.captureScreenshot", { format: "png", fromSurface: true });
     await writeFile(framePath, Buffer.from(screenshot.data, "base64"));
@@ -307,8 +308,9 @@ function renderIntroHtml({ countdown, theme, size }) {
 </html>`;
 }
 
-function renderChallengeHtml({ elapsedMs, grid, theme, colorCount, size }) {
+function renderChallengeHtml({ elapsedMs, grid, theme, colorCount, size, order }) {
   const total = size * size;
+  const range = getTargetRange(total, order);
   const gridSize = 928;
   const cellSize = gridSize / size;
   const fontSize = size >= 6 ? 66 : 82;
@@ -376,8 +378,8 @@ function renderChallengeHtml({ elapsedMs, grid, theme, colorCount, size }) {
   <body>
     <main class="stage">
       <div class="brand">舒尔特方格挑战</div>
-      <div class="title">请按顺序从 <span>1</span> 找到 <span>${total}</span></div>
-      <div class="subtitle">从 1 到 ${total}，看看你需要多久</div>
+      <div class="title">请按顺序从 <span>${range.start}</span> 找到 <span>${range.end}</span></div>
+      <div class="subtitle">从 ${range.start} 到 ${range.end}，看看你需要多久</div>
       <div class="timer">${formatTime(elapsedMs)}</div>
       <div class="grid">${cells}</div>
       <div class="prompt">评论区留下年龄和成绩</div>
@@ -491,6 +493,10 @@ function formatTime(ms) {
   const seconds = Math.floor(ms / 1000);
   const minutes = Math.floor(seconds / 60);
   return `${String(minutes).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
+}
+
+function getTargetRange(total, order) {
+  return order === "desc" ? { start: total, end: 1 } : { start: 1, end: total };
 }
 
 function parseArgs(argv) {

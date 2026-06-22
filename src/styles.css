@@ -175,6 +175,11 @@ button {
   font-weight: 800;
 }
 
+.play-mode-grid {
+  display: grid;
+  gap: 8px;
+}
+
 .play-mode-row {
   display: grid;
   grid-template-columns: 1fr auto;
@@ -600,6 +605,10 @@ button {
   .setting-group > span {
     margin-bottom: 4px;
     font-size: 10px;
+  }
+
+  .play-mode-grid {
+    gap: 7px;
   }
 
   .play-mode-row {

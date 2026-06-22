@@ -1,4 +1,12 @@
-import { createGrid, formatTime, getAccentClass, type ColorCount, type ThemeOption } from "./game";
+import {
+  createGrid,
+  formatTime,
+  getAccentClass,
+  getTargetRange,
+  type ChallengeOrder,
+  type ColorCount,
+  type ThemeOption,
+} from "./game";
 
 const WIDTH = 1080;
 const HEIGHT = 1920;
@@ -10,6 +18,7 @@ type PromoVideoOptions = {
   size: number;
   colorCount: ColorCount;
   theme: ThemeOption["id"];
+  order: ChallengeOrder;
 };
 
 const themePalettes: Record<
@@ -131,7 +140,6 @@ export async function createPromoVideo(options: PromoVideoOptions): Promise<Blob
 
 function drawIntroFrame(context: CanvasRenderingContext2D, countdown: number, options: PromoVideoOptions) {
   const palette = themePalettes[options.theme];
-  const total = options.size * options.size;
   const ghostLeft = 126;
   const ghostTop = 512;
   const ghostSize = 828;
@@ -199,7 +207,7 @@ function drawFrame(
   const gridTop = 540;
   const gridSize = WIDTH - gridLeft * 2;
   const cellSize = gridSize / options.size;
-  const total = options.size * options.size;
+  const range = getTargetRange({ size: options.size, label: `${options.size}x${options.size}`, title: "" }, options.order);
 
   context.fillStyle = palette.paper;
   context.fillRect(0, 0, WIDTH, HEIGHT);
@@ -211,11 +219,11 @@ function drawFrame(
   context.fillText("GridFox 舒尔特方格挑战", WIDTH / 2, 116);
 
   context.font = "900 78px Arial, sans-serif";
-  drawRichTitle(context, palette, total);
+  drawRichTitle(context, palette, range.start, range.end);
 
   context.fillStyle = palette.muted;
   context.font = "800 38px Arial, sans-serif";
-  context.fillText(`从 1 到 ${total}，看看你需要多久`, WIDTH / 2, 326);
+  context.fillText(`从 ${range.start} 到 ${range.end}，看看你需要多久`, WIDTH / 2, 326);
 
   context.fillStyle = palette.primary;
   context.font = "900 78px Arial, sans-serif";
@@ -255,13 +263,14 @@ function drawFrame(
 function drawRichTitle(
   context: CanvasRenderingContext2D,
   palette: (typeof themePalettes)[ThemeOption["id"]],
-  total: number,
+  start: number,
+  end: number,
 ) {
   const parts = [
     { text: "请按顺序从 ", color: palette.ink },
-    { text: "1", color: palette.accent },
+    { text: String(start), color: palette.accent },
     { text: " 找到 ", color: palette.ink },
-    { text: String(total), color: palette.accent },
+    { text: String(end), color: palette.accent },
   ];
   const widths = parts.map((part) => context.measureText(part.text).width);
   let cursor = (WIDTH - widths.reduce((sum, width) => sum + width, 0)) / 2;
