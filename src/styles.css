@@ -332,6 +332,80 @@ button {
   animation: shake 170ms ease-out;
 }
 
+.radial-board {
+  width: 100%;
+  max-width: 100%;
+  aspect-ratio: 1;
+  margin-top: clamp(18px, 4vh, 30px);
+  border-radius: 50%;
+  background: #ffffff;
+  filter: drop-shadow(0 14px 34px rgba(24, 33, 47, 0.1));
+}
+
+.radial-board.shake {
+  animation: shake 170ms ease-out;
+}
+
+.radial-board svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.radial-center {
+  fill: var(--paper);
+  stroke: var(--line);
+  stroke-width: 0.6;
+}
+
+.radial-cell path {
+  fill: var(--panel);
+  stroke: rgba(17, 107, 93, 0.52);
+  stroke-width: 0.42;
+  transition:
+    fill 130ms ease,
+    opacity 130ms ease,
+    transform 130ms ease;
+}
+
+.radial-cell text {
+  dominant-baseline: middle;
+  text-anchor: middle;
+  font-size: 5.4px;
+  font-weight: 950;
+  pointer-events: none;
+  user-select: none;
+}
+
+.radial-cell:hover path {
+  fill: var(--primary-soft);
+}
+
+.radial-cell:focus-visible {
+  outline: none;
+}
+
+.radial-cell:focus-visible path {
+  stroke: var(--heading-accent);
+  stroke-width: 0.9;
+}
+
+.radial-cell:active path {
+  transform: scale(0.996);
+  transform-origin: center;
+}
+
+.radial-cell.completed path {
+  fill: var(--primary-soft);
+  opacity: 0.8;
+}
+
+.radial-cell.completed text {
+  fill: var(--primary-dark);
+  opacity: 0.72;
+}
+
 .grid-cell {
   display: grid;
   place-items: center;
@@ -381,34 +455,42 @@ button {
 
 .number-dark {
   color: var(--ink);
+  fill: var(--ink);
 }
 
 .number-red {
   color: var(--coral);
+  fill: var(--coral);
 }
 
 .number-blue {
   color: var(--blue);
+  fill: var(--blue);
 }
 
 .number-green {
   color: var(--green);
+  fill: var(--green);
 }
 
 .number-purple {
   color: var(--purple);
+  fill: var(--purple);
 }
 
 .number-gold {
   color: var(--gold);
+  fill: var(--gold);
 }
 
 .number-teal {
   color: var(--teal);
+  fill: var(--teal);
 }
 
 .number-rose {
   color: var(--rose);
+  fill: var(--rose);
 }
 
 .status-row {
@@ -556,7 +638,8 @@ button {
   .app-shell {
     padding: 0;
     background: var(--paper);
-    overflow: hidden;
+    overflow-x: hidden;
+    overflow-y: auto;
     justify-items: start;
   }
 
@@ -566,7 +649,7 @@ button {
     min-height: 100svh;
     border: 0;
     box-shadow: none;
-    overflow: hidden;
+    overflow: visible;
   }
 
   .topbar {
@@ -649,6 +732,10 @@ button {
 
   .grid-board {
     margin-top: 14px;
+  }
+
+  .radial-board {
+    margin-top: 10px;
   }
 
   .status-row {

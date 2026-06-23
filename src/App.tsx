@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   DEFAULT_MODE,
+  CHALLENGE_LAYOUTS,
   CHALLENGE_ORDERS,
   COLOR_COUNTS,
   MODES,
@@ -11,9 +12,13 @@ import {
   getBestTime,
   getInitialTarget,
   getNextTarget,
+  describeRadialSegment,
+  polarToCartesian,
+  getRadialGeometry,
   getTargetRange,
   isFinalTarget,
   saveBestTime,
+  type ChallengeLayout,
   type ChallengeOrder,
   type FinishedRun,
   type GameMode,
@@ -25,19 +30,24 @@ import { createPromoVideo } from "./promoVideo";
 
 type Screen = "ready" | "playing" | "finished";
 
+const INITIAL_SETTINGS = getInitialSettings();
+
 export default function App() {
-  const [mode, setMode] = useState<GameMode>(DEFAULT_MODE);
-  const [order, setOrder] = useState<ChallengeOrder>("asc");
+  const [mode, setMode] = useState<GameMode>(INITIAL_SETTINGS.mode);
+  const [order, setOrder] = useState<ChallengeOrder>(INITIAL_SETTINGS.order);
+  const [layout, setLayout] = useState<ChallengeLayout>(INITIAL_SETTINGS.layout);
   const [screen, setScreen] = useState<Screen>("ready");
-  const [grid, setGrid] = useState(() => createGrid(DEFAULT_MODE.size));
-  const [target, setTarget] = useState(() => getInitialTarget(DEFAULT_MODE, "asc"));
+  const [grid, setGrid] = useState(() => createGrid(INITIAL_SETTINGS.mode.size));
+  const [target, setTarget] = useState(() => getInitialTarget(INITIAL_SETTINGS.mode, INITIAL_SETTINGS.order));
   const [startedAt, setStartedAt] = useState<number | null>(null);
   const [elapsedMs, setElapsedMs] = useState(0);
   const [taps, setTaps] = useState<TapRecord[]>([]);
   const [finishedRun, setFinishedRun] = useState<FinishedRun | null>(null);
-  const [bestMs, setBestMs] = useState<number | null>(() => getBestTime(DEFAULT_MODE, "asc"));
-  const [colorCount, setColorCount] = useState<ColorCount>(4);
-  const [theme, setTheme] = useState<ThemeOption["id"]>("fresh");
+  const [bestMs, setBestMs] = useState<number | null>(() =>
+    getBestTime(INITIAL_SETTINGS.mode, INITIAL_SETTINGS.order, INITIAL_SETTINGS.layout),
+  );
+  const [colorCount, setColorCount] = useState<ColorCount>(INITIAL_SETTINGS.colorCount);
+  const [theme, setTheme] = useState<ThemeOption["id"]>(INITIAL_SETTINGS.theme);
   const [promoStatus, setPromoStatus] = useState<"idle" | "recording" | "done" | "error">("idle");
   const [promoUrl, setPromoUrl] = useState<string | null>(null);
   const boardRef = useRef<HTMLDivElement | null>(null);
@@ -45,6 +55,8 @@ export default function App() {
   const total = mode.size * mode.size;
   const range = useMemo(() => getTargetRange(mode, order), [mode, order]);
   const activeOrder = CHALLENGE_ORDERS.find((item) => item.id === order) ?? CHALLENGE_ORDERS[0];
+  const activeLayout = CHALLENGE_LAYOUTS.find((item) => item.id === layout) ?? CHALLENGE_LAYOUTS[0];
+  const radialGeometry = useMemo(() => getRadialGeometry(total), [total]);
   const titleParts = useMemo(
     () => ({
       before: "请按顺序从",
@@ -69,8 +81,8 @@ export default function App() {
   }, [screen, startedAt]);
 
   useEffect(() => {
-    setBestMs(getBestTime(mode, order));
-  }, [mode, order]);
+    setBestMs(getBestTime(mode, order, layout));
+  }, [layout, mode, order]);
 
   useEffect(() => {
     return () => {
@@ -78,9 +90,10 @@ export default function App() {
     };
   }, [promoUrl]);
 
-  function resetGame(nextMode = mode, nextOrder = order) {
+  function resetGame(nextMode = mode, nextOrder = order, nextLayout = layout) {
     setMode(nextMode);
     setOrder(nextOrder);
+    setLayout(nextLayout);
     setGrid(createGrid(nextMode.size));
     setTarget(getInitialTarget(nextMode, nextOrder));
     setStartedAt(null);
@@ -123,13 +136,14 @@ export default function App() {
       const run: FinishedRun = {
         mode,
         order,
+        layout,
         grid,
         taps: nextTaps,
         elapsedMs: currentElapsed,
         completedAt: new Date().toISOString(),
       };
       setFinishedRun(run);
-      setBestMs(saveBestTime(mode, order, currentElapsed));
+      setBestMs(saveBestTime(mode, order, layout, currentElapsed));
       setScreen("finished");
       return;
     }
@@ -140,7 +154,9 @@ export default function App() {
   function copyShareText() {
     if (!finishedRun) return;
     const finishedOrder = CHALLENGE_ORDERS.find((item) => item.id === finishedRun.order) ?? CHALLENGE_ORDERS[0];
-    const text = `我完成了 GridFox ${finishedRun.mode.label} ${finishedOrder.name}专注力挑战，用时 ${formatTime(
+    const finishedLayout =
+      CHALLENGE_LAYOUTS.find((item) => item.id === finishedRun.layout) ?? CHALLENGE_LAYOUTS[0];
+    const text = `我完成了 GridFox ${finishedRun.mode.label} ${finishedLayout.name}${finishedOrder.name}专注力挑战，用时 ${formatTime(
       finishedRun.elapsedMs,
       true,
     )}。来测测你的眼力和反应。`;
@@ -150,7 +166,7 @@ export default function App() {
   async function handleCreatePromoVideo() {
     setPromoStatus("recording");
     try {
-      const blob = await createPromoVideo({ size: mode.size, colorCount, theme, order });
+      const blob = await createPromoVideo({ size: mode.size, colorCount, theme, order, layout });
       if (promoUrl) URL.revokeObjectURL(promoUrl);
       setPromoUrl(URL.createObjectURL(blob));
       setPromoStatus("done");
@@ -164,7 +180,7 @@ export default function App() {
     <main className={`app-shell theme-${theme}`}>
       <section className="challenge-card" aria-label="GridFox 舒尔特方格挑战">
         <header className="topbar">
-          <button className="brand-button" type="button" onClick={() => resetGame(mode, order)}>
+          <button className="brand-button" type="button" onClick={() => resetGame(mode, order, layout)}>
             GridFox
           </button>
         </header>
@@ -182,7 +198,7 @@ export default function App() {
                     className={item.id === order ? "option-button active" : "option-button"}
                     key={item.id}
                     type="button"
-                    onClick={() => resetGame(mode, item.id)}
+                    onClick={() => resetGame(mode, item.id, layout)}
                     disabled={screen === "playing"}
                   >
                     {item.label}
@@ -193,7 +209,7 @@ export default function App() {
                 <div>
                   <strong>{activeOrder.name}</strong>
                   <span>
-                    请按顺序从 {range.start} 找到 {range.end}
+                    {activeLayout.name}，请从 {range.start} 找到 {range.end}
                   </span>
                 </div>
                 <span className="mode-badge">{mode.label}</span>
@@ -207,6 +223,22 @@ export default function App() {
               <span>尺寸、颜色和主题</span>
             </div>
             <div className="settings-grid">
+              <div className="setting-group wide">
+                <span>版式</span>
+                <div className="option-switch" aria-label="选择版式">
+                  {CHALLENGE_LAYOUTS.map((item) => (
+                    <button
+                      className={item.id === layout ? "option-button active" : "option-button"}
+                      key={item.id}
+                      type="button"
+                      onClick={() => resetGame(mode, order, item.id)}
+                      disabled={screen === "playing"}
+                    >
+                      {item.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
               <div className="setting-group">
                 <span>方格尺寸</span>
                 <div className="option-switch" aria-label="选择方格尺寸">
@@ -215,7 +247,7 @@ export default function App() {
                       className={item.size === mode.size ? "option-button active" : "option-button"}
                       key={item.size}
                       type="button"
-                      onClick={() => resetGame(item, order)}
+                      onClick={() => resetGame(item, order, layout)}
                       disabled={screen === "playing"}
                     >
                       {item.label}
@@ -297,7 +329,7 @@ export default function App() {
             </button>
           )}
           {screen === "playing" && (
-            <button className="secondary-action" type="button" onClick={() => resetGame(mode, order)}>
+            <button className="secondary-action" type="button" onClick={() => resetGame(mode, order, layout)}>
               重新开始
             </button>
           )}
@@ -310,27 +342,62 @@ export default function App() {
           )}
         </div>
 
-        <div
-          className="grid-board"
-          ref={boardRef}
-          style={{ gridTemplateColumns: `repeat(${mode.size}, minmax(0, 1fr))` }}
-        >
-          {grid.map((number, index) => {
-            const completed = screen === "playing" && (order === "desc" ? number > target : number < target);
-            return (
-              <button
-                className={`grid-cell ${getAccentClass(number, colorCount)} ${completed ? "completed" : ""}`}
-                key={`${number}-${index}`}
-                type="button"
-                onClick={() => handleCellClick(number, index)}
-                disabled={screen !== "playing"}
-                aria-label={`数字 ${number}`}
-              >
-                {number}
-              </button>
-            );
-          })}
-        </div>
+        {layout === "grid" ? (
+          <div
+            className="grid-board"
+            ref={boardRef}
+            style={{ gridTemplateColumns: `repeat(${mode.size}, minmax(0, 1fr))` }}
+          >
+            {grid.map((number, index) => {
+              const completed = screen === "playing" && (order === "desc" ? number > target : number < target);
+              return (
+                <button
+                  className={`grid-cell ${getAccentClass(number, colorCount)} ${completed ? "completed" : ""}`}
+                  key={`${number}-${index}`}
+                  type="button"
+                  onClick={() => handleCellClick(number, index)}
+                  disabled={screen !== "playing"}
+                  aria-label={`数字 ${number}`}
+                >
+                  {number}
+                </button>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="radial-board" ref={boardRef}>
+            <svg viewBox="0 0 100 100" role="group" aria-label="圆盘舒尔特数字盘">
+              <circle className="radial-center" cx="50" cy="50" r="8" />
+              {grid.map((number, index) => {
+                const geometry = radialGeometry[index];
+                const labelPoint = polarToCartesian(50, geometry.labelRadius, geometry.labelAngle);
+                const completed = screen === "playing" && (order === "desc" ? number > target : number < target);
+                return (
+                  <g
+                    className={`radial-cell ${getAccentClass(number, colorCount)} ${completed ? "completed" : ""}`}
+                    key={`${number}-${index}`}
+                    role="button"
+                    tabIndex={screen === "playing" ? 0 : -1}
+                    aria-label={`数字 ${number}`}
+                    onClick={() => handleCellClick(number, index)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        handleCellClick(number, index);
+                      }
+                    }}
+                    aria-disabled={screen !== "playing"}
+                  >
+                    <path d={describeRadialSegment(geometry)} />
+                    <text x={labelPoint.x} y={labelPoint.y}>
+                      {number}
+                    </text>
+                  </g>
+                );
+              })}
+            </svg>
+          </div>
+        )}
 
         {screen === "finished" && finishedRun && (
           <section className="result-panel" aria-label="挑战结果">
@@ -359,7 +426,7 @@ export default function App() {
             {promoStatus === "recording" ? "录制中..." : "生成视频"}
           </button>
           {promoStatus === "done" && promoUrl && (
-            <a href={promoUrl} download={`gridfox-xiaohongshu-${order}-${theme}-${colorCount}color.webm`}>
+            <a href={promoUrl} download={`gridfox-xiaohongshu-${layout}-${order}-${theme}-${colorCount}color.webm`}>
               下载 WebM
             </a>
           )}
@@ -370,4 +437,23 @@ export default function App() {
       </section>
     </main>
   );
+}
+
+function getInitialSettings(): {
+  mode: GameMode;
+  order: ChallengeOrder;
+  layout: ChallengeLayout;
+  colorCount: ColorCount;
+  theme: ThemeOption["id"];
+} {
+  const params = new URLSearchParams(window.location.search);
+  const mode = MODES.find((item) => item.size === Number(params.get("size"))) ?? DEFAULT_MODE;
+  const order = params.get("order") === "desc" ? "desc" : "asc";
+  const layout = params.get("layout") === "radial" ? "radial" : "grid";
+  const colorCountValue = Number(params.get("colors"));
+  const colorCount = COLOR_COUNTS.includes(colorCountValue as ColorCount) ? (colorCountValue as ColorCount) : 4;
+  const themeParam = params.get("theme");
+  const theme = THEMES.some((item) => item.id === themeParam) ? (themeParam as ThemeOption["id"]) : "fresh";
+
+  return { mode, order, layout, colorCount, theme };
 }

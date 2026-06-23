@@ -1,8 +1,12 @@
 import {
   createGrid,
+  describeRadialSegment,
   formatTime,
   getAccentClass,
+  getRadialGeometry,
   getTargetRange,
+  polarToCartesian,
+  type ChallengeLayout,
   type ChallengeOrder,
   type ColorCount,
   type ThemeOption,
@@ -19,6 +23,7 @@ type PromoVideoOptions = {
   colorCount: ColorCount;
   theme: ThemeOption["id"];
   order: ChallengeOrder;
+  layout: ChallengeLayout;
 };
 
 const themePalettes: Record<
@@ -172,7 +177,11 @@ function drawIntroFrame(context: CanvasRenderingContext2D, countdown: number, op
 
   context.fillStyle = palette.primary;
   context.font = "900 46px Arial, sans-serif";
-  context.fillText(`舒尔特方格 ${options.size}×${options.size}`, WIDTH / 2, 382);
+  context.fillText(
+    options.layout === "radial" ? `圆盘舒尔特 ${options.size * options.size}` : `舒尔特方格 ${options.size}×${options.size}`,
+    WIDTH / 2,
+    382,
+  );
 
   context.strokeStyle = palette.grid;
   context.lineWidth = 12;
@@ -216,7 +225,7 @@ function drawFrame(
   context.textBaseline = "middle";
   context.fillStyle = palette.primary;
   context.font = "900 46px Arial, sans-serif";
-  context.fillText("GridFox 舒尔特方格挑战", WIDTH / 2, 116);
+  context.fillText(options.layout === "radial" ? "GridFox 圆盘舒尔特挑战" : "GridFox 舒尔特方格挑战", WIDTH / 2, 116);
 
   context.font = "900 78px Arial, sans-serif";
   drawRichTitle(context, palette, range.start, range.end);
@@ -229,27 +238,31 @@ function drawFrame(
   context.font = "900 78px Arial, sans-serif";
   context.fillText(formatTime(elapsedMs), WIDTH / 2, 424);
 
-  roundRect(context, gridLeft, gridTop, gridSize, gridSize, 18);
-  context.fillStyle = "#ffffff";
-  context.fill();
-  context.strokeStyle = palette.grid;
-  context.lineWidth = 3;
-  context.stroke();
-
-  grid.forEach((number, index) => {
-    const row = Math.floor(index / options.size);
-    const col = index % options.size;
-    const x = gridLeft + col * cellSize;
-    const y = gridTop + row * cellSize;
-
+  if (options.layout === "radial") {
+    drawRadialBoard(context, grid, options, palette, gridLeft, gridTop, gridSize);
+  } else {
+    roundRect(context, gridLeft, gridTop, gridSize, gridSize, 18);
+    context.fillStyle = "#ffffff";
+    context.fill();
     context.strokeStyle = palette.grid;
-    context.lineWidth = 2;
-    context.strokeRect(x, y, cellSize, cellSize);
+    context.lineWidth = 3;
+    context.stroke();
 
-    context.fillStyle = palette.colors[getAccentClass(number, options.colorCount)];
-    context.font = `900 ${options.size >= 6 ? 66 : 82}px Arial, sans-serif`;
-    context.fillText(String(number), x + cellSize / 2, y + cellSize / 2 + 2);
-  });
+    grid.forEach((number, index) => {
+      const row = Math.floor(index / options.size);
+      const col = index % options.size;
+      const x = gridLeft + col * cellSize;
+      const y = gridTop + row * cellSize;
+
+      context.strokeStyle = palette.grid;
+      context.lineWidth = 2;
+      context.strokeRect(x, y, cellSize, cellSize);
+
+      context.fillStyle = palette.colors[getAccentClass(number, options.colorCount)];
+      context.font = `900 ${options.size >= 6 ? 66 : 82}px Arial, sans-serif`;
+      context.fillText(String(number), x + cellSize / 2, y + cellSize / 2 + 2);
+    });
+  }
 
   context.fillStyle = palette.ink;
   context.font = "900 48px Arial, sans-serif";
@@ -258,6 +271,50 @@ function drawFrame(
   context.fillStyle = palette.muted;
   context.font = "700 30px Arial, sans-serif";
   context.fillText("计时挑战@新加坡大小AI玩", WIDTH / 2, 1682);
+}
+
+function drawRadialBoard(
+  context: CanvasRenderingContext2D,
+  grid: number[],
+  options: PromoVideoOptions,
+  palette: (typeof themePalettes)[ThemeOption["id"]],
+  left: number,
+  top: number,
+  size: number,
+) {
+  const scale = size / 100;
+  const geometry = getRadialGeometry(options.size * options.size);
+
+  context.save();
+  context.translate(left, top);
+  context.scale(scale, scale);
+  context.fillStyle = "#ffffff";
+  context.strokeStyle = palette.grid;
+  context.lineWidth = 0.46;
+
+  grid.forEach((number, index) => {
+    const cellGeometry = geometry[index];
+    const path = new Path2D(describeRadialSegment(cellGeometry));
+    context.fillStyle = "#ffffff";
+    context.fill(path);
+    context.strokeStyle = palette.grid;
+    context.stroke(path);
+
+    const labelPoint = polarToCartesian(50, cellGeometry.labelRadius, cellGeometry.labelAngle);
+    context.fillStyle = palette.colors[getAccentClass(number, options.colorCount)];
+    context.font = "950 5.4px Arial, sans-serif";
+    context.textAlign = "center";
+    context.textBaseline = "middle";
+    context.fillText(String(number), labelPoint.x, labelPoint.y + 0.25);
+  });
+
+  context.beginPath();
+  context.arc(50, 50, 8, 0, Math.PI * 2);
+  context.fillStyle = palette.paper;
+  context.fill();
+  context.strokeStyle = palette.grid;
+  context.stroke();
+  context.restore();
 }
 
 function drawRichTitle(

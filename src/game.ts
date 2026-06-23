@@ -12,6 +12,14 @@ export type ChallengeOrderOption = {
   name: string;
 };
 
+export type ChallengeLayout = "grid" | "radial";
+
+export type ChallengeLayoutOption = {
+  id: ChallengeLayout;
+  label: string;
+  name: string;
+};
+
 export type ColorCount = 1 | 2 | 4 | 8;
 
 export type ThemeOption = {
@@ -31,6 +39,7 @@ export type TapRecord = {
 export type FinishedRun = {
   mode: GameMode;
   order: ChallengeOrder;
+  layout: ChallengeLayout;
   grid: number[];
   taps: TapRecord[];
   elapsedMs: number;
@@ -54,6 +63,11 @@ export const COLOR_COUNTS: ColorCount[] = [1, 2, 4, 8];
 export const CHALLENGE_ORDERS: ChallengeOrderOption[] = [
   { id: "asc", label: "顺序", name: "顺序查找" },
   { id: "desc", label: "倒序", name: "倒序查找" },
+];
+
+export const CHALLENGE_LAYOUTS: ChallengeLayoutOption[] = [
+  { id: "grid", label: "方格", name: "标准方格" },
+  { id: "radial", label: "圆盘", name: "圆盘舒尔特" },
 ];
 
 export const THEMES: ThemeOption[] = [
@@ -119,22 +133,102 @@ export function getTargetRange(mode: GameMode, order: ChallengeOrder): { start: 
   return order === "desc" ? { start: total, end: 1 } : { start: 1, end: total };
 }
 
-export function getBestTime(mode: GameMode, order: ChallengeOrder): number | null {
-  const stored = localStorage.getItem(`gridfox-best-${mode.size}-${order}`) ?? getLegacyBestTime(mode, order);
+export function getBestTime(mode: GameMode, order: ChallengeOrder, layout: ChallengeLayout): number | null {
+  const stored =
+    localStorage.getItem(`gridfox-best-${mode.size}-${order}-${layout}`) ?? getLegacyBestTime(mode, order, layout);
   if (!stored) return null;
 
   const parsed = Number(stored);
   return Number.isFinite(parsed) ? parsed : null;
 }
 
-function getLegacyBestTime(mode: GameMode, order: ChallengeOrder): string | null {
-  if (order !== "asc") return null;
-  return localStorage.getItem(`gridfox-best-${mode.size}`);
+function getLegacyBestTime(mode: GameMode, order: ChallengeOrder, layout: ChallengeLayout): string | null {
+  if (order !== "asc" || layout !== "grid") return null;
+  return localStorage.getItem(`gridfox-best-${mode.size}-asc`) ?? localStorage.getItem(`gridfox-best-${mode.size}`);
 }
 
-export function saveBestTime(mode: GameMode, order: ChallengeOrder, elapsedMs: number): number {
-  const previous = getBestTime(mode, order);
+export function saveBestTime(
+  mode: GameMode,
+  order: ChallengeOrder,
+  layout: ChallengeLayout,
+  elapsedMs: number,
+): number {
+  const previous = getBestTime(mode, order, layout);
   const best = previous === null ? elapsedMs : Math.min(previous, elapsedMs);
-  localStorage.setItem(`gridfox-best-${mode.size}-${order}`, String(best));
+  localStorage.setItem(`gridfox-best-${mode.size}-${order}-${layout}`, String(best));
   return best;
+}
+
+export function getRadialRingCounts(total: number): number[] {
+  if (total === 36) return [6, 12, 18];
+  if (total === 25) return [5, 8, 12];
+  if (total === 16) return [4, 5, 7];
+  const inner = Math.max(4, Math.round(total * 0.18));
+  const middle = Math.max(6, Math.round(total * 0.32));
+  return [inner, middle, total - inner - middle];
+}
+
+export type RadialCellGeometry = {
+  ring: number;
+  indexInRing: number;
+  countInRing: number;
+  startAngle: number;
+  endAngle: number;
+  innerRadius: number;
+  outerRadius: number;
+  labelRadius: number;
+  labelAngle: number;
+};
+
+export function getRadialGeometry(total: number): RadialCellGeometry[] {
+  const ringCounts = getRadialRingCounts(total);
+  const ringWidth = 48 / ringCounts.length;
+  let cursor = 0;
+
+  return ringCounts.flatMap((countInRing, ring) => {
+    const innerRadius = 8 + ring * ringWidth;
+    const outerRadius = innerRadius + ringWidth;
+    const angleOffset = ring % 2 === 0 ? -90 : -90 + 180 / countInRing;
+    return Array.from({ length: countInRing }, (_, indexInRing) => {
+      const startAngle = angleOffset + (360 / countInRing) * indexInRing;
+      const endAngle = angleOffset + (360 / countInRing) * (indexInRing + 1);
+      cursor += 1;
+      return {
+        ring,
+        indexInRing,
+        countInRing,
+        startAngle,
+        endAngle,
+        innerRadius,
+        outerRadius,
+        labelRadius: (innerRadius + outerRadius) / 2,
+        labelAngle: (startAngle + endAngle) / 2,
+      };
+    });
+  }).slice(0, total);
+}
+
+export function polarToCartesian(center: number, radius: number, angleDegrees: number): { x: number; y: number } {
+  const angleRadians = (angleDegrees * Math.PI) / 180;
+  return {
+    x: center + radius * Math.cos(angleRadians),
+    y: center + radius * Math.sin(angleRadians),
+  };
+}
+
+export function describeRadialSegment(geometry: RadialCellGeometry): string {
+  const center = 50;
+  const outerStart = polarToCartesian(center, geometry.outerRadius, geometry.startAngle);
+  const outerEnd = polarToCartesian(center, geometry.outerRadius, geometry.endAngle);
+  const innerEnd = polarToCartesian(center, geometry.innerRadius, geometry.endAngle);
+  const innerStart = polarToCartesian(center, geometry.innerRadius, geometry.startAngle);
+  const largeArcFlag = geometry.endAngle - geometry.startAngle > 180 ? 1 : 0;
+
+  return [
+    `M ${outerStart.x.toFixed(3)} ${outerStart.y.toFixed(3)}`,
+    `A ${geometry.outerRadius} ${geometry.outerRadius} 0 ${largeArcFlag} 1 ${outerEnd.x.toFixed(3)} ${outerEnd.y.toFixed(3)}`,
+    `L ${innerEnd.x.toFixed(3)} ${innerEnd.y.toFixed(3)}`,
+    `A ${geometry.innerRadius} ${geometry.innerRadius} 0 ${largeArcFlag} 0 ${innerStart.x.toFixed(3)} ${innerStart.y.toFixed(3)}`,
+    "Z",
+  ].join(" ");
 }

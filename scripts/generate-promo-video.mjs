@@ -70,6 +70,7 @@ const themeName = String(args.theme ?? "fresh");
 const colorCount = clamp(Number(args.colors ?? 4), 1, 8);
 const size = clamp(Number(args.size ?? 6), 4, 6);
 const order = String(args.order ?? "asc") === "desc" ? "desc" : "asc";
+const layout = String(args.layout ?? "grid") === "radial" ? "radial" : "grid";
 const seed = Number.isFinite(Number(args.seed)) ? Number(args.seed) : Date.now();
 const musicName = String(args.music ?? "soft");
 const music = Object.hasOwn(musicProfiles, musicName) ? musicProfiles[musicName] : musicProfiles.soft;
@@ -106,8 +107,16 @@ try {
     const framePath = resolve(framesDir, `frame-${String(second).padStart(4, "0")}.png`);
     const html =
       second < INTRO_SECONDS
-        ? renderIntroHtml({ countdown: INTRO_SECONDS - second, theme, size })
-        : renderChallengeHtml({ elapsedMs: (second - INTRO_SECONDS) * 1000, grid, theme, colorCount, size, order });
+        ? renderIntroHtml({ countdown: INTRO_SECONDS - second, theme, size, layout })
+        : renderChallengeHtml({
+            elapsedMs: (second - INTRO_SECONDS) * 1000,
+            grid,
+            theme,
+            colorCount,
+            size,
+            order,
+            layout,
+          });
     await setHtml(client, html);
     const screenshot = await client.send("Page.captureScreenshot", { format: "png", fromSurface: true });
     await writeFile(framePath, Buffer.from(screenshot.data, "base64"));
@@ -239,7 +248,7 @@ function writeAscii(buffer, offset, value) {
   buffer.write(value, offset, value.length, "ascii");
 }
 
-function renderIntroHtml({ countdown, theme, size }) {
+function renderIntroHtml({ countdown, theme, size, layout }) {
   const total = size * size;
 
   return `<!doctype html>
@@ -298,7 +307,7 @@ function renderIntroHtml({ countdown, theme, size }) {
     <main class="stage">
       <div class="ghost-grid"></div>
       <div class="title">每日专注力训练</div>
-      <div class="project">舒尔特方格 ${size}×${size}</div>
+      <div class="project">${layout === "radial" ? `圆盘舒尔特 ${size * size}` : `舒尔特方格 ${size}×${size}`}</div>
       <div class="ring"></div>
       <div class="count">${countdown}</div>
       <div class="ready">准备开始</div>
@@ -308,20 +317,23 @@ function renderIntroHtml({ countdown, theme, size }) {
 </html>`;
 }
 
-function renderChallengeHtml({ elapsedMs, grid, theme, colorCount, size, order }) {
+function renderChallengeHtml({ elapsedMs, grid, theme, colorCount, size, order, layout }) {
   const total = size * size;
   const range = getTargetRange(total, order);
   const gridSize = 928;
   const cellSize = gridSize / size;
   const fontSize = size >= 6 ? 66 : 82;
-  const cells = grid
-    .map((number, index) => {
-      const row = Math.floor(index / size);
-      const col = index % size;
-      const color = theme.colors[number % colorCount];
-      return `<div class="cell" style="left:${col * cellSize}px;top:${row * cellSize}px;color:${color}">${number}</div>`;
-    })
-    .join("");
+  const board =
+    layout === "radial"
+      ? renderRadialBoard({ grid, theme, colorCount, size: gridSize })
+      : `<div class="grid">${grid
+          .map((number, index) => {
+            const row = Math.floor(index / size);
+            const col = index % size;
+            const color = theme.colors[number % colorCount];
+            return `<div class="cell" style="left:${col * cellSize}px;top:${row * cellSize}px;color:${color}">${number}</div>`;
+          })
+          .join("")}</div>`;
 
   return `<!doctype html>
 <html lang="zh-CN">
@@ -359,6 +371,17 @@ function renderChallengeHtml({ elapsedMs, grid, theme, colorCount, size, order }
         position: absolute; left: 76px; top: 540px; width: 928px; height: 928px;
         border: 3px solid ${theme.grid}; border-radius: 18px; overflow: hidden; background: white;
       }
+      .radial {
+        position: absolute; left: 76px; top: 540px; width: 928px; height: 928px;
+        filter: drop-shadow(0 14px 34px rgba(24, 33, 47, 0.1));
+      }
+      .radial svg { display: block; width: 100%; height: 100%; overflow: visible; }
+      .radial path { fill: white; stroke: ${theme.grid}; stroke-width: 0.42; }
+      .radial .center { fill: ${theme.paper}; stroke: ${theme.grid}; stroke-width: 0.6; }
+      .radial text {
+        dominant-baseline: middle; text-anchor: middle;
+        font-size: 5.4px; font-weight: 950;
+      }
       .cell {
         position: absolute; width: ${cellSize}px; height: ${cellSize}px;
         display: flex; align-items: center; justify-content: center;
@@ -377,16 +400,38 @@ function renderChallengeHtml({ elapsedMs, grid, theme, colorCount, size, order }
   </head>
   <body>
     <main class="stage">
-      <div class="brand">舒尔特方格挑战</div>
+      <div class="brand">${layout === "radial" ? "圆盘舒尔特挑战" : "舒尔特方格挑战"}</div>
       <div class="title">请按顺序从 <span>${range.start}</span> 找到 <span>${range.end}</span></div>
       <div class="subtitle">从 ${range.start} 到 ${range.end}，看看你需要多久</div>
       <div class="timer">${formatTime(elapsedMs)}</div>
-      <div class="grid">${cells}</div>
+      ${board}
       <div class="prompt">评论区留下年龄和成绩</div>
       <div class="credit">计时挑战@新加坡大小AI玩</div>
     </main>
   </body>
 </html>`;
+}
+
+function renderRadialBoard({ grid, theme, colorCount }) {
+  const geometry = getRadialGeometry(grid.length);
+  const cells = grid
+    .map((number, index) => {
+      const cellGeometry = geometry[index];
+      const point = polarToCartesian(50, cellGeometry.labelRadius, cellGeometry.labelAngle);
+      const color = theme.colors[number % colorCount];
+      return `<g>
+        <path d="${describeRadialSegment(cellGeometry)}"></path>
+        <text x="${point.x.toFixed(3)}" y="${(point.y + 0.25).toFixed(3)}" fill="${color}">${number}</text>
+      </g>`;
+    })
+    .join("");
+
+  return `<div class="radial">
+    <svg viewBox="0 0 100 100" aria-label="圆盘舒尔特数字盘">
+      ${cells}
+      <circle class="center" cx="50" cy="50" r="8"></circle>
+    </svg>
+  </div>`;
 }
 
 async function setHtml(client, html) {
@@ -497,6 +542,65 @@ function formatTime(ms) {
 
 function getTargetRange(total, order) {
   return order === "desc" ? { start: total, end: 1 } : { start: 1, end: total };
+}
+
+function getRadialRingCounts(total) {
+  if (total === 36) return [6, 12, 18];
+  if (total === 25) return [5, 8, 12];
+  if (total === 16) return [4, 5, 7];
+  const inner = Math.max(4, Math.round(total * 0.18));
+  const middle = Math.max(6, Math.round(total * 0.32));
+  return [inner, middle, total - inner - middle];
+}
+
+function getRadialGeometry(total) {
+  const ringCounts = getRadialRingCounts(total);
+  const ringWidth = 48 / ringCounts.length;
+
+  return ringCounts
+    .flatMap((countInRing, ring) => {
+      const innerRadius = 8 + ring * ringWidth;
+      const outerRadius = innerRadius + ringWidth;
+      const angleOffset = ring % 2 === 0 ? -90 : -90 + 180 / countInRing;
+      return Array.from({ length: countInRing }, (_, indexInRing) => {
+        const startAngle = angleOffset + (360 / countInRing) * indexInRing;
+        const endAngle = angleOffset + (360 / countInRing) * (indexInRing + 1);
+        return {
+          startAngle,
+          endAngle,
+          innerRadius,
+          outerRadius,
+          labelRadius: (innerRadius + outerRadius) / 2,
+          labelAngle: (startAngle + endAngle) / 2,
+        };
+      });
+    })
+    .slice(0, total);
+}
+
+function polarToCartesian(center, radius, angleDegrees) {
+  const angleRadians = (angleDegrees * Math.PI) / 180;
+  return {
+    x: center + radius * Math.cos(angleRadians),
+    y: center + radius * Math.sin(angleRadians),
+  };
+}
+
+function describeRadialSegment(geometry) {
+  const center = 50;
+  const outerStart = polarToCartesian(center, geometry.outerRadius, geometry.startAngle);
+  const outerEnd = polarToCartesian(center, geometry.outerRadius, geometry.endAngle);
+  const innerEnd = polarToCartesian(center, geometry.innerRadius, geometry.endAngle);
+  const innerStart = polarToCartesian(center, geometry.innerRadius, geometry.startAngle);
+  const largeArcFlag = geometry.endAngle - geometry.startAngle > 180 ? 1 : 0;
+
+  return [
+    `M ${outerStart.x.toFixed(3)} ${outerStart.y.toFixed(3)}`,
+    `A ${geometry.outerRadius} ${geometry.outerRadius} 0 ${largeArcFlag} 1 ${outerEnd.x.toFixed(3)} ${outerEnd.y.toFixed(3)}`,
+    `L ${innerEnd.x.toFixed(3)} ${innerEnd.y.toFixed(3)}`,
+    `A ${geometry.innerRadius} ${geometry.innerRadius} 0 ${largeArcFlag} 0 ${innerStart.x.toFixed(3)} ${innerStart.y.toFixed(3)}`,
+    "Z",
+  ].join(" ");
 }
 
 function parseArgs(argv) {

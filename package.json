@@ -10,6 +10,7 @@
     "video:promo": "node scripts/generate-promo-video.mjs",
     "video:xhs": "node scripts/generate-promo-video.mjs --size 5 --theme fresh --colors 4 --music none --duration 120 --output dist/gridfox-xhs-5x5.mp4",
     "video:xhs:desc": "node scripts/generate-promo-video.mjs --size 5 --order desc --theme fresh --colors 4 --music none --duration 120 --output dist/gridfox-xhs-5x5-desc.mp4",
+    "video:xhs:radial": "node scripts/generate-promo-video.mjs --size 6 --layout radial --order asc --theme fresh --colors 4 --music none --duration 120 --output dist/gridfox-xhs-radial-6x6.mp4",
     "video:xhs:music": "node scripts/generate-promo-video.mjs --size 5 --theme fresh --colors 4 --music soft --duration 120 --output dist/gridfox-xhs-5x5-music.mp4",
     "video:xhs:6x6": "node scripts/generate-promo-video.mjs --size 6 --theme vivid --colors 6 --music none --duration 120 --output dist/gridfox-xhs-6x6.mp4",
     "video:check": "node scripts/check-promo-video.mjs"
