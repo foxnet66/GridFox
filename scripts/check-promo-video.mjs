@@ -24,6 +24,29 @@ const cases = [
     args: ["--size", "5", "--theme", "fresh", "--colors", "4", "--music", "soft", "--duration", String(CASE_DURATION), "--seed", "101"],
     expectedAudioStreams: 1,
   },
+  {
+    name: "radial no music",
+    output: resolve(VALIDATION_DIR, "radial-no-music.mp4"),
+    args: [
+      "--size",
+      "6",
+      "--layout",
+      "radial",
+      "--order",
+      "asc",
+      "--theme",
+      "fresh",
+      "--colors",
+      "4",
+      "--music",
+      "none",
+      "--duration",
+      String(CASE_DURATION),
+      "--seed",
+      "101",
+    ],
+    expectedAudioStreams: 0,
+  },
 ];
 
 await rm(VALIDATION_DIR, { recursive: true, force: true });

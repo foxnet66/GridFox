@@ -50,6 +50,7 @@ export default function App() {
   const [theme, setTheme] = useState<ThemeOption["id"]>(INITIAL_SETTINGS.theme);
   const [promoStatus, setPromoStatus] = useState<"idle" | "recording" | "done" | "error">("idle");
   const [promoUrl, setPromoUrl] = useState<string | null>(null);
+  const [publishCopied, setPublishCopied] = useState(false);
   const boardRef = useRef<HTMLDivElement | null>(null);
 
   const total = mode.size * mode.size;
@@ -57,6 +58,10 @@ export default function App() {
   const activeOrder = CHALLENGE_ORDERS.find((item) => item.id === order) ?? CHALLENGE_ORDERS[0];
   const activeLayout = CHALLENGE_LAYOUTS.find((item) => item.id === layout) ?? CHALLENGE_LAYOUTS[0];
   const radialGeometry = useMemo(() => getRadialGeometry(total), [total]);
+  const publishText = useMemo(
+    () => buildXiaohongshuPost({ mode, order, layout, range }),
+    [layout, mode, order, range],
+  );
   const titleParts = useMemo(
     () => ({
       before: "请按顺序从",
@@ -161,6 +166,12 @@ export default function App() {
       true,
     )}。来测测你的眼力和反应。`;
     void navigator.clipboard?.writeText(text);
+  }
+
+  function copyPublishText() {
+    void navigator.clipboard?.writeText(publishText);
+    setPublishCopied(true);
+    window.setTimeout(() => setPublishCopied(false), 1600);
   }
 
   async function handleCreatePromoVideo() {
@@ -433,10 +444,68 @@ export default function App() {
           {promoStatus === "error" && <span className="error-text">当前浏览器不支持录制</span>}
         </section>
 
+        <section className="publish-panel" aria-label="小红书发布文案">
+          <div className="publish-panel-header">
+            <div>
+              <p>发布文案</p>
+              <strong>小红书标题 + 正文 + 话题</strong>
+            </div>
+            <button type="button" onClick={copyPublishText}>
+              {publishCopied ? "已复制" : "复制文案"}
+            </button>
+          </div>
+          <pre>{publishText}</pre>
+        </section>
+
         <footer className="share-caption">留下年龄和成绩，看看谁更快</footer>
       </section>
     </main>
   );
+}
+
+function buildXiaohongshuPost({
+  mode,
+  order,
+  layout,
+  range,
+}: {
+  mode: GameMode;
+  order: ChallengeOrder;
+  layout: ChallengeLayout;
+  range: { start: number; end: number };
+}): string {
+  const layoutName = layout === "radial" ? "圆盘舒尔特" : "舒尔特方格";
+  const orderName = order === "desc" ? "倒序挑战" : "计时挑战";
+  const rangeText = `${range.start} 找到 ${range.end}`;
+  const title = `每日专注力训练 | ${layoutName}从 ${rangeText}`;
+  const prompt =
+    order === "desc"
+      ? `今天做一个倒序版：从 ${range.start} 开始，按顺序一路找到 ${range.end}。`
+      : `今天做一个计时版：从 ${range.start} 开始，按顺序一路找到 ${range.end}。`;
+  const modeLine =
+    layout === "radial"
+      ? "圆盘排列会更考验视觉搜索和注意力稳定性。"
+      : `${mode.label} 方格适合每天花两分钟练一轮。`;
+  const hashtags = [
+    "#专注力训练",
+    "#注意力训练",
+    "#舒尔特方格",
+    "#视觉注意力",
+    "#专注力游戏",
+    "#提升注意力",
+    "#计时挑战",
+    layout === "radial" ? "#圆盘舒尔特" : "#舒尔特训练",
+  ].join(" ");
+
+  return `${title}
+
+${prompt}
+${modeLine}
+
+你能用多少秒完成？
+评论区留下年龄和成绩，我看看大家的速度。
+
+${hashtags}`;
 }
 
 function getInitialSettings(): {

@@ -12,6 +12,7 @@
 - 可选择数字颜色数量和页面主题。
 - 生成 9:16 WebM 非交互式自动演示视频，含 3 秒倒计时前导，可下载发布。
 - 本地离线生成 9:16 MP4 发布素材，含 3 秒倒计时前导。
+- 根据当前玩法生成小红书发布文案，可一键复制。
 
 ## 开发
 
@@ -49,6 +50,12 @@ npm run video:xhs:desc
 
 # 6x6，圆盘舒尔特，无音乐
 npm run video:xhs:radial
+
+# 6x6，倒序圆盘舒尔特，无音乐
+npm run video:xhs:radial:desc
+
+# 6x6，圆盘舒尔特，内置轻音乐
+npm run video:xhs:radial:music
 
 # 5x5，内置轻音乐
 npm run video:xhs:music
