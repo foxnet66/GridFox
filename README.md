@@ -13,6 +13,7 @@
 - 生成 9:16 WebM 非交互式自动演示视频，含 3 秒倒计时前导，可下载发布。
 - 本地离线生成 9:16 MP4 发布素材，含 3 秒倒计时前导。
 - 提供折叠式发布助手，根据当前玩法生成小红书发布文案，可一键复制。
+- 提供每日发布建议，一键应用当天玩法，并可离线导出固定种子的每日挑战视频。
 
 ## 开发
 
@@ -45,6 +46,9 @@ npm run video:promo
 # 5x5，无音乐，适合发布后自行配小红书音乐
 npm run video:xhs
 
+# 今日发布建议，无音乐，固定当天玩法和方格
+npm run video:xhs:daily
+
 # 5x5，倒序查找，无音乐
 npm run video:xhs:desc
 
@@ -73,6 +77,7 @@ npm run video:promo -- --size 6 --layout radial --order asc --theme vivid --colo
 `--duration` 是正式计时段长度；输出视频会额外包含 3 秒前导倒计时。
 `--layout` 可选 `grid` 或 `radial`；默认 `grid`。
 `--order` 可选 `asc` 或 `desc`；默认 `asc`。
+`--daily` 会使用当天发布建议的玩法、主题、颜色数量和固定种子。
 默认每次生成随机方格；如需复现同一版方格，可传 `--seed 1234`。
 音乐可选 `soft`、`focus`、`energy`、`none`；默认 `soft`。
 也可以使用自己的音乐文件：

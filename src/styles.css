@@ -436,6 +436,7 @@ button {
 .primary-action:focus-visible,
 .secondary-action:focus-visible,
 .publish-assistant-toggle:focus-visible,
+.daily-panel button:focus-visible,
 .result-panel button:focus-visible,
 .result-panel a:focus-visible,
 .promo-panel button:focus-visible,
@@ -520,6 +521,7 @@ button {
 
 .primary-action,
 .secondary-action,
+.daily-panel button,
 .result-panel button,
 .result-panel a,
 .promo-panel button,
@@ -544,6 +546,7 @@ button {
 }
 
 .secondary-action,
+.daily-panel button,
 .result-panel button,
 .result-panel a,
 .promo-panel button,
@@ -559,6 +562,7 @@ button {
 }
 
 .result-panel,
+.daily-panel,
 .promo-panel,
 .publish-panel {
   display: grid;
@@ -613,12 +617,18 @@ button {
   grid-template-columns: 1fr auto;
 }
 
+.daily-panel {
+  grid-template-columns: 1fr auto;
+  margin-top: 0;
+}
+
 .promo-panel {
   grid-template-columns: 1fr auto auto;
   margin-top: 0;
 }
 
 .result-panel p,
+.daily-panel p,
 .promo-panel p,
 .publish-panel p {
   margin: 0 0 2px;
@@ -628,6 +638,7 @@ button {
 }
 
 .result-panel strong,
+.daily-panel strong,
 .promo-panel strong,
 .publish-panel strong {
   color: var(--primary);
@@ -637,10 +648,12 @@ button {
 }
 
 .promo-panel strong,
+.daily-panel strong,
 .publish-panel strong {
   font-size: 16px;
 }
 
+.daily-panel span,
 .promo-panel span {
   display: block;
   margin-top: 4px;
@@ -843,12 +856,14 @@ button {
 
   .result-panel button,
   .result-panel a,
+  .daily-panel button,
   .promo-panel button,
   .promo-panel a,
   .publish-panel button {
     width: 100%;
   }
 
+  .daily-panel,
   .promo-panel,
   .publish-panel-header {
     grid-template-columns: 1fr;

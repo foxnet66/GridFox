@@ -2,6 +2,7 @@ import { mkdir, rm, writeFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { spawn } from "node:child_process";
+import { getDailyChallenge } from "./daily-challenge.mjs";
 
 const WIDTH = 1080;
 const HEIGHT = 1920;
@@ -65,13 +66,14 @@ const themes = {
 };
 
 const args = parseArgs(process.argv.slice(2));
+const dailyChallenge = args.daily === true || args.daily === "true" ? getDailyChallenge() : null;
 const duration = clamp(Number(args.duration ?? 120), 1, 600);
-const themeName = String(args.theme ?? "fresh");
-const colorCount = clamp(Number(args.colors ?? 4), 1, 8);
-const size = clamp(Number(args.size ?? 6), 4, 6);
-const order = String(args.order ?? "asc") === "desc" ? "desc" : "asc";
-const layout = String(args.layout ?? "grid") === "radial" ? "radial" : "grid";
-const seed = Number.isFinite(Number(args.seed)) ? Number(args.seed) : Date.now();
+const themeName = String(args.theme ?? dailyChallenge?.theme ?? "fresh");
+const colorCount = clamp(Number(args.colors ?? dailyChallenge?.colors ?? 4), 1, 8);
+const size = clamp(Number(args.size ?? dailyChallenge?.size ?? 6), 4, 6);
+const order = String(args.order ?? dailyChallenge?.order ?? "asc") === "desc" ? "desc" : "asc";
+const layout = String(args.layout ?? dailyChallenge?.layout ?? "grid") === "radial" ? "radial" : "grid";
+const seed = Number.isFinite(Number(args.seed)) ? Number(args.seed) : (dailyChallenge?.seed ?? Date.now());
 const musicName = String(args.music ?? "soft");
 const music = Object.hasOwn(musicProfiles, musicName) ? musicProfiles[musicName] : musicProfiles.soft;
 const musicFile = args["music-file"] ? resolve(ROOT, String(args["music-file"])) : null;
@@ -448,6 +450,7 @@ async function setHtml(client, html) {
 
 async function launchChrome(userDataDir) {
   const port = 9300 + Math.floor(Math.random() * 1000);
+  let stderr = "";
   const child = spawn(CHROME, [
     "--headless=new",
     "--disable-gpu",
@@ -458,7 +461,18 @@ async function launchChrome(userDataDir) {
   ], { stdio: ["ignore", "ignore", "pipe"] });
 
   child.stderr.setEncoding("utf8");
-  await waitForChrome(port, child);
+  child.stderr.on("data", (chunk) => {
+    stderr += chunk;
+  });
+
+  try {
+    await waitForChrome(port, child);
+  } catch (error) {
+    child.kill("SIGTERM");
+    const detail = stderr.trim().split("\n").slice(-3).join("\n");
+    throw new Error(`${error.message}${detail ? `\n${detail}` : ""}`);
+  }
+
   return { port, process: child };
 }
 
@@ -609,8 +623,15 @@ function parseArgs(argv) {
     const arg = argv[index];
     if (!arg.startsWith("--")) continue;
     const [key, value] = arg.slice(2).split("=");
-    parsed[key] = value ?? argv[index + 1];
-    if (value === undefined) index += 1;
+    const next = argv[index + 1];
+    if (value !== undefined) {
+      parsed[key] = value;
+    } else if (next && !next.startsWith("--")) {
+      parsed[key] = next;
+      index += 1;
+    } else {
+      parsed[key] = true;
+    }
   }
   return parsed;
 }

@@ -27,10 +27,12 @@ import {
   type ThemeOption,
 } from "./game";
 import { createPromoVideo } from "./promoVideo";
+import { getDailyChallenge } from "./dailyChallenge";
 
 type Screen = "ready" | "playing" | "finished";
 
 const INITIAL_SETTINGS = getInitialSettings();
+const DAILY_CHALLENGE = getDailyChallenge();
 
 export default function App() {
   const [mode, setMode] = useState<GameMode>(INITIAL_SETTINGS.mode);
@@ -60,8 +62,15 @@ export default function App() {
   const activeLayout = CHALLENGE_LAYOUTS.find((item) => item.id === layout) ?? CHALLENGE_LAYOUTS[0];
   const radialGeometry = useMemo(() => getRadialGeometry(total), [total]);
   const publishText = useMemo(
-    () => buildXiaohongshuPost({ mode, order, layout, range }),
-    [layout, mode, order, range],
+    () =>
+      buildXiaohongshuPost({
+        mode,
+        order,
+        layout,
+        range,
+        dailyDay: isDailyChallengeActive(mode, order, layout, colorCount, theme) ? DAILY_CHALLENGE.day : null,
+      }),
+    [colorCount, layout, mode, order, range, theme],
   );
   const titleParts = useMemo(
     () => ({
@@ -173,6 +182,30 @@ export default function App() {
     void navigator.clipboard?.writeText(publishText);
     setPublishCopied(true);
     window.setTimeout(() => setPublishCopied(false), 1600);
+  }
+
+  function applyDailyChallenge() {
+    const nextMode = MODES.find((item) => item.size === DAILY_CHALLENGE.size) ?? DEFAULT_MODE;
+    resetGame(nextMode, DAILY_CHALLENGE.order as ChallengeOrder, DAILY_CHALLENGE.layout as ChallengeLayout);
+    setColorCount(DAILY_CHALLENGE.colors as ColorCount);
+    setTheme(DAILY_CHALLENGE.theme as ThemeOption["id"]);
+    setShowPublishAssistant(true);
+  }
+
+  function isDailyChallengeActive(
+    currentMode: GameMode,
+    currentOrder: ChallengeOrder,
+    currentLayout: ChallengeLayout,
+    currentColorCount: ColorCount,
+    currentTheme: ThemeOption["id"],
+  ) {
+    return (
+      currentMode.size === DAILY_CHALLENGE.size &&
+      currentOrder === DAILY_CHALLENGE.order &&
+      currentLayout === DAILY_CHALLENGE.layout &&
+      currentColorCount === DAILY_CHALLENGE.colors &&
+      currentTheme === DAILY_CHALLENGE.theme
+    );
   }
 
   async function handleCreatePromoVideo() {
@@ -438,6 +471,21 @@ export default function App() {
 
           {showPublishAssistant && (
             <div className="publish-assistant-body">
+              <section className="daily-panel" aria-label="今日发布建议">
+                <div>
+                  <p>今日发布建议</p>
+                  <strong>DAY {DAILY_CHALLENGE.day}</strong>
+                  <span>
+                    {DAILY_CHALLENGE.layout === "radial" ? "圆盘" : "方格"} ·{" "}
+                    {DAILY_CHALLENGE.order === "desc" ? "倒序" : "顺序"} · {DAILY_CHALLENGE.size}x
+                    {DAILY_CHALLENGE.size} · {DAILY_CHALLENGE.colors} 色
+                  </span>
+                </div>
+                <button className="secondary-action" type="button" onClick={applyDailyChallenge}>
+                  应用今日挑战
+                </button>
+              </section>
+
               <section className="promo-panel" aria-label="发布导出">
                 <div>
                   <p>发布导出</p>
@@ -488,16 +536,20 @@ function buildXiaohongshuPost({
   order,
   layout,
   range,
+  dailyDay,
 }: {
   mode: GameMode;
   order: ChallengeOrder;
   layout: ChallengeLayout;
   range: { start: number; end: number };
+  dailyDay: number | null;
 }): string {
   const layoutName = layout === "radial" ? "圆盘舒尔特" : "舒尔特方格";
   const orderName = order === "desc" ? "倒序挑战" : "计时挑战";
   const rangeText = `${range.start} 找到 ${range.end}`;
-  const title = `每日专注力训练 | ${layoutName}从 ${rangeText}`;
+  const title = dailyDay
+    ? `每日专注力训练 DAY ${dailyDay} | ${layoutName}从 ${rangeText}`
+    : `每日专注力训练 | ${layoutName}从 ${rangeText}`;
   const prompt =
     order === "desc"
       ? `今天做一个倒序版：从 ${range.start} 开始，按顺序一路找到 ${range.end}。`
