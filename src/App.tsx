@@ -51,6 +51,7 @@ export default function App() {
   const [promoStatus, setPromoStatus] = useState<"idle" | "recording" | "done" | "error">("idle");
   const [promoUrl, setPromoUrl] = useState<string | null>(null);
   const [publishCopied, setPublishCopied] = useState(false);
+  const [showPublishAssistant, setShowPublishAssistant] = useState(false);
   const boardRef = useRef<HTMLDivElement | null>(null);
 
   const total = mode.size * mode.size;
@@ -422,42 +423,61 @@ export default function App() {
           </section>
         )}
 
-        <section className="promo-panel" aria-label="发布导出">
-          <div>
-            <p>发布导出</p>
-            <strong>竖屏自动演示 WebM</strong>
-            <span>MP4 建议使用离线预设命令</span>
-          </div>
-          <button
-            className="secondary-action"
-            type="button"
-            onClick={handleCreatePromoVideo}
-            disabled={promoStatus === "recording"}
-          >
-            {promoStatus === "recording" ? "录制中..." : "生成视频"}
-          </button>
-          {promoStatus === "done" && promoUrl && (
-            <a href={promoUrl} download={`gridfox-xiaohongshu-${layout}-${order}-${theme}-${colorCount}color.webm`}>
-              下载 WebM
-            </a>
-          )}
-          {promoStatus === "error" && <span className="error-text">当前浏览器不支持录制</span>}
-        </section>
-
-        <section className="publish-panel" aria-label="小红书发布文案">
-          <div className="publish-panel-header">
-            <div>
-              <p>发布文案</p>
-              <strong>小红书标题 + 正文 + 话题</strong>
-            </div>
-            <button type="button" onClick={copyPublishText}>
-              {publishCopied ? "已复制" : "复制文案"}
-            </button>
-          </div>
-          <pre>{publishText}</pre>
-        </section>
-
         <footer className="share-caption">留下年龄和成绩，看看谁更快</footer>
+
+        <section className="publish-assistant" aria-label="运营发布助手">
+          <button
+            className="publish-assistant-toggle"
+            type="button"
+            onClick={() => setShowPublishAssistant((visible) => !visible)}
+            aria-expanded={showPublishAssistant}
+          >
+            <span>发布助手</span>
+            <strong>{showPublishAssistant ? "收起" : "展开"}</strong>
+          </button>
+
+          {showPublishAssistant && (
+            <div className="publish-assistant-body">
+              <section className="promo-panel" aria-label="发布导出">
+                <div>
+                  <p>发布导出</p>
+                  <strong>竖屏自动演示 WebM</strong>
+                  <span>MP4 建议使用离线预设命令</span>
+                </div>
+                <button
+                  className="secondary-action"
+                  type="button"
+                  onClick={handleCreatePromoVideo}
+                  disabled={promoStatus === "recording"}
+                >
+                  {promoStatus === "recording" ? "录制中..." : "生成视频"}
+                </button>
+                {promoStatus === "done" && promoUrl && (
+                  <a
+                    href={promoUrl}
+                    download={`gridfox-xiaohongshu-${layout}-${order}-${theme}-${colorCount}color.webm`}
+                  >
+                    下载 WebM
+                  </a>
+                )}
+                {promoStatus === "error" && <span className="error-text">当前浏览器不支持录制</span>}
+              </section>
+
+              <section className="publish-panel" aria-label="小红书发布文案">
+                <div className="publish-panel-header">
+                  <div>
+                    <p>运营发布文案</p>
+                    <strong>小红书标题 + 正文 + 话题</strong>
+                  </div>
+                  <button type="button" onClick={copyPublishText}>
+                    {publishCopied ? "已复制" : "复制文案"}
+                  </button>
+                </div>
+                <pre>{publishText}</pre>
+              </section>
+            </div>
+          )}
+        </section>
       </section>
     </main>
   );

@@ -435,6 +435,7 @@ button {
 .brand-button:focus-visible,
 .primary-action:focus-visible,
 .secondary-action:focus-visible,
+.publish-assistant-toggle:focus-visible,
 .result-panel button:focus-visible,
 .result-panel a:focus-visible,
 .promo-panel button:focus-visible,
@@ -570,13 +571,51 @@ button {
   background: rgba(255, 255, 255, 0.7);
 }
 
+.publish-assistant {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.publish-assistant-toggle {
+  min-height: 40px;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 12px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.48);
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.publish-assistant-toggle span {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 900;
+  text-align: left;
+}
+
+.publish-assistant-toggle strong {
+  color: var(--primary);
+  font-size: 13px;
+  font-weight: 950;
+}
+
+.publish-assistant-body {
+  display: grid;
+  gap: 10px;
+}
+
 .result-panel {
   grid-template-columns: 1fr auto;
 }
 
 .promo-panel {
   grid-template-columns: 1fr auto auto;
-  margin-top: 16px;
+  margin-top: 0;
 }
 
 .result-panel p,
@@ -612,6 +651,7 @@ button {
 
 .publish-panel {
   align-items: stretch;
+  margin-top: 0;
 }
 
 .publish-panel-header {
@@ -684,6 +724,7 @@ button {
     background: var(--paper);
     overflow-x: hidden;
     overflow-y: auto;
+    align-items: start;
     justify-items: start;
   }
 
@@ -691,6 +732,7 @@ button {
     width: min(100vw, 390px);
     max-width: 390px;
     min-height: 100svh;
+    justify-content: flex-start;
     border: 0;
     box-shadow: none;
     overflow: visible;
