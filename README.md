@@ -9,6 +9,7 @@
 - 完成后复制分享文案。
 - 可选择顺序查找或倒序查找。
 - 可选择标准方格或圆盘舒尔特版式。
+- 圆盘版支持慢速/快速旋转动态挑战。
 - 可选择数字颜色数量和页面主题。
 - 生成 9:16 WebM 非交互式自动演示视频，含 3 秒倒计时前导，可下载发布。
 - 本地离线生成 9:16 MP4 发布素材，含 3 秒倒计时前导。
@@ -55,6 +56,9 @@ npm run video:xhs:desc
 # 6x6，圆盘舒尔特，无音乐
 npm run video:xhs:radial
 
+# 6x6，旋转圆盘舒尔特，无音乐
+npm run video:xhs:rotate
+
 # 6x6，倒序圆盘舒尔特，无音乐
 npm run video:xhs:radial:desc
 
@@ -76,6 +80,7 @@ npm run video:promo -- --size 6 --layout radial --order asc --theme vivid --colo
 
 `--duration` 是正式计时段长度；输出视频会额外包含 3 秒前导倒计时。
 `--layout` 可选 `grid` 或 `radial`；默认 `grid`。
+`--rotation` 可选 `none`、`slow` 或 `fast`，只对 `radial` 生效；默认 `none`。
 `--order` 可选 `asc` 或 `desc`；默认 `asc`。
 `--daily` 会使用当天发布建议的玩法、主题、颜色数量和固定种子。
 默认每次生成随机方格；如需复现同一版方格，可传 `--seed 1234`。

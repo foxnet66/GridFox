@@ -9,6 +9,7 @@ import {
   type ChallengeLayout,
   type ChallengeOrder,
   type ColorCount,
+  type RotationSpeed,
   type ThemeOption,
 } from "./game";
 
@@ -24,6 +25,7 @@ type PromoVideoOptions = {
   theme: ThemeOption["id"];
   order: ChallengeOrder;
   layout: ChallengeLayout;
+  rotation: RotationSpeed;
 };
 
 const themePalettes: Record<
@@ -178,7 +180,11 @@ function drawIntroFrame(context: CanvasRenderingContext2D, countdown: number, op
   context.fillStyle = palette.primary;
   context.font = "900 46px Arial, sans-serif";
   context.fillText(
-    options.layout === "radial" ? `圆盘舒尔特 ${options.size * options.size}` : `舒尔特方格 ${options.size}×${options.size}`,
+    options.layout === "radial" && options.rotation !== "none"
+      ? `旋转圆盘舒尔特 ${options.size * options.size}`
+      : options.layout === "radial"
+        ? `圆盘舒尔特 ${options.size * options.size}`
+        : `舒尔特方格 ${options.size}×${options.size}`,
     WIDTH / 2,
     382,
   );
@@ -225,7 +231,15 @@ function drawFrame(
   context.textBaseline = "middle";
   context.fillStyle = palette.primary;
   context.font = "900 46px Arial, sans-serif";
-  context.fillText(options.layout === "radial" ? "GridFox 圆盘舒尔特挑战" : "GridFox 舒尔特方格挑战", WIDTH / 2, 116);
+  context.fillText(
+    options.layout === "radial" && options.rotation !== "none"
+      ? "GridFox 旋转圆盘挑战"
+      : options.layout === "radial"
+        ? "GridFox 圆盘舒尔特挑战"
+        : "GridFox 舒尔特方格挑战",
+    WIDTH / 2,
+    116,
+  );
 
   context.font = "900 78px Arial, sans-serif";
   drawRichTitle(context, palette, range.start, range.end);
@@ -239,7 +253,7 @@ function drawFrame(
   context.fillText(formatTime(elapsedMs), WIDTH / 2, 424);
 
   if (options.layout === "radial") {
-    drawRadialBoard(context, grid, options, palette, gridLeft, gridTop, gridSize);
+    drawRadialBoard(context, grid, elapsedMs, options, palette, gridLeft, gridTop, gridSize);
   } else {
     roundRect(context, gridLeft, gridTop, gridSize, gridSize, 18);
     context.fillStyle = "#ffffff";
@@ -276,6 +290,7 @@ function drawFrame(
 function drawRadialBoard(
   context: CanvasRenderingContext2D,
   grid: number[],
+  elapsedMs: number,
   options: PromoVideoOptions,
   palette: (typeof themePalettes)[ThemeOption["id"]],
   left: number,
@@ -286,7 +301,9 @@ function drawRadialBoard(
   const geometry = getRadialGeometry(options.size * options.size);
 
   context.save();
-  context.translate(left, top);
+  context.translate(left + size / 2, top + size / 2);
+  context.rotate((getRotationDegrees(options.rotation, elapsedMs) * Math.PI) / 180);
+  context.translate(-size / 2, -size / 2);
   context.scale(scale, scale);
   context.fillStyle = "#ffffff";
   context.strokeStyle = palette.grid;
@@ -315,6 +332,12 @@ function drawRadialBoard(
   context.strokeStyle = palette.grid;
   context.stroke();
   context.restore();
+}
+
+function getRotationDegrees(rotation: RotationSpeed, elapsedMs: number): number {
+  if (rotation === "slow") return (elapsedMs / 1000) * 6;
+  if (rotation === "fast") return (elapsedMs / 1000) * 10;
+  return 0;
 }
 
 function drawRichTitle(

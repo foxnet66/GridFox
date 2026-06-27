@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import {
   DEFAULT_MODE,
   CHALLENGE_LAYOUTS,
   CHALLENGE_ORDERS,
   COLOR_COUNTS,
   MODES,
+  ROTATION_SPEEDS,
   THEMES,
   createGrid,
   formatTime,
@@ -24,6 +25,7 @@ import {
   type GameMode,
   type TapRecord,
   type ColorCount,
+  type RotationSpeed,
   type ThemeOption,
 } from "./game";
 import { createPromoVideo } from "./promoVideo";
@@ -38,6 +40,7 @@ export default function App() {
   const [mode, setMode] = useState<GameMode>(INITIAL_SETTINGS.mode);
   const [order, setOrder] = useState<ChallengeOrder>(INITIAL_SETTINGS.order);
   const [layout, setLayout] = useState<ChallengeLayout>(INITIAL_SETTINGS.layout);
+  const [rotation, setRotation] = useState<RotationSpeed>(INITIAL_SETTINGS.rotation);
   const [screen, setScreen] = useState<Screen>("ready");
   const [grid, setGrid] = useState(() => createGrid(INITIAL_SETTINGS.mode.size));
   const [target, setTarget] = useState(() => getInitialTarget(INITIAL_SETTINGS.mode, INITIAL_SETTINGS.order));
@@ -46,7 +49,7 @@ export default function App() {
   const [taps, setTaps] = useState<TapRecord[]>([]);
   const [finishedRun, setFinishedRun] = useState<FinishedRun | null>(null);
   const [bestMs, setBestMs] = useState<number | null>(() =>
-    getBestTime(INITIAL_SETTINGS.mode, INITIAL_SETTINGS.order, INITIAL_SETTINGS.layout),
+    getBestTime(INITIAL_SETTINGS.mode, INITIAL_SETTINGS.order, INITIAL_SETTINGS.layout, INITIAL_SETTINGS.rotation),
   );
   const [colorCount, setColorCount] = useState<ColorCount>(INITIAL_SETTINGS.colorCount);
   const [theme, setTheme] = useState<ThemeOption["id"]>(INITIAL_SETTINGS.theme);
@@ -68,9 +71,10 @@ export default function App() {
         order,
         layout,
         range,
-        dailyDay: isDailyChallengeActive(mode, order, layout, colorCount, theme) ? DAILY_CHALLENGE.day : null,
+        rotation,
+        dailyDay: isDailyChallengeActive(mode, order, layout, rotation, colorCount, theme) ? DAILY_CHALLENGE.day : null,
       }),
-    [colorCount, layout, mode, order, range, theme],
+    [colorCount, layout, mode, order, range, rotation, theme],
   );
   const titleParts = useMemo(
     () => ({
@@ -96,8 +100,8 @@ export default function App() {
   }, [screen, startedAt]);
 
   useEffect(() => {
-    setBestMs(getBestTime(mode, order, layout));
-  }, [layout, mode, order]);
+    setBestMs(getBestTime(mode, order, layout, rotation));
+  }, [layout, mode, order, rotation]);
 
   useEffect(() => {
     return () => {
@@ -109,6 +113,7 @@ export default function App() {
     setMode(nextMode);
     setOrder(nextOrder);
     setLayout(nextLayout);
+    if (nextLayout === "grid") setRotation("none");
     setGrid(createGrid(nextMode.size));
     setTarget(getInitialTarget(nextMode, nextOrder));
     setStartedAt(null);
@@ -152,13 +157,14 @@ export default function App() {
         mode,
         order,
         layout,
+        rotation: layout === "radial" ? rotation : "none",
         grid,
         taps: nextTaps,
         elapsedMs: currentElapsed,
         completedAt: new Date().toISOString(),
       };
       setFinishedRun(run);
-      setBestMs(saveBestTime(mode, order, layout, currentElapsed));
+      setBestMs(saveBestTime(mode, order, layout, run.rotation, currentElapsed));
       setScreen("finished");
       return;
     }
@@ -173,7 +179,7 @@ export default function App() {
       CHALLENGE_LAYOUTS.find((item) => item.id === finishedRun.layout) ?? CHALLENGE_LAYOUTS[0];
     const text = `我完成了 GridFox ${finishedRun.mode.label} ${finishedLayout.name}${finishedOrder.name}专注力挑战，用时 ${formatTime(
       finishedRun.elapsedMs,
-      true,
+    true,
     )}。来测测你的眼力和反应。`;
     void navigator.clipboard?.writeText(text);
   }
@@ -187,6 +193,7 @@ export default function App() {
   function applyDailyChallenge() {
     const nextMode = MODES.find((item) => item.size === DAILY_CHALLENGE.size) ?? DEFAULT_MODE;
     resetGame(nextMode, DAILY_CHALLENGE.order as ChallengeOrder, DAILY_CHALLENGE.layout as ChallengeLayout);
+    setRotation("none");
     setColorCount(DAILY_CHALLENGE.colors as ColorCount);
     setTheme(DAILY_CHALLENGE.theme as ThemeOption["id"]);
     setShowPublishAssistant(true);
@@ -196,6 +203,7 @@ export default function App() {
     currentMode: GameMode,
     currentOrder: ChallengeOrder,
     currentLayout: ChallengeLayout,
+    currentRotation: RotationSpeed,
     currentColorCount: ColorCount,
     currentTheme: ThemeOption["id"],
   ) {
@@ -203,6 +211,7 @@ export default function App() {
       currentMode.size === DAILY_CHALLENGE.size &&
       currentOrder === DAILY_CHALLENGE.order &&
       currentLayout === DAILY_CHALLENGE.layout &&
+      currentRotation === "none" &&
       currentColorCount === DAILY_CHALLENGE.colors &&
       currentTheme === DAILY_CHALLENGE.theme
     );
@@ -211,7 +220,7 @@ export default function App() {
   async function handleCreatePromoVideo() {
     setPromoStatus("recording");
     try {
-      const blob = await createPromoVideo({ size: mode.size, colorCount, theme, order, layout });
+      const blob = await createPromoVideo({ size: mode.size, colorCount, theme, order, layout, rotation });
       if (promoUrl) URL.revokeObjectURL(promoUrl);
       setPromoUrl(URL.createObjectURL(blob));
       setPromoStatus("done");
@@ -254,7 +263,9 @@ export default function App() {
                 <div>
                   <strong>{activeOrder.name}</strong>
                   <span>
-                    {activeLayout.name}，请从 {range.start} 找到 {range.end}
+                    {activeLayout.name}
+                    {layout === "radial" && rotation !== "none" ? ` · ${getRotationLabel(rotation)}` : ""}，请从{" "}
+                    {range.start} 找到 {range.end}
                   </span>
                 </div>
                 <span className="mode-badge">{mode.label}</span>
@@ -278,6 +289,22 @@ export default function App() {
                       type="button"
                       onClick={() => resetGame(mode, order, item.id)}
                       disabled={screen === "playing"}
+                    >
+                      {item.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="setting-group">
+                <span>动态</span>
+                <div className="option-switch" aria-label="选择圆盘动态">
+                  {ROTATION_SPEEDS.map((item) => (
+                    <button
+                      className={item.id === rotation ? "option-button active" : "option-button"}
+                      key={item.id}
+                      type="button"
+                      onClick={() => setRotation(item.id)}
+                      disabled={screen === "playing" || layout !== "radial"}
                     >
                       {item.label}
                     </button>
@@ -410,7 +437,11 @@ export default function App() {
             })}
           </div>
         ) : (
-          <div className="radial-board" ref={boardRef}>
+          <div
+            className={`radial-board ${rotation !== "none" ? "is-rotating" : ""}`}
+            ref={boardRef}
+            style={getRotationStyle(rotation)}
+          >
             <svg viewBox="0 0 100 100" role="group" aria-label="圆盘舒尔特数字盘">
               <circle className="radial-center" cx="50" cy="50" r="8" />
               {grid.map((number, index) => {
@@ -478,7 +509,7 @@ export default function App() {
                   <span>
                     {DAILY_CHALLENGE.layout === "radial" ? "圆盘" : "方格"} ·{" "}
                     {DAILY_CHALLENGE.order === "desc" ? "倒序" : "顺序"} · {DAILY_CHALLENGE.size}x
-                    {DAILY_CHALLENGE.size} · {DAILY_CHALLENGE.colors} 色
+                    {DAILY_CHALLENGE.size} · 静态 · {DAILY_CHALLENGE.colors} 色
                   </span>
                 </div>
                 <button className="secondary-action" type="button" onClick={applyDailyChallenge}>
@@ -503,7 +534,7 @@ export default function App() {
                 {promoStatus === "done" && promoUrl && (
                   <a
                     href={promoUrl}
-                    download={`gridfox-xiaohongshu-${layout}-${order}-${theme}-${colorCount}color.webm`}
+                    download={`gridfox-xiaohongshu-${layout}-${order}-${rotation}-${theme}-${colorCount}color.webm`}
                   >
                     下载 WebM
                   </a>
@@ -536,15 +567,18 @@ function buildXiaohongshuPost({
   order,
   layout,
   range,
+  rotation,
   dailyDay,
 }: {
   mode: GameMode;
   order: ChallengeOrder;
   layout: ChallengeLayout;
   range: { start: number; end: number };
+  rotation: RotationSpeed;
   dailyDay: number | null;
 }): string {
-  const layoutName = layout === "radial" ? "圆盘舒尔特" : "舒尔特方格";
+  const isRotating = layout === "radial" && rotation !== "none";
+  const layoutName = isRotating ? "旋转圆盘舒尔特" : layout === "radial" ? "圆盘舒尔特" : "舒尔特方格";
   const orderName = order === "desc" ? "倒序挑战" : "计时挑战";
   const rangeText = `${range.start} 找到 ${range.end}`;
   const title = dailyDay
@@ -555,7 +589,9 @@ function buildXiaohongshuPost({
       ? `今天做一个倒序版：从 ${range.start} 开始，按顺序一路找到 ${range.end}。`
       : `今天做一个计时版：从 ${range.start} 开始，按顺序一路找到 ${range.end}。`;
   const modeLine =
-    layout === "radial"
+    isRotating
+      ? `${getRotationLabel(rotation)}圆盘会增加视觉追踪难度，适合进阶挑战。`
+      : layout === "radial"
       ? "圆盘排列会更考验视觉搜索和注意力稳定性。"
       : `${mode.label} 方格适合每天花两分钟练一轮。`;
   const hashtags = [
@@ -566,7 +602,7 @@ function buildXiaohongshuPost({
     "#专注力游戏",
     "#提升注意力",
     "#计时挑战",
-    layout === "radial" ? "#圆盘舒尔特" : "#舒尔特训练",
+    isRotating ? "#旋转舒尔特" : layout === "radial" ? "#圆盘舒尔特" : "#舒尔特训练",
   ].join(" ");
 
   return `${title}
@@ -584,6 +620,7 @@ function getInitialSettings(): {
   mode: GameMode;
   order: ChallengeOrder;
   layout: ChallengeLayout;
+  rotation: RotationSpeed;
   colorCount: ColorCount;
   theme: ThemeOption["id"];
 } {
@@ -591,10 +628,24 @@ function getInitialSettings(): {
   const mode = MODES.find((item) => item.size === Number(params.get("size"))) ?? DEFAULT_MODE;
   const order = params.get("order") === "desc" ? "desc" : "asc";
   const layout = params.get("layout") === "radial" ? "radial" : "grid";
+  const rotationParam = params.get("rotation");
+  const rotation =
+    layout === "radial" && ROTATION_SPEEDS.some((item) => item.id === rotationParam)
+      ? (rotationParam as RotationSpeed)
+      : "none";
   const colorCountValue = Number(params.get("colors"));
   const colorCount = COLOR_COUNTS.includes(colorCountValue as ColorCount) ? (colorCountValue as ColorCount) : 4;
   const themeParam = params.get("theme");
   const theme = THEMES.some((item) => item.id === themeParam) ? (themeParam as ThemeOption["id"]) : "fresh";
 
-  return { mode, order, layout, colorCount, theme };
+  return { mode, order, layout, rotation, colorCount, theme };
+}
+
+function getRotationLabel(rotation: RotationSpeed): string {
+  return ROTATION_SPEEDS.find((item) => item.id === rotation)?.name ?? "静态圆盘";
+}
+
+function getRotationStyle(rotation: RotationSpeed): CSSProperties {
+  const speed = ROTATION_SPEEDS.find((item) => item.id === rotation);
+  return speed?.durationSeconds ? ({ "--rotation-duration": `${speed.durationSeconds}s` } as CSSProperties) : {};
 }

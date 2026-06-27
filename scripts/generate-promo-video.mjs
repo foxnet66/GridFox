@@ -73,6 +73,8 @@ const colorCount = clamp(Number(args.colors ?? dailyChallenge?.colors ?? 4), 1, 
 const size = clamp(Number(args.size ?? dailyChallenge?.size ?? 6), 4, 6);
 const order = String(args.order ?? dailyChallenge?.order ?? "asc") === "desc" ? "desc" : "asc";
 const layout = String(args.layout ?? dailyChallenge?.layout ?? "grid") === "radial" ? "radial" : "grid";
+const rotation = layout === "radial" && ["slow", "fast"].includes(String(args.rotation)) ? String(args.rotation) : "none";
+const captureFps = rotation === "none" ? 1 : clamp(Number(args["capture-fps"] ?? 6), 2, 12);
 const seed = Number.isFinite(Number(args.seed)) ? Number(args.seed) : (dailyChallenge?.seed ?? Date.now());
 const musicName = String(args.music ?? "soft");
 const music = Object.hasOwn(musicProfiles, musicName) ? musicProfiles[musicName] : musicProfiles.soft;
@@ -92,7 +94,8 @@ await mkdir(framesDir, { recursive: true });
 await mkdir(dirname(output), { recursive: true });
 
 const grid = createGrid(size, seed);
-const totalFrames = INTRO_SECONDS + duration;
+const totalDurationSeconds = INTRO_SECONDS + duration;
+const totalFrames = Math.ceil(totalDurationSeconds * captureFps);
 const chrome = await launchChrome(chromeProfile);
 
 try {
@@ -105,11 +108,12 @@ try {
     mobile: false,
   });
 
-  for (let second = 0; second < totalFrames; second += 1) {
-    const framePath = resolve(framesDir, `frame-${String(second).padStart(4, "0")}.png`);
+  for (let frame = 0; frame < totalFrames; frame += 1) {
+    const second = frame / captureFps;
+    const framePath = resolve(framesDir, `frame-${String(frame).padStart(4, "0")}.png`);
     const html =
       second < INTRO_SECONDS
-        ? renderIntroHtml({ countdown: INTRO_SECONDS - second, theme, size, layout })
+        ? renderIntroHtml({ countdown: Math.ceil(INTRO_SECONDS - second), theme, size, layout })
         : renderChallengeHtml({
             elapsedMs: (second - INTRO_SECONDS) * 1000,
             grid,
@@ -118,24 +122,25 @@ try {
             size,
             order,
             layout,
+            rotation,
           });
     await setHtml(client, html);
     const screenshot = await client.send("Page.captureScreenshot", { format: "png", fromSurface: true });
     await writeFile(framePath, Buffer.from(screenshot.data, "base64"));
-    process.stdout.write(`\rRendered frame ${second + 1}/${totalFrames}`);
+    process.stdout.write(`\rRendered frame ${frame + 1}/${totalFrames}`);
   }
 
   process.stdout.write("\nEncoding MP4...\n");
-  const audio = await prepareAudioInput({ music, musicFile, duration: totalFrames });
+  const audio = await prepareAudioInput({ music, musicFile, duration: totalDurationSeconds });
   await run(FFMPEG, [
     "-y",
     "-framerate",
-    "1",
+    String(captureFps),
     "-i",
     resolve(framesDir, "frame-%04d.png"),
     ...audio.inputArgs,
     "-t",
-    String(totalFrames),
+    String(totalDurationSeconds),
     "-r",
     String(FPS),
     ...audio.filterArgs,
@@ -319,7 +324,7 @@ function renderIntroHtml({ countdown, theme, size, layout }) {
 </html>`;
 }
 
-function renderChallengeHtml({ elapsedMs, grid, theme, colorCount, size, order, layout }) {
+function renderChallengeHtml({ elapsedMs, grid, theme, colorCount, size, order, layout, rotation }) {
   const total = size * size;
   const range = getTargetRange(total, order);
   const gridSize = 928;
@@ -327,7 +332,7 @@ function renderChallengeHtml({ elapsedMs, grid, theme, colorCount, size, order, 
   const fontSize = size >= 6 ? 66 : 82;
   const board =
     layout === "radial"
-      ? renderRadialBoard({ grid, theme, colorCount, size: gridSize })
+      ? renderRadialBoard({ grid, theme, colorCount, rotationDeg: getRotationDegrees(rotation, elapsedMs) })
       : `<div class="grid">${grid
           .map((number, index) => {
             const row = Math.floor(index / size);
@@ -402,7 +407,13 @@ function renderChallengeHtml({ elapsedMs, grid, theme, colorCount, size, order, 
   </head>
   <body>
     <main class="stage">
-      <div class="brand">${layout === "radial" ? "圆盘舒尔特挑战" : "舒尔特方格挑战"}</div>
+      <div class="brand">${
+        layout === "radial" && rotation !== "none"
+          ? "旋转圆盘舒尔特挑战"
+          : layout === "radial"
+            ? "圆盘舒尔特挑战"
+            : "舒尔特方格挑战"
+      }</div>
       <div class="title">请按顺序从 <span>${range.start}</span> 找到 <span>${range.end}</span></div>
       <div class="subtitle">从 ${range.start} 到 ${range.end}，看看你需要多久</div>
       <div class="timer">${formatTime(elapsedMs)}</div>
@@ -414,7 +425,7 @@ function renderChallengeHtml({ elapsedMs, grid, theme, colorCount, size, order, 
 </html>`;
 }
 
-function renderRadialBoard({ grid, theme, colorCount }) {
+function renderRadialBoard({ grid, theme, colorCount, rotationDeg }) {
   const geometry = getRadialGeometry(grid.length);
   const cells = grid
     .map((number, index) => {
@@ -429,11 +440,17 @@ function renderRadialBoard({ grid, theme, colorCount }) {
     .join("");
 
   return `<div class="radial">
-    <svg viewBox="0 0 100 100" aria-label="圆盘舒尔特数字盘">
+    <svg viewBox="0 0 100 100" aria-label="圆盘舒尔特数字盘" style="transform:rotate(${rotationDeg.toFixed(3)}deg);transform-origin:center;transform-box:fill-box;">
       ${cells}
       <circle class="center" cx="50" cy="50" r="8"></circle>
     </svg>
   </div>`;
+}
+
+function getRotationDegrees(rotation, elapsedMs) {
+  if (rotation === "slow") return (elapsedMs / 1000) * 6;
+  if (rotation === "fast") return (elapsedMs / 1000) * 10;
+  return 0;
 }
 
 async function setHtml(client, html) {

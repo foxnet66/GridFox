@@ -20,6 +20,15 @@ export type ChallengeLayoutOption = {
   name: string;
 };
 
+export type RotationSpeed = "none" | "slow" | "fast";
+
+export type RotationSpeedOption = {
+  id: RotationSpeed;
+  label: string;
+  name: string;
+  durationSeconds: number | null;
+};
+
 export type ColorCount = 1 | 2 | 4 | 8;
 
 export type ThemeOption = {
@@ -40,6 +49,7 @@ export type FinishedRun = {
   mode: GameMode;
   order: ChallengeOrder;
   layout: ChallengeLayout;
+  rotation: RotationSpeed;
   grid: number[];
   taps: TapRecord[];
   elapsedMs: number;
@@ -68,6 +78,12 @@ export const CHALLENGE_ORDERS: ChallengeOrderOption[] = [
 export const CHALLENGE_LAYOUTS: ChallengeLayoutOption[] = [
   { id: "grid", label: "方格", name: "标准方格" },
   { id: "radial", label: "圆盘", name: "圆盘舒尔特" },
+];
+
+export const ROTATION_SPEEDS: RotationSpeedOption[] = [
+  { id: "none", label: "静态", name: "静态圆盘", durationSeconds: null },
+  { id: "slow", label: "慢速", name: "慢速旋转", durationSeconds: 60 },
+  { id: "fast", label: "快速", name: "快速旋转", durationSeconds: 36 },
 ];
 
 export const THEMES: ThemeOption[] = [
@@ -133,16 +149,31 @@ export function getTargetRange(mode: GameMode, order: ChallengeOrder): { start: 
   return order === "desc" ? { start: total, end: 1 } : { start: 1, end: total };
 }
 
-export function getBestTime(mode: GameMode, order: ChallengeOrder, layout: ChallengeLayout): number | null {
+export function getBestTime(
+  mode: GameMode,
+  order: ChallengeOrder,
+  layout: ChallengeLayout,
+  rotation: RotationSpeed = "none",
+): number | null {
+  const rotationKey = layout === "radial" ? rotation : "none";
   const stored =
-    localStorage.getItem(`gridfox-best-${mode.size}-${order}-${layout}`) ?? getLegacyBestTime(mode, order, layout);
+    localStorage.getItem(`gridfox-best-${mode.size}-${order}-${layout}-${rotationKey}`) ??
+    getLegacyBestTime(mode, order, layout, rotationKey);
   if (!stored) return null;
 
   const parsed = Number(stored);
   return Number.isFinite(parsed) ? parsed : null;
 }
 
-function getLegacyBestTime(mode: GameMode, order: ChallengeOrder, layout: ChallengeLayout): string | null {
+function getLegacyBestTime(
+  mode: GameMode,
+  order: ChallengeOrder,
+  layout: ChallengeLayout,
+  rotation: RotationSpeed,
+): string | null {
+  if (rotation !== "none") return null;
+  const layoutScoped = localStorage.getItem(`gridfox-best-${mode.size}-${order}-${layout}`);
+  if (layoutScoped) return layoutScoped;
   if (order !== "asc" || layout !== "grid") return null;
   return localStorage.getItem(`gridfox-best-${mode.size}-asc`) ?? localStorage.getItem(`gridfox-best-${mode.size}`);
 }
@@ -151,11 +182,13 @@ export function saveBestTime(
   mode: GameMode,
   order: ChallengeOrder,
   layout: ChallengeLayout,
+  rotation: RotationSpeed,
   elapsedMs: number,
 ): number {
-  const previous = getBestTime(mode, order, layout);
+  const rotationKey = layout === "radial" ? rotation : "none";
+  const previous = getBestTime(mode, order, layout, rotationKey);
   const best = previous === null ? elapsedMs : Math.min(previous, elapsedMs);
-  localStorage.setItem(`gridfox-best-${mode.size}-${order}-${layout}`, String(best));
+  localStorage.setItem(`gridfox-best-${mode.size}-${order}-${layout}-${rotationKey}`, String(best));
   return best;
 }
 
