@@ -25,6 +25,7 @@ import {
   type GameMode,
   type TapRecord,
   type ColorCount,
+  type RadialCellGeometry,
   type RotationSpeed,
   type ThemeOption,
 } from "./game";
@@ -444,33 +445,38 @@ export default function App() {
           >
             <svg viewBox="0 0 100 100" role="group" aria-label="圆盘舒尔特数字盘">
               <circle className="radial-center" cx="50" cy="50" r="8" />
-              {grid.map((number, index) => {
-                const geometry = radialGeometry[index];
-                const labelPoint = polarToCartesian(50, geometry.labelRadius, geometry.labelAngle);
-                const completed = screen === "playing" && (order === "desc" ? number > target : number < target);
-                return (
-                  <g
-                    className={`radial-cell ${getAccentClass(number, colorCount)} ${completed ? "completed" : ""}`}
-                    key={`${number}-${index}`}
-                    role="button"
-                    tabIndex={screen === "playing" ? 0 : -1}
-                    aria-label={`数字 ${number}`}
-                    onClick={() => handleCellClick(number, index)}
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter" || event.key === " ") {
-                        event.preventDefault();
-                        handleCellClick(number, index);
-                      }
-                    }}
-                    aria-disabled={screen !== "playing"}
-                  >
-                    <path d={describeRadialSegment(geometry)} />
-                    <text x={labelPoint.x} y={labelPoint.y}>
-                      {number}
-                    </text>
-                  </g>
-                );
-              })}
+              {getRadialRings(radialGeometry).map((ring) => (
+                <g className={`radial-ring ${getRingDirectionClass(ring)}`} key={ring}>
+                  {grid.map((number, index) => {
+                    const geometry = radialGeometry[index];
+                    if (geometry.ring !== ring) return null;
+                    const labelPoint = polarToCartesian(50, geometry.labelRadius, geometry.labelAngle);
+                    const completed = screen === "playing" && (order === "desc" ? number > target : number < target);
+                    return (
+                      <g
+                        className={`radial-cell ${getAccentClass(number, colorCount)} ${completed ? "completed" : ""}`}
+                        key={`${number}-${index}`}
+                        role="button"
+                        tabIndex={screen === "playing" ? 0 : -1}
+                        aria-label={`数字 ${number}`}
+                        onClick={() => handleCellClick(number, index)}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter" || event.key === " ") {
+                            event.preventDefault();
+                            handleCellClick(number, index);
+                          }
+                        }}
+                        aria-disabled={screen !== "playing"}
+                      >
+                        <path d={describeRadialSegment(geometry)} />
+                        <text x={labelPoint.x} y={labelPoint.y}>
+                          {number}
+                        </text>
+                      </g>
+                    );
+                  })}
+                </g>
+              ))}
             </svg>
           </div>
         )}
@@ -648,4 +654,12 @@ function getRotationLabel(rotation: RotationSpeed): string {
 function getRotationStyle(rotation: RotationSpeed): CSSProperties {
   const speed = ROTATION_SPEEDS.find((item) => item.id === rotation);
   return speed?.durationSeconds ? ({ "--rotation-duration": `${speed.durationSeconds}s` } as CSSProperties) : {};
+}
+
+function getRadialRings(geometry: RadialCellGeometry[]): number[] {
+  return Array.from(new Set(geometry.map((cell) => cell.ring)));
+}
+
+function getRingDirectionClass(ring: number): string {
+  return ring % 2 === 1 ? "counter-clockwise" : "clockwise";
 }

@@ -74,7 +74,7 @@ const size = clamp(Number(args.size ?? dailyChallenge?.size ?? 6), 4, 6);
 const order = String(args.order ?? dailyChallenge?.order ?? "asc") === "desc" ? "desc" : "asc";
 const layout = String(args.layout ?? dailyChallenge?.layout ?? "grid") === "radial" ? "radial" : "grid";
 const rotation = layout === "radial" && ["slow", "fast"].includes(String(args.rotation)) ? String(args.rotation) : "none";
-const captureFps = rotation === "none" ? 1 : clamp(Number(args["capture-fps"] ?? 6), 2, 12);
+const captureFps = rotation === "none" ? 1 : clamp(Number(args["capture-fps"] ?? 12), 2, 24);
 const seed = Number.isFinite(Number(args.seed)) ? Number(args.seed) : (dailyChallenge?.seed ?? Date.now());
 const musicName = String(args.music ?? "soft");
 const music = Object.hasOwn(musicProfiles, musicName) ? musicProfiles[musicName] : musicProfiles.soft;
@@ -89,7 +89,7 @@ let completed = false;
 if (!existsSync(CHROME)) throw new Error(`Chrome not found at ${CHROME}`);
 if (!existsSync(FFMPEG)) throw new Error(`ffmpeg not found at ${FFMPEG}`);
 
-await rm(tempDir, { recursive: true, force: true });
+await cleanupTempDir(tempDir);
 await mkdir(framesDir, { recursive: true });
 await mkdir(dirname(output), { recursive: true });
 
@@ -156,10 +156,11 @@ try {
   completed = true;
 } finally {
   chrome.process.kill("SIGTERM");
+  await waitForExit(chrome.process, 2_000);
 }
 
 if (completed) {
-  await rm(tempDir, { recursive: true, force: true });
+  await cleanupTempDir(tempDir);
 }
 
 console.log(`Done: ${output}`);
@@ -427,20 +428,28 @@ function renderChallengeHtml({ elapsedMs, grid, theme, colorCount, size, order, 
 
 function renderRadialBoard({ grid, theme, colorCount, rotationDeg }) {
   const geometry = getRadialGeometry(grid.length);
-  const cells = grid
-    .map((number, index) => {
-      const cellGeometry = geometry[index];
-      const point = polarToCartesian(50, cellGeometry.labelRadius, cellGeometry.labelAngle);
-      const color = theme.colors[number % colorCount];
-      return `<g>
-        <path d="${describeRadialSegment(cellGeometry)}"></path>
-        <text x="${point.x.toFixed(3)}" y="${(point.y + 0.25).toFixed(3)}" fill="${color}">${number}</text>
-      </g>`;
+  const rings = Array.from(new Set(geometry.map((cell) => cell.ring)));
+  const cells = rings
+    .map((ring) => {
+      const ringRotation = ring % 2 === 1 ? -rotationDeg : rotationDeg;
+      const ringCells = grid
+        .map((number, index) => {
+          const cellGeometry = geometry[index];
+          if (cellGeometry.ring !== ring) return "";
+          const point = polarToCartesian(50, cellGeometry.labelRadius, cellGeometry.labelAngle);
+          const color = theme.colors[number % colorCount];
+          return `<g>
+            <path d="${describeRadialSegment(cellGeometry)}"></path>
+            <text x="${point.x.toFixed(3)}" y="${(point.y + 0.25).toFixed(3)}" fill="${color}">${number}</text>
+          </g>`;
+        })
+        .join("");
+      return `<g style="transform:rotate(${ringRotation.toFixed(3)}deg);transform-origin:50px 50px;">${ringCells}</g>`;
     })
     .join("");
 
   return `<div class="radial">
-    <svg viewBox="0 0 100 100" aria-label="圆盘舒尔特数字盘" style="transform:rotate(${rotationDeg.toFixed(3)}deg);transform-origin:center;transform-box:fill-box;">
+    <svg viewBox="0 0 100 100" aria-label="圆盘舒尔特数字盘">
       ${cells}
       <circle class="center" cx="50" cy="50" r="8"></circle>
     </svg>
@@ -660,6 +669,30 @@ function clamp(value, min, max) {
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function cleanupTempDir(path) {
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      await rm(path, { recursive: true, force: true });
+      return;
+    } catch (error) {
+      if (attempt === 2) throw error;
+      await sleep(250);
+    }
+  }
+}
+
+function waitForExit(child, timeoutMs) {
+  if (child.exitCode !== null || child.signalCode !== null) return Promise.resolve();
+
+  return new Promise((resolve) => {
+    const timeout = setTimeout(resolve, timeoutMs);
+    child.once("exit", () => {
+      clearTimeout(timeout);
+      resolve();
+    });
+  });
 }
 
 function run(command, args) {

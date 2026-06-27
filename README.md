@@ -80,7 +80,8 @@ npm run video:promo -- --size 6 --layout radial --order asc --theme vivid --colo
 
 `--duration` 是正式计时段长度；输出视频会额外包含 3 秒前导倒计时。
 `--layout` 可选 `grid` 或 `radial`；默认 `grid`。
-`--rotation` 可选 `none`、`slow` 或 `fast`，只对 `radial` 生效；默认 `none`。
+`--rotation` 可选 `none`、`slow` 或 `fast`，只对 `radial` 生效；默认 `none`。旋转圆盘会按外圈顺时针、中圈逆时针、内圈顺时针运动。
+旋转视频默认用 `--capture-fps 12` 截帧；如需更顺滑可传 `--capture-fps 24`，生成时间也会相应增加。
 `--order` 可选 `asc` 或 `desc`；默认 `asc`。
 `--daily` 会使用当天发布建议的玩法、主题、颜色数量和固定种子。
 默认每次生成随机方格；如需复现同一版方格，可传 `--seed 1234`。

@@ -301,9 +301,7 @@ function drawRadialBoard(
   const geometry = getRadialGeometry(options.size * options.size);
 
   context.save();
-  context.translate(left + size / 2, top + size / 2);
-  context.rotate((getRotationDegrees(options.rotation, elapsedMs) * Math.PI) / 180);
-  context.translate(-size / 2, -size / 2);
+  context.translate(left, top);
   context.scale(scale, scale);
   context.fillStyle = "#ffffff";
   context.strokeStyle = palette.grid;
@@ -311,6 +309,11 @@ function drawRadialBoard(
 
   grid.forEach((number, index) => {
     const cellGeometry = geometry[index];
+    context.save();
+    context.translate(50, 50);
+    context.rotate((getRingRotationDegrees(options.rotation, elapsedMs, cellGeometry.ring) * Math.PI) / 180);
+    context.translate(-50, -50);
+
     const path = new Path2D(describeRadialSegment(cellGeometry));
     context.fillStyle = "#ffffff";
     context.fill(path);
@@ -323,6 +326,7 @@ function drawRadialBoard(
     context.textAlign = "center";
     context.textBaseline = "middle";
     context.fillText(String(number), labelPoint.x, labelPoint.y + 0.25);
+    context.restore();
   });
 
   context.beginPath();
@@ -338,6 +342,11 @@ function getRotationDegrees(rotation: RotationSpeed, elapsedMs: number): number 
   if (rotation === "slow") return (elapsedMs / 1000) * 6;
   if (rotation === "fast") return (elapsedMs / 1000) * 10;
   return 0;
+}
+
+function getRingRotationDegrees(rotation: RotationSpeed, elapsedMs: number, ring: number): number {
+  const degrees = getRotationDegrees(rotation, elapsedMs);
+  return ring % 2 === 1 ? -degrees : degrees;
 }
 
 function drawRichTitle(

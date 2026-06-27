@@ -351,12 +351,18 @@ button {
   width: 100%;
   height: 100%;
   overflow: visible;
-  transform-box: fill-box;
-  transform-origin: center;
 }
 
-.radial-board.is-rotating svg {
-  animation: radial-spin var(--rotation-duration, 60s) linear infinite;
+.radial-ring {
+  transform-origin: 50px 50px;
+}
+
+.radial-board.is-rotating .radial-ring.clockwise {
+  animation: radial-spin-clockwise var(--rotation-duration, 60s) linear infinite;
+}
+
+.radial-board.is-rotating .radial-ring.counter-clockwise {
+  animation: radial-spin-counter-clockwise var(--rotation-duration, 60s) linear infinite;
 }
 
 .radial-center {
@@ -737,13 +743,23 @@ button {
   }
 }
 
-@keyframes radial-spin {
+@keyframes radial-spin-clockwise {
   from {
     transform: rotate(0deg);
   }
 
   to {
     transform: rotate(360deg);
+  }
+}
+
+@keyframes radial-spin-counter-clockwise {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(-360deg);
   }
 }
 
@@ -900,7 +916,7 @@ button {
     transition-duration: 1ms !important;
   }
 
-  .radial-board.is-rotating svg {
+  .radial-board.is-rotating .radial-ring {
     animation: none !important;
   }
 }
