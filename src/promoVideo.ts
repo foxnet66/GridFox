@@ -309,24 +309,23 @@ function drawRadialBoard(
 
   grid.forEach((number, index) => {
     const cellGeometry = geometry[index];
-    context.save();
-    context.translate(50, 50);
-    context.rotate((getRingRotationDegrees(options.rotation, elapsedMs, cellGeometry.ring) * Math.PI) / 180);
-    context.translate(-50, -50);
+    const rotatedGeometry = rotateRadialGeometry(
+      cellGeometry,
+      getRingRotationDegrees(options.rotation, elapsedMs, cellGeometry.ring),
+    );
 
-    const path = new Path2D(describeRadialSegment(cellGeometry));
+    const path = new Path2D(describeRadialSegment(rotatedGeometry));
     context.fillStyle = "#ffffff";
     context.fill(path);
     context.strokeStyle = palette.grid;
     context.stroke(path);
 
-    const labelPoint = polarToCartesian(50, cellGeometry.labelRadius, cellGeometry.labelAngle);
+    const labelPoint = polarToCartesian(50, rotatedGeometry.labelRadius, rotatedGeometry.labelAngle);
     context.fillStyle = palette.colors[getAccentClass(number, options.colorCount)];
     context.font = "950 5.4px Arial, sans-serif";
     context.textAlign = "center";
     context.textBaseline = "middle";
     context.fillText(String(number), labelPoint.x, labelPoint.y + 0.25);
-    context.restore();
   });
 
   context.beginPath();
@@ -346,7 +345,19 @@ function getRotationDegrees(rotation: RotationSpeed, elapsedMs: number): number 
 
 function getRingRotationDegrees(rotation: RotationSpeed, elapsedMs: number, ring: number): number {
   const degrees = getRotationDegrees(rotation, elapsedMs);
-  return ring % 2 === 1 ? -degrees : degrees;
+  return ring % 2 === 1 ? -degrees * 2 : degrees;
+}
+
+function rotateRadialGeometry(
+  geometry: ReturnType<typeof getRadialGeometry>[number],
+  degrees: number,
+): ReturnType<typeof getRadialGeometry>[number] {
+  return {
+    ...geometry,
+    startAngle: geometry.startAngle + degrees,
+    endAngle: geometry.endAngle + degrees,
+    labelAngle: geometry.labelAngle + degrees,
+  };
 }
 
 function drawRichTitle(

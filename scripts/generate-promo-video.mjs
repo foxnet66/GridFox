@@ -431,20 +431,21 @@ function renderRadialBoard({ grid, theme, colorCount, rotationDeg }) {
   const rings = Array.from(new Set(geometry.map((cell) => cell.ring)));
   const cells = rings
     .map((ring) => {
-      const ringRotation = ring % 2 === 1 ? -rotationDeg : rotationDeg;
       const ringCells = grid
         .map((number, index) => {
           const cellGeometry = geometry[index];
           if (cellGeometry.ring !== ring) return "";
-          const point = polarToCartesian(50, cellGeometry.labelRadius, cellGeometry.labelAngle);
+          const ringRotation = ring % 2 === 1 ? -rotationDeg * 2 : rotationDeg;
+          const rotatedGeometry = rotateRadialGeometry(cellGeometry, ringRotation);
+          const point = polarToCartesian(50, rotatedGeometry.labelRadius, rotatedGeometry.labelAngle);
           const color = theme.colors[number % colorCount];
           return `<g>
-            <path d="${describeRadialSegment(cellGeometry)}"></path>
+            <path d="${describeRadialSegment(rotatedGeometry)}"></path>
             <text x="${point.x.toFixed(3)}" y="${(point.y + 0.25).toFixed(3)}" fill="${color}">${number}</text>
           </g>`;
         })
         .join("");
-      return `<g transform="rotate(${ringRotation.toFixed(3)} 50 50)">${ringCells}</g>`;
+      return `<g>${ringCells}</g>`;
     })
     .join("");
 
@@ -460,6 +461,15 @@ function getRotationDegrees(rotation, elapsedMs) {
   if (rotation === "slow") return (elapsedMs / 1000) * 6;
   if (rotation === "fast") return (elapsedMs / 1000) * 10;
   return 0;
+}
+
+function rotateRadialGeometry(geometry, degrees) {
+  return {
+    ...geometry,
+    startAngle: geometry.startAngle + degrees,
+    endAngle: geometry.endAngle + degrees,
+    labelAngle: geometry.labelAngle + degrees,
+  };
 }
 
 async function setHtml(client, html) {

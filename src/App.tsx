@@ -452,7 +452,7 @@ export default function App() {
                       dur={getRotationDuration(rotation)}
                       from="0 50 50"
                       repeatCount="indefinite"
-                      to={`${getRingDirection(ring) * 360} 50 50`}
+                      to={`${getRingRotationTurns(ring) * 360} 50 50`}
                       type="rotate"
                     />
                   )}
@@ -670,6 +670,10 @@ function getRingDirectionClass(ring: number): string {
 
 function getRingDirection(ring: number): 1 | -1 {
   return ring % 2 === 1 ? -1 : 1;
+}
+
+function getRingRotationTurns(ring: number): number {
+  return ring % 2 === 1 ? -2 : 1;
 }
 
 function getRotationDuration(rotation: RotationSpeed): string {
