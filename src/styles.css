@@ -353,18 +353,6 @@ button {
   overflow: visible;
 }
 
-.radial-ring {
-  transform-origin: 50px 50px;
-}
-
-.radial-board.is-rotating .radial-ring.clockwise {
-  animation: radial-spin-clockwise var(--rotation-duration, 60s) linear infinite;
-}
-
-.radial-board.is-rotating .radial-ring.counter-clockwise {
-  animation: radial-spin-counter-clockwise var(--rotation-duration, 60s) linear infinite;
-}
-
 .radial-center {
   fill: var(--paper);
   stroke: var(--line);
@@ -743,26 +731,6 @@ button {
   }
 }
 
-@keyframes radial-spin-clockwise {
-  from {
-    transform: rotate(0deg);
-  }
-
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-@keyframes radial-spin-counter-clockwise {
-  from {
-    transform: rotate(0deg);
-  }
-
-  to {
-    transform: rotate(-360deg);
-  }
-}
-
 @media (max-width: 520px) {
   .app-shell {
     padding: 0;
@@ -916,7 +884,4 @@ button {
     transition-duration: 1ms !important;
   }
 
-  .radial-board.is-rotating .radial-ring {
-    animation: none !important;
-  }
 }

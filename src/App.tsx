@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   DEFAULT_MODE,
   CHALLENGE_LAYOUTS,
@@ -441,12 +441,21 @@ export default function App() {
           <div
             className={`radial-board ${rotation !== "none" ? "is-rotating" : ""}`}
             ref={boardRef}
-            style={getRotationStyle(rotation)}
           >
             <svg viewBox="0 0 100 100" role="group" aria-label="圆盘舒尔特数字盘">
               <circle className="radial-center" cx="50" cy="50" r="8" />
               {getRadialRings(radialGeometry).map((ring) => (
-                <g className={`radial-ring ${getRingDirectionClass(ring)}`} key={ring}>
+                <g className={`radial-ring ${getRingDirectionClass(ring)}`} key={ring} transform="rotate(0 50 50)">
+                  {rotation !== "none" && (
+                    <animateTransform
+                      attributeName="transform"
+                      dur={getRotationDuration(rotation)}
+                      from="0 50 50"
+                      repeatCount="indefinite"
+                      to={`${getRingDirection(ring) * 360} 50 50`}
+                      type="rotate"
+                    />
+                  )}
                   {grid.map((number, index) => {
                     const geometry = radialGeometry[index];
                     if (geometry.ring !== ring) return null;
@@ -651,15 +660,19 @@ function getRotationLabel(rotation: RotationSpeed): string {
   return ROTATION_SPEEDS.find((item) => item.id === rotation)?.name ?? "静态圆盘";
 }
 
-function getRotationStyle(rotation: RotationSpeed): CSSProperties {
-  const speed = ROTATION_SPEEDS.find((item) => item.id === rotation);
-  return speed?.durationSeconds ? ({ "--rotation-duration": `${speed.durationSeconds}s` } as CSSProperties) : {};
-}
-
 function getRadialRings(geometry: RadialCellGeometry[]): number[] {
   return Array.from(new Set(geometry.map((cell) => cell.ring)));
 }
 
 function getRingDirectionClass(ring: number): string {
   return ring % 2 === 1 ? "counter-clockwise" : "clockwise";
+}
+
+function getRingDirection(ring: number): 1 | -1 {
+  return ring % 2 === 1 ? -1 : 1;
+}
+
+function getRotationDuration(rotation: RotationSpeed): string {
+  const speed = ROTATION_SPEEDS.find((item) => item.id === rotation);
+  return `${speed?.durationSeconds ?? 60}s`;
 }

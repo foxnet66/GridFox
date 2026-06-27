@@ -444,7 +444,7 @@ function renderRadialBoard({ grid, theme, colorCount, rotationDeg }) {
           </g>`;
         })
         .join("");
-      return `<g style="transform:rotate(${ringRotation.toFixed(3)}deg);transform-origin:50px 50px;">${ringCells}</g>`;
+      return `<g transform="rotate(${ringRotation.toFixed(3)} 50 50)">${ringCells}</g>`;
     })
     .join("");
 
