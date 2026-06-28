@@ -435,7 +435,7 @@ function renderRadialBoard({ grid, theme, colorCount, rotationDeg }) {
         .map((number, index) => {
           const cellGeometry = geometry[index];
           if (cellGeometry.ring !== ring) return "";
-          const ringRotation = ring % 2 === 1 ? -rotationDeg * 2 : rotationDeg;
+          const ringRotation = rotationDeg;
           const rotatedGeometry = rotateRadialGeometry(cellGeometry, ringRotation);
           const point = polarToCartesian(50, rotatedGeometry.labelRadius, rotatedGeometry.labelAngle);
           const color = theme.colors[number % colorCount];
@@ -616,6 +616,7 @@ function getRadialGeometry(total) {
         const startAngle = angleOffset + (360 / countInRing) * indexInRing;
         const endAngle = angleOffset + (360 / countInRing) * (indexInRing + 1);
         return {
+          ring,
           startAngle,
           endAngle,
           innerRadius,

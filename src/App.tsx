@@ -445,21 +445,15 @@ export default function App() {
             <svg viewBox="0 0 100 100" role="group" aria-label="圆盘舒尔特数字盘">
               <circle className="radial-center" cx="50" cy="50" r="8" />
               {getRadialRings(radialGeometry).map((ring) => (
-                <g className={`radial-ring ${getRingDirectionClass(ring)}`} key={ring} transform="rotate(0 50 50)">
-                  {rotation !== "none" && (
-                    <animateTransform
-                      attributeName="transform"
-                      dur={getRotationDuration(rotation)}
-                      from="0 50 50"
-                      repeatCount="indefinite"
-                      to={`${getRingRotationTurns(ring) * 360} 50 50`}
-                      type="rotate"
-                    />
-                  )}
+                <g className={`radial-ring ${getRingDirectionClass(ring)}`} key={ring}>
                   {grid.map((number, index) => {
                     const geometry = radialGeometry[index];
                     if (geometry.ring !== ring) return null;
-                    const labelPoint = polarToCartesian(50, geometry.labelRadius, geometry.labelAngle);
+                    const rotatedGeometry = rotateRadialGeometry(
+                      geometry,
+                      getRingRotationDegrees(rotation, screen === "playing" ? elapsedMs : 0, geometry.ring),
+                    );
+                    const labelPoint = polarToCartesian(50, rotatedGeometry.labelRadius, rotatedGeometry.labelAngle);
                     const completed = screen === "playing" && (order === "desc" ? number > target : number < target);
                     return (
                       <g
@@ -477,7 +471,7 @@ export default function App() {
                         }}
                         aria-disabled={screen !== "playing"}
                       >
-                        <path d={describeRadialSegment(geometry)} />
+                        <path d={describeRadialSegment(rotatedGeometry)} />
                         <text x={labelPoint.x} y={labelPoint.y}>
                           {number}
                         </text>
@@ -665,18 +659,24 @@ function getRadialRings(geometry: RadialCellGeometry[]): number[] {
 }
 
 function getRingDirectionClass(ring: number): string {
-  return ring % 2 === 1 ? "counter-clockwise" : "clockwise";
+  return "clockwise";
 }
 
-function getRingDirection(ring: number): 1 | -1 {
-  return ring % 2 === 1 ? -1 : 1;
+function getRotationDegrees(rotation: RotationSpeed, elapsedMs: number): number {
+  if (rotation === "slow") return (elapsedMs / 1000) * 6;
+  if (rotation === "fast") return (elapsedMs / 1000) * 10;
+  return 0;
 }
 
-function getRingRotationTurns(ring: number): number {
-  return ring % 2 === 1 ? -2 : 1;
+function getRingRotationDegrees(rotation: RotationSpeed, elapsedMs: number, ring: number): number {
+  return getRotationDegrees(rotation, elapsedMs);
 }
 
-function getRotationDuration(rotation: RotationSpeed): string {
-  const speed = ROTATION_SPEEDS.find((item) => item.id === rotation);
-  return `${speed?.durationSeconds ?? 60}s`;
+function rotateRadialGeometry(geometry: RadialCellGeometry, degrees: number): RadialCellGeometry {
+  return {
+    ...geometry,
+    startAngle: geometry.startAngle + degrees,
+    endAngle: geometry.endAngle + degrees,
+    labelAngle: geometry.labelAngle + degrees,
+  };
 }

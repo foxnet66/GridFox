@@ -344,8 +344,7 @@ function getRotationDegrees(rotation: RotationSpeed, elapsedMs: number): number 
 }
 
 function getRingRotationDegrees(rotation: RotationSpeed, elapsedMs: number, ring: number): number {
-  const degrees = getRotationDegrees(rotation, elapsedMs);
-  return ring % 2 === 1 ? -degrees * 2 : degrees;
+  return getRotationDegrees(rotation, elapsedMs);
 }
 
 function rotateRadialGeometry(

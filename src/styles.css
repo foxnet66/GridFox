@@ -369,6 +369,13 @@ button {
     transform 130ms ease;
 }
 
+.radial-cell,
+.radial-cell:focus {
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+
 .radial-cell text {
   dominant-baseline: middle;
   text-anchor: middle;
