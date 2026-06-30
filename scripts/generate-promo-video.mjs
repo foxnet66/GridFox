@@ -72,7 +72,8 @@ const themeName = String(args.theme ?? dailyChallenge?.theme ?? "fresh");
 const colorCount = clamp(Number(args.colors ?? dailyChallenge?.colors ?? 4), 1, 8);
 const size = clamp(Number(args.size ?? dailyChallenge?.size ?? 6), 4, 6);
 const order = String(args.order ?? dailyChallenge?.order ?? "asc") === "desc" ? "desc" : "asc";
-const layout = String(args.layout ?? dailyChallenge?.layout ?? "grid") === "radial" ? "radial" : "grid";
+const layoutArg = String(args.layout ?? dailyChallenge?.layout ?? "grid");
+const layout = layoutArg === "hex" ? "hex" : layoutArg === "radial" ? "radial" : "grid";
 const rotation = layout === "radial" && ["slow", "fast"].includes(String(args.rotation)) ? String(args.rotation) : "none";
 const captureFps = rotation === "none" ? 1 : clamp(Number(args["capture-fps"] ?? 12), 2, 24);
 const seed = Number.isFinite(Number(args.seed)) ? Number(args.seed) : (dailyChallenge?.seed ?? Date.now());
@@ -93,7 +94,8 @@ await cleanupTempDir(tempDir);
 await mkdir(framesDir, { recursive: true });
 await mkdir(dirname(output), { recursive: true });
 
-const grid = createGrid(size, seed);
+const total = getChallengeTotal(size, layout);
+const grid = createGrid(total, seed);
 const totalDurationSeconds = INTRO_SECONDS + duration;
 const totalFrames = Math.ceil(totalDurationSeconds * captureFps);
 const chrome = await launchChrome(chromeProfile);
@@ -257,7 +259,7 @@ function writeAscii(buffer, offset, value) {
 }
 
 function renderIntroHtml({ countdown, theme, size, layout }) {
-  const total = size * size;
+  const total = getChallengeTotal(size, layout);
 
   return `<!doctype html>
 <html lang="zh-CN">
@@ -315,7 +317,7 @@ function renderIntroHtml({ countdown, theme, size, layout }) {
     <main class="stage">
       <div class="ghost-grid"></div>
       <div class="title">每日专注力训练</div>
-      <div class="project">${layout === "radial" ? `圆盘舒尔特 ${size * size}` : `舒尔特方格 ${size}×${size}`}</div>
+      <div class="project">${getProjectLabel({ layout, size, total })}</div>
       <div class="ring"></div>
       <div class="count">${countdown}</div>
       <div class="ready">准备开始</div>
@@ -326,7 +328,7 @@ function renderIntroHtml({ countdown, theme, size, layout }) {
 }
 
 function renderChallengeHtml({ elapsedMs, grid, theme, colorCount, size, order, layout, rotation }) {
-  const total = size * size;
+  const total = getChallengeTotal(size, layout);
   const range = getTargetRange(total, order);
   const gridSize = 928;
   const cellSize = gridSize / size;
@@ -334,6 +336,8 @@ function renderChallengeHtml({ elapsedMs, grid, theme, colorCount, size, order, 
   const board =
     layout === "radial"
       ? renderRadialBoard({ grid, theme, colorCount, rotationDeg: getRotationDegrees(rotation, elapsedMs) })
+      : layout === "hex"
+        ? renderHexBoard({ grid, theme, colorCount })
       : `<div class="grid">${grid
           .map((number, index) => {
             const row = Math.floor(index / size);
@@ -383,12 +387,22 @@ function renderChallengeHtml({ elapsedMs, grid, theme, colorCount, size, order, 
         position: absolute; left: 76px; top: 540px; width: 928px; height: 928px;
         filter: drop-shadow(0 14px 34px rgba(24, 33, 47, 0.1));
       }
+      .hex {
+        position: absolute; left: 76px; top: 548px; width: 928px; height: 965px;
+        filter: drop-shadow(0 14px 34px rgba(24, 33, 47, 0.1));
+      }
       .radial svg { display: block; width: 100%; height: 100%; overflow: visible; }
+      .hex svg { display: block; width: 100%; height: 100%; overflow: visible; }
       .radial path { fill: white; stroke: ${theme.grid}; stroke-width: 0.42; }
       .radial .center { fill: ${theme.paper}; stroke: ${theme.grid}; stroke-width: 0.6; }
       .radial text {
         dominant-baseline: middle; text-anchor: middle;
         font-size: 5.4px; font-weight: 950;
+      }
+      .hex polygon { fill: white; stroke: ${theme.ink}; stroke-width: 0.5; }
+      .hex text {
+        dominant-baseline: middle; text-anchor: middle;
+        font-size: 7.8px; font-weight: 950;
       }
       .cell {
         position: absolute; width: ${cellSize}px; height: ${cellSize}px;
@@ -413,6 +427,8 @@ function renderChallengeHtml({ elapsedMs, grid, theme, colorCount, size, order, 
           ? "旋转圆盘舒尔特挑战"
           : layout === "radial"
             ? "圆盘舒尔特挑战"
+            : layout === "hex"
+              ? "蜂巢舒尔特挑战"
             : "舒尔特方格挑战"
       }</div>
       <div class="title">请按顺序从 <span>${range.start}</span> 找到 <span>${range.end}</span></div>
@@ -453,6 +469,26 @@ function renderRadialBoard({ grid, theme, colorCount, rotationDeg }) {
     <svg viewBox="0 0 100 100" aria-label="圆盘舒尔特数字盘">
       ${cells}
       <circle class="center" cx="50" cy="50" r="8"></circle>
+    </svg>
+  </div>`;
+}
+
+function renderHexBoard({ grid, theme, colorCount }) {
+  const geometry = getHexGeometry();
+  const cells = grid
+    .map((number, index) => {
+      const cellGeometry = geometry[index];
+      const color = theme.colors[number % colorCount];
+      return `<g>
+        <polygon points="${cellGeometry.points}"></polygon>
+        <text x="${cellGeometry.labelX.toFixed(3)}" y="${cellGeometry.labelY.toFixed(3)}" fill="${color}">${number}</text>
+      </g>`;
+    })
+    .join("");
+
+  return `<div class="hex">
+    <svg viewBox="0 0 100 104" aria-label="蜂巢舒尔特数字盘">
+      ${cells}
     </svg>
   </div>`;
 }
@@ -564,14 +600,24 @@ function createCdpClient(url) {
   };
 }
 
-function createGrid(size, seed) {
+function createGrid(total, seed) {
   const random = mulberry32(seed);
-  const values = Array.from({ length: size * size }, (_, index) => index + 1);
+  const values = Array.from({ length: total }, (_, index) => index + 1);
   for (let index = values.length - 1; index > 0; index -= 1) {
     const swapIndex = Math.floor(random() * (index + 1));
     [values[index], values[swapIndex]] = [values[swapIndex], values[index]];
   }
   return values;
+}
+
+function getChallengeTotal(size, layout) {
+  return layout === "hex" ? 30 : size * size;
+}
+
+function getProjectLabel({ layout, size, total }) {
+  if (layout === "radial") return `圆盘舒尔特 ${total}`;
+  if (layout === "hex") return "蜂巢舒尔特 30";
+  return `舒尔特方格 ${size}×${size}`;
 }
 
 function mulberry32(seed) {
@@ -627,6 +673,52 @@ function getRadialGeometry(total) {
       });
     })
     .slice(0, total);
+}
+
+function getHexGeometry() {
+  const rows = 6;
+  const cols = 5;
+  const radius = 8.9;
+  const xStep = Math.sqrt(3) * radius;
+  const yStep = 1.5 * radius;
+  const rawCells = Array.from({ length: rows * cols }, (_, index) => {
+    const row = Math.floor(index / cols);
+    const col = index % cols;
+    return {
+      centerX: radius + col * xStep + (row % 2 === 1 ? xStep / 2 : 0),
+      centerY: radius + row * yStep,
+    };
+  });
+  const allPoints = rawCells.flatMap((cell) => getHexPoints(cell.centerX, cell.centerY, radius));
+  const minX = Math.min(...allPoints.map((point) => point.x));
+  const maxX = Math.max(...allPoints.map((point) => point.x));
+  const minY = Math.min(...allPoints.map((point) => point.y));
+  const maxY = Math.max(...allPoints.map((point) => point.y));
+  const scale = Math.min(94 / (maxX - minX), 96 / (maxY - minY));
+  const offsetX = (100 - (maxX - minX) * scale) / 2;
+  const offsetY = (104 - (maxY - minY) * scale) / 2;
+
+  return rawCells.map((cell) => {
+    const points = getHexPoints(cell.centerX, cell.centerY, radius).map((point) => ({
+      x: offsetX + (point.x - minX) * scale,
+      y: offsetY + (point.y - minY) * scale,
+    }));
+    return {
+      points: points.map((point) => `${point.x.toFixed(3)},${point.y.toFixed(3)}`).join(" "),
+      labelX: offsetX + (cell.centerX - minX) * scale,
+      labelY: offsetY + (cell.centerY - minY) * scale + 0.45,
+    };
+  });
+}
+
+function getHexPoints(centerX, centerY, radius) {
+  return Array.from({ length: 6 }, (_, index) => {
+    const angle = (Math.PI / 180) * (60 * index - 90);
+    return {
+      x: centerX + radius * Math.cos(angle),
+      y: centerY + radius * Math.sin(angle),
+    };
+  });
 }
 
 function polarToCartesian(center, radius, angleDegrees) {
