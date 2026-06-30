@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   DEFAULT_MODE,
-  CHALLENGE_LAYOUTS,
   CHALLENGE_ORDERS,
   COLOR_COUNTS,
   MODES,
@@ -33,6 +32,43 @@ import { createPromoVideo } from "./promoVideo";
 import { getDailyChallenge } from "./dailyChallenge";
 
 type Screen = "ready" | "playing" | "finished";
+type PlayStyleId = "grid" | "radial" | "radial-rotate";
+
+type PlayStyleOption = {
+  id: PlayStyleId;
+  label: string;
+  name: string;
+  description: string;
+  layout: ChallengeLayout;
+  rotation: RotationSpeed;
+};
+
+const PLAY_STYLES: PlayStyleOption[] = [
+  {
+    id: "grid",
+    label: "方格",
+    name: "标准方格",
+    description: "经典舒尔特训练",
+    layout: "grid",
+    rotation: "none",
+  },
+  {
+    id: "radial",
+    label: "圆盘",
+    name: "圆盘舒尔特",
+    description: "环形视觉搜索",
+    layout: "radial",
+    rotation: "none",
+  },
+  {
+    id: "radial-rotate",
+    label: "旋转圆盘",
+    name: "旋转圆盘",
+    description: "进阶节奏挑战",
+    layout: "radial",
+    rotation: "slow",
+  },
+];
 
 const INITIAL_SETTINGS = getInitialSettings();
 const DAILY_CHALLENGE = getDailyChallenge();
@@ -63,7 +99,7 @@ export default function App() {
   const total = mode.size * mode.size;
   const range = useMemo(() => getTargetRange(mode, order), [mode, order]);
   const activeOrder = CHALLENGE_ORDERS.find((item) => item.id === order) ?? CHALLENGE_ORDERS[0];
-  const activeLayout = CHALLENGE_LAYOUTS.find((item) => item.id === layout) ?? CHALLENGE_LAYOUTS[0];
+  const activePlayStyle = getActivePlayStyle(layout, rotation);
   const radialGeometry = useMemo(() => getRadialGeometry(total), [total]);
   const publishText = useMemo(
     () =>
@@ -124,6 +160,11 @@ export default function App() {
     setScreen("ready");
   }
 
+  function applyPlayStyle(style: PlayStyleOption) {
+    resetGame(mode, order, style.layout);
+    setRotation(style.rotation);
+  }
+
   function startGame() {
     setGrid(createGrid(mode.size));
     setTarget(getInitialTarget(mode, order));
@@ -176,9 +217,8 @@ export default function App() {
   function copyShareText() {
     if (!finishedRun) return;
     const finishedOrder = CHALLENGE_ORDERS.find((item) => item.id === finishedRun.order) ?? CHALLENGE_ORDERS[0];
-    const finishedLayout =
-      CHALLENGE_LAYOUTS.find((item) => item.id === finishedRun.layout) ?? CHALLENGE_LAYOUTS[0];
-    const text = `我完成了 GridFox ${finishedRun.mode.label} ${finishedLayout.name}${finishedOrder.name}专注力挑战，用时 ${formatTime(
+    const finishedStyle = getActivePlayStyle(finishedRun.layout, finishedRun.rotation);
+    const text = `我完成了 GridFox ${finishedRun.mode.label} ${finishedStyle.name}${finishedOrder.name}专注力挑战，用时 ${formatTime(
       finishedRun.elapsedMs,
     true,
     )}。来测测你的眼力和反应。`;
@@ -244,29 +284,28 @@ export default function App() {
           <section className="settings-panel compact" aria-label="玩法">
             <div className="settings-heading">
               <h2>玩法</h2>
-              <span>选择查找顺序</span>
+              <span>选择挑战形式</span>
             </div>
             <div className="play-mode-grid">
-              <div className="option-switch" aria-label="选择玩法">
-                {CHALLENGE_ORDERS.map((item) => (
+              <div className="play-style-grid" aria-label="选择玩法">
+                {PLAY_STYLES.map((item) => (
                   <button
-                    className={item.id === order ? "option-button active" : "option-button"}
+                    className={item.id === activePlayStyle.id ? "play-style-card active" : "play-style-card"}
                     key={item.id}
                     type="button"
-                    onClick={() => resetGame(mode, item.id, layout)}
+                    onClick={() => applyPlayStyle(item)}
                     disabled={screen === "playing"}
                   >
-                    {item.label}
+                    <strong>{item.label}</strong>
+                    <span>{item.description}</span>
                   </button>
                 ))}
               </div>
               <div className="play-mode-row">
                 <div>
-                  <strong>{activeOrder.name}</strong>
+                  <strong>{activePlayStyle.name}</strong>
                   <span>
-                    {activeLayout.name}
-                    {layout === "radial" && rotation !== "none" ? ` · ${getRotationLabel(rotation)}` : ""}，请从{" "}
-                    {range.start} 找到 {range.end}
+                    {activeOrder.name}，请从 {range.start} 找到 {range.end}
                   </span>
                 </div>
                 <span className="mode-badge">{mode.label}</span>
@@ -280,32 +319,16 @@ export default function App() {
               <span>尺寸、颜色和主题</span>
             </div>
             <div className="settings-grid">
-              <div className="setting-group wide">
-                <span>版式</span>
-                <div className="option-switch" aria-label="选择版式">
-                  {CHALLENGE_LAYOUTS.map((item) => (
-                    <button
-                      className={item.id === layout ? "option-button active" : "option-button"}
-                      key={item.id}
-                      type="button"
-                      onClick={() => resetGame(mode, order, item.id)}
-                      disabled={screen === "playing"}
-                    >
-                      {item.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
               <div className="setting-group">
-                <span>动态</span>
-                <div className="option-switch" aria-label="选择圆盘动态">
-                  {ROTATION_SPEEDS.map((item) => (
+                <span>查找顺序</span>
+                <div className="option-switch" aria-label="选择查找顺序">
+                  {CHALLENGE_ORDERS.map((item) => (
                     <button
-                      className={item.id === rotation ? "option-button active" : "option-button"}
+                      className={item.id === order ? "option-button active" : "option-button"}
                       key={item.id}
                       type="button"
-                      onClick={() => setRotation(item.id)}
-                      disabled={screen === "playing" || layout !== "radial"}
+                      onClick={() => resetGame(mode, item.id, layout)}
+                      disabled={screen === "playing"}
                     >
                       {item.label}
                     </button>
@@ -652,6 +675,12 @@ function getInitialSettings(): {
 
 function getRotationLabel(rotation: RotationSpeed): string {
   return ROTATION_SPEEDS.find((item) => item.id === rotation)?.name ?? "静态圆盘";
+}
+
+function getActivePlayStyle(layout: ChallengeLayout, rotation: RotationSpeed): PlayStyleOption {
+  if (layout === "grid") return PLAY_STYLES[0];
+  if (rotation !== "none") return PLAY_STYLES[2];
+  return PLAY_STYLES[1];
 }
 
 function getRadialRings(geometry: RadialCellGeometry[]): number[] {
