@@ -280,111 +280,94 @@ export default function App() {
           </button>
         </header>
 
-        <section className="settings-stack" aria-label="挑战设置">
-          <section className="settings-panel compact" aria-label="玩法">
-            <div className="settings-heading">
-              <h2>玩法</h2>
-              <span>选择挑战形式</span>
-            </div>
-            <div className="play-mode-grid">
-              <div className="play-style-grid" aria-label="选择玩法">
-                {PLAY_STYLES.map((item) => (
+        <section className="quick-setup" aria-label="挑战设置">
+          <div className="play-tabs" aria-label="选择玩法">
+            {PLAY_STYLES.map((item) => (
+              <button
+                className={item.id === activePlayStyle.id ? "play-tab active" : "play-tab"}
+                key={item.id}
+                type="button"
+                onClick={() => applyPlayStyle(item)}
+                disabled={screen === "playing"}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
+
+          <div className="quick-settings-grid">
+            <div className="quick-setting">
+              <span>顺序</span>
+              <div className="option-switch" aria-label="选择查找顺序">
+                {CHALLENGE_ORDERS.map((item) => (
                   <button
-                    className={item.id === activePlayStyle.id ? "play-style-card active" : "play-style-card"}
+                    className={item.id === order ? "option-button active" : "option-button"}
                     key={item.id}
                     type="button"
-                    onClick={() => applyPlayStyle(item)}
+                    onClick={() => resetGame(mode, item.id, layout)}
                     disabled={screen === "playing"}
                   >
-                    <strong>{item.label}</strong>
-                    <span>{item.description}</span>
+                    {item.label}
                   </button>
                 ))}
               </div>
-              <div className="play-mode-row">
-                <div>
-                  <strong>{activePlayStyle.name}</strong>
-                  <span>
-                    {activeOrder.name}，请从 {range.start} 找到 {range.end}
-                  </span>
-                </div>
-                <span className="mode-badge">{mode.label}</span>
+            </div>
+            <div className="quick-setting">
+              <span>尺寸</span>
+              <div className="option-switch" aria-label="选择方格尺寸">
+                {MODES.map((item) => (
+                  <button
+                    className={item.size === mode.size ? "option-button active" : "option-button"}
+                    key={item.size}
+                    type="button"
+                    onClick={() => resetGame(item, order, layout)}
+                    disabled={screen === "playing"}
+                  >
+                    {item.label}
+                  </button>
+                ))}
               </div>
             </div>
-          </section>
+            <div className="quick-setting">
+              <span>颜色</span>
+              <div className="option-switch" aria-label="选择数字颜色数量">
+                {COLOR_COUNTS.map((count) => (
+                  <button
+                    className={count === colorCount ? "option-button active" : "option-button"}
+                    key={count}
+                    type="button"
+                    onClick={() => setColorCount(count)}
+                    disabled={screen === "playing"}
+                  >
+                    {count}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="quick-setting">
+              <span>主题</span>
+              <div className="option-switch" aria-label="选择主题">
+                {THEMES.map((item) => (
+                  <button
+                    className={item.id === theme ? "option-button active" : "option-button"}
+                    key={item.id}
+                    type="button"
+                    onClick={() => setTheme(item.id)}
+                    disabled={screen === "playing"}
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
 
-          <section className="settings-panel" aria-label="基本设置">
-            <div className="settings-heading">
-              <h2>基本设置</h2>
-              <span>尺寸、颜色和主题</span>
-            </div>
-            <div className="settings-grid">
-              <div className="setting-group">
-                <span>查找顺序</span>
-                <div className="option-switch" aria-label="选择查找顺序">
-                  {CHALLENGE_ORDERS.map((item) => (
-                    <button
-                      className={item.id === order ? "option-button active" : "option-button"}
-                      key={item.id}
-                      type="button"
-                      onClick={() => resetGame(mode, item.id, layout)}
-                      disabled={screen === "playing"}
-                    >
-                      {item.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div className="setting-group">
-                <span>方格尺寸</span>
-                <div className="option-switch" aria-label="选择方格尺寸">
-                  {MODES.map((item) => (
-                    <button
-                      className={item.size === mode.size ? "option-button active" : "option-button"}
-                      key={item.size}
-                      type="button"
-                      onClick={() => resetGame(item, order, layout)}
-                      disabled={screen === "playing"}
-                    >
-                      {item.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div className="setting-group">
-                <span>颜色数量</span>
-                <div className="option-switch" aria-label="选择数字颜色数量">
-                  {COLOR_COUNTS.map((count) => (
-                    <button
-                      className={count === colorCount ? "option-button active" : "option-button"}
-                      key={count}
-                      type="button"
-                      onClick={() => setColorCount(count)}
-                      disabled={screen === "playing"}
-                    >
-                      {count}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div className="setting-group wide">
-                <span>主题</span>
-                <div className="option-switch" aria-label="选择主题">
-                  {THEMES.map((item) => (
-                    <button
-                      className={item.id === theme ? "option-button active" : "option-button"}
-                      key={item.id}
-                      type="button"
-                      onClick={() => setTheme(item.id)}
-                      disabled={screen === "playing"}
-                    >
-                      {item.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </section>
+          <div className="play-summary">
+            <strong>{activePlayStyle.name}</strong>
+            <span>
+              {activeOrder.name} · {mode.label} · {colorCount} 色
+            </span>
+          </div>
         </section>
 
         <div className="title-block">
