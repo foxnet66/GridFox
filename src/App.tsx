@@ -741,9 +741,9 @@ function getTapPosition(
 function getHexGeometry(): HexCellGeometry[] {
   const rows = 6;
   const cols = 5;
-  const radius = 8.65;
-  const xStep = radius * 1.52;
-  const yStep = Math.sqrt(3) * radius;
+  const radius = 8.9;
+  const xStep = Math.sqrt(3) * radius;
+  const yStep = 1.5 * radius;
   const rawCells = Array.from({ length: rows * cols }, (_, index) => {
     const row = Math.floor(index / cols);
     const col = index % cols;
@@ -780,7 +780,7 @@ function getHexGeometry(): HexCellGeometry[] {
 
 function getHexPoints(centerX: number, centerY: number, radius: number): Array<{ x: number; y: number }> {
   return Array.from({ length: 6 }, (_, index) => {
-    const angle = (Math.PI / 180) * (60 * index);
+    const angle = (Math.PI / 180) * (60 * index - 90);
     return {
       x: centerX + radius * Math.cos(angle),
       y: centerY + radius * Math.sin(angle),
