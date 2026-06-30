@@ -80,8 +80,8 @@ const PLAY_STYLES: PlayStyleOption[] = [
   {
     id: "hex",
     label: "蜂巢",
-    name: "倒序蜂巢",
-    description: "从 30 找到 1",
+    name: "蜂巢舒尔特",
+    description: "从 1 找到 30",
     layout: "hex",
     rotation: "none",
   },
@@ -182,7 +182,7 @@ export default function App() {
   }
 
   function applyPlayStyle(style: PlayStyleOption) {
-    resetGame(mode, style.layout === "hex" ? "desc" : order, style.layout);
+    resetGame(mode, style.layout === "hex" ? "asc" : order, style.layout);
     setRotation(style.rotation);
   }
 
@@ -696,7 +696,7 @@ function getInitialSettings(): {
   const mode = MODES.find((item) => item.size === Number(params.get("size"))) ?? DEFAULT_MODE;
   const layoutParam = params.get("layout");
   const layout = layoutParam === "hex" ? "hex" : layoutParam === "radial" ? "radial" : "grid";
-  const order = params.get("order") === "desc" || layout === "hex" ? "desc" : "asc";
+  const order = params.get("order") === "desc" ? "desc" : "asc";
   const rotationParam = params.get("rotation");
   const rotation =
     layout === "radial" && ROTATION_SPEEDS.some((item) => item.id === rotationParam)
