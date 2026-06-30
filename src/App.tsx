@@ -7,9 +7,11 @@ import {
   ROTATION_SPEEDS,
   THEMES,
   createGrid,
+  createNumbers,
   formatTime,
   getAccentClass,
   getBestTime,
+  getChallengeTotal,
   getInitialTarget,
   getNextTarget,
   describeRadialSegment,
@@ -32,7 +34,14 @@ import { createPromoVideo } from "./promoVideo";
 import { getDailyChallenge } from "./dailyChallenge";
 
 type Screen = "ready" | "playing" | "finished";
-type PlayStyleId = "grid" | "radial" | "radial-rotate";
+type PlayStyleId = "grid" | "radial" | "radial-rotate" | "hex";
+type HexCellGeometry = {
+  row: number;
+  col: number;
+  points: string;
+  labelX: number;
+  labelY: number;
+};
 
 type PlayStyleOption = {
   id: PlayStyleId;
@@ -68,6 +77,14 @@ const PLAY_STYLES: PlayStyleOption[] = [
     layout: "radial",
     rotation: "slow",
   },
+  {
+    id: "hex",
+    label: "蜂巢",
+    name: "倒序蜂巢",
+    description: "从 30 找到 1",
+    layout: "hex",
+    rotation: "none",
+  },
 ];
 
 const INITIAL_SETTINGS = getInitialSettings();
@@ -79,8 +96,10 @@ export default function App() {
   const [layout, setLayout] = useState<ChallengeLayout>(INITIAL_SETTINGS.layout);
   const [rotation, setRotation] = useState<RotationSpeed>(INITIAL_SETTINGS.rotation);
   const [screen, setScreen] = useState<Screen>("ready");
-  const [grid, setGrid] = useState(() => createGrid(INITIAL_SETTINGS.mode.size));
-  const [target, setTarget] = useState(() => getInitialTarget(INITIAL_SETTINGS.mode, INITIAL_SETTINGS.order));
+  const [grid, setGrid] = useState(() => createChallengeNumbers(INITIAL_SETTINGS.mode, INITIAL_SETTINGS.layout));
+  const [target, setTarget] = useState(() =>
+    getInitialTarget(INITIAL_SETTINGS.mode, INITIAL_SETTINGS.order, INITIAL_SETTINGS.layout),
+  );
   const [startedAt, setStartedAt] = useState<number | null>(null);
   const [elapsedMs, setElapsedMs] = useState(0);
   const [taps, setTaps] = useState<TapRecord[]>([]);
@@ -96,11 +115,12 @@ export default function App() {
   const [showPublishAssistant, setShowPublishAssistant] = useState(false);
   const boardRef = useRef<HTMLDivElement | null>(null);
 
-  const total = mode.size * mode.size;
-  const range = useMemo(() => getTargetRange(mode, order), [mode, order]);
+  const total = getChallengeTotal(mode, layout);
+  const range = useMemo(() => getTargetRange(mode, order, layout), [layout, mode, order]);
   const activeOrder = CHALLENGE_ORDERS.find((item) => item.id === order) ?? CHALLENGE_ORDERS[0];
   const activePlayStyle = getActivePlayStyle(layout, rotation);
   const radialGeometry = useMemo(() => getRadialGeometry(total), [total]);
+  const hexGeometry = useMemo(() => getHexGeometry(), []);
   const publishText = useMemo(
     () =>
       buildXiaohongshuPost({
@@ -151,8 +171,9 @@ export default function App() {
     setOrder(nextOrder);
     setLayout(nextLayout);
     if (nextLayout === "grid") setRotation("none");
-    setGrid(createGrid(nextMode.size));
-    setTarget(getInitialTarget(nextMode, nextOrder));
+    if (nextLayout === "hex") setRotation("none");
+    setGrid(createChallengeNumbers(nextMode, nextLayout));
+    setTarget(getInitialTarget(nextMode, nextOrder, nextLayout));
     setStartedAt(null);
     setElapsedMs(0);
     setTaps([]);
@@ -161,13 +182,13 @@ export default function App() {
   }
 
   function applyPlayStyle(style: PlayStyleOption) {
-    resetGame(mode, order, style.layout);
+    resetGame(mode, style.layout === "hex" ? "desc" : order, style.layout);
     setRotation(style.rotation);
   }
 
   function startGame() {
-    setGrid(createGrid(mode.size));
-    setTarget(getInitialTarget(mode, order));
+    setGrid(createChallengeNumbers(mode, layout));
+    setTarget(getInitialTarget(mode, order, layout));
     setStartedAt(performance.now());
     setElapsedMs(0);
     setTaps([]);
@@ -180,8 +201,7 @@ export default function App() {
 
     const now = performance.now();
     const currentElapsed = now - startedAt;
-    const row = Math.floor(index / mode.size);
-    const col = index % mode.size;
+    const { row, col } = getTapPosition(index, mode, layout);
     const correct = number === target;
     const nextTap: TapRecord = { number, target, elapsedMs: currentElapsed, row, col, correct };
     const nextTaps = [...taps, nextTap];
@@ -321,7 +341,7 @@ export default function App() {
                     key={item.size}
                     type="button"
                     onClick={() => resetGame(item, order, layout)}
-                    disabled={screen === "playing"}
+                    disabled={screen === "playing" || layout === "hex"}
                   >
                     {item.label}
                   </button>
@@ -365,7 +385,7 @@ export default function App() {
           <div className="play-summary">
             <strong>{activePlayStyle.name}</strong>
             <span>
-              {activeOrder.name} · {mode.label} · {colorCount} 色
+              {activeOrder.name} · {getSizeLabel(mode, layout)} · {colorCount} 色
             </span>
           </div>
         </section>
@@ -443,7 +463,7 @@ export default function App() {
               );
             })}
           </div>
-        ) : (
+        ) : layout === "radial" ? (
           <div
             className={`radial-board ${rotation !== "none" ? "is-rotating" : ""}`}
             ref={boardRef}
@@ -486,6 +506,37 @@ export default function App() {
                   })}
                 </g>
               ))}
+            </svg>
+          </div>
+        ) : (
+          <div className="hex-board" ref={boardRef}>
+            <svg viewBox="0 0 100 104" role="group" aria-label="蜂巢舒尔特数字盘">
+              {grid.map((number, index) => {
+                const geometry = hexGeometry[index];
+                const completed = screen === "playing" && (order === "desc" ? number > target : number < target);
+                return (
+                  <g
+                    className={`hex-cell ${getAccentClass(number, colorCount)} ${completed ? "completed" : ""}`}
+                    key={`${number}-${index}`}
+                    role="button"
+                    tabIndex={screen === "playing" ? 0 : -1}
+                    aria-label={`数字 ${number}`}
+                    onClick={() => handleCellClick(number, index)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        handleCellClick(number, index);
+                      }
+                    }}
+                    aria-disabled={screen !== "playing"}
+                  >
+                    <polygon points={geometry.points} />
+                    <text x={geometry.labelX} y={geometry.labelY}>
+                      {number}
+                    </text>
+                  </g>
+                );
+              })}
             </svg>
           </div>
         )}
@@ -542,9 +593,9 @@ export default function App() {
                   className="secondary-action"
                   type="button"
                   onClick={handleCreatePromoVideo}
-                  disabled={promoStatus === "recording"}
+                  disabled={promoStatus === "recording" || layout === "hex"}
                 >
-                  {promoStatus === "recording" ? "录制中..." : "生成视频"}
+                  {layout === "hex" ? "蜂巢暂不支持" : promoStatus === "recording" ? "录制中..." : "生成视频"}
                 </button>
                 {promoStatus === "done" && promoUrl && (
                   <a
@@ -593,7 +644,7 @@ function buildXiaohongshuPost({
   dailyDay: number | null;
 }): string {
   const isRotating = layout === "radial" && rotation !== "none";
-  const layoutName = isRotating ? "旋转圆盘舒尔特" : layout === "radial" ? "圆盘舒尔特" : "舒尔特方格";
+  const layoutName = layout === "hex" ? "蜂巢舒尔特" : isRotating ? "旋转圆盘舒尔特" : layout === "radial" ? "圆盘舒尔特" : "舒尔特方格";
   const orderName = order === "desc" ? "倒序挑战" : "计时挑战";
   const rangeText = `${range.start} 找到 ${range.end}`;
   const title = dailyDay
@@ -606,6 +657,8 @@ function buildXiaohongshuPost({
   const modeLine =
     isRotating
       ? `${getRotationLabel(rotation)}圆盘会增加视觉追踪难度，适合进阶挑战。`
+      : layout === "hex"
+      ? "蜂巢排列会改变横竖扫描习惯，倒序查找更容易打乱节奏。"
       : layout === "radial"
       ? "圆盘排列会更考验视觉搜索和注意力稳定性。"
       : `${mode.label} 方格适合每天花两分钟练一轮。`;
@@ -617,7 +670,7 @@ function buildXiaohongshuPost({
     "#专注力游戏",
     "#提升注意力",
     "#计时挑战",
-    isRotating ? "#旋转舒尔特" : layout === "radial" ? "#圆盘舒尔特" : "#舒尔特训练",
+    layout === "hex" ? "#蜂巢舒尔特" : isRotating ? "#旋转舒尔特" : layout === "radial" ? "#圆盘舒尔特" : "#舒尔特训练",
   ].join(" ");
 
   return `${title}
@@ -641,8 +694,9 @@ function getInitialSettings(): {
 } {
   const params = new URLSearchParams(window.location.search);
   const mode = MODES.find((item) => item.size === Number(params.get("size"))) ?? DEFAULT_MODE;
-  const order = params.get("order") === "desc" ? "desc" : "asc";
-  const layout = params.get("layout") === "radial" ? "radial" : "grid";
+  const layoutParam = params.get("layout");
+  const layout = layoutParam === "hex" ? "hex" : layoutParam === "radial" ? "radial" : "grid";
+  const order = params.get("order") === "desc" || layout === "hex" ? "desc" : "asc";
   const rotationParam = params.get("rotation");
   const rotation =
     layout === "radial" && ROTATION_SPEEDS.some((item) => item.id === rotationParam)
@@ -662,8 +716,76 @@ function getRotationLabel(rotation: RotationSpeed): string {
 
 function getActivePlayStyle(layout: ChallengeLayout, rotation: RotationSpeed): PlayStyleOption {
   if (layout === "grid") return PLAY_STYLES[0];
+  if (layout === "hex") return PLAY_STYLES[3];
   if (rotation !== "none") return PLAY_STYLES[2];
   return PLAY_STYLES[1];
+}
+
+function createChallengeNumbers(mode: GameMode, layout: ChallengeLayout): number[] {
+  return layout === "hex" ? createNumbers(getChallengeTotal(mode, layout)) : createGrid(mode.size);
+}
+
+function getSizeLabel(mode: GameMode, layout: ChallengeLayout): string {
+  return layout === "hex" ? "30格" : mode.label;
+}
+
+function getTapPosition(
+  index: number,
+  mode: GameMode,
+  layout: ChallengeLayout,
+): { row: number; col: number } {
+  if (layout === "hex") return { row: Math.floor(index / 5), col: index % 5 };
+  return { row: Math.floor(index / mode.size), col: index % mode.size };
+}
+
+function getHexGeometry(): HexCellGeometry[] {
+  const rows = 6;
+  const cols = 5;
+  const radius = 8.65;
+  const xStep = radius * 1.52;
+  const yStep = Math.sqrt(3) * radius;
+  const rawCells = Array.from({ length: rows * cols }, (_, index) => {
+    const row = Math.floor(index / cols);
+    const col = index % cols;
+    return {
+      row,
+      col,
+      centerX: radius + col * xStep + (row % 2 === 1 ? xStep / 2 : 0),
+      centerY: radius + row * yStep,
+    };
+  });
+  const allPoints = rawCells.flatMap((cell) => getHexPoints(cell.centerX, cell.centerY, radius));
+  const minX = Math.min(...allPoints.map((point) => point.x));
+  const maxX = Math.max(...allPoints.map((point) => point.x));
+  const minY = Math.min(...allPoints.map((point) => point.y));
+  const maxY = Math.max(...allPoints.map((point) => point.y));
+  const scale = Math.min(94 / (maxX - minX), 96 / (maxY - minY));
+  const offsetX = (100 - (maxX - minX) * scale) / 2;
+  const offsetY = (104 - (maxY - minY) * scale) / 2;
+
+  return rawCells.map((cell) => {
+    const points = getHexPoints(cell.centerX, cell.centerY, radius).map((point) => ({
+      x: offsetX + (point.x - minX) * scale,
+      y: offsetY + (point.y - minY) * scale,
+    }));
+    return {
+      row: cell.row,
+      col: cell.col,
+      points: points.map((point) => `${point.x.toFixed(3)},${point.y.toFixed(3)}`).join(" "),
+      labelX: offsetX + (cell.centerX - minX) * scale,
+      labelY: offsetY + (cell.centerY - minY) * scale + 0.45,
+    };
+  });
+}
+
+function getHexPoints(centerX: number, centerY: number, radius: number): Array<{ x: number; y: number }> {
+  return Array.from({ length: 6 }, (_, index) => {
+    const angle = (Math.PI / 180) * (60 * index);
+    return {
+      x: centerX + radius * Math.cos(angle),
+      y: centerY + radius * Math.sin(angle),
+    };
+  });
 }
 
 function getRadialRings(geometry: RadialCellGeometry[]): number[] {

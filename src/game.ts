@@ -12,7 +12,7 @@ export type ChallengeOrderOption = {
   name: string;
 };
 
-export type ChallengeLayout = "grid" | "radial";
+export type ChallengeLayout = "grid" | "radial" | "hex";
 
 export type ChallengeLayoutOption = {
   id: ChallengeLayout;
@@ -62,6 +62,8 @@ export const DEFAULT_MODE: GameMode = {
   title: "按顺序从 1 找到 36",
 };
 
+export const HEX_TOTAL = 30;
+
 export const MODES: GameMode[] = [
   { size: 4, label: "4x4", title: "按顺序从 1 找到 16" },
   { size: 5, label: "5x5", title: "按顺序从 1 找到 25" },
@@ -78,6 +80,7 @@ export const CHALLENGE_ORDERS: ChallengeOrderOption[] = [
 export const CHALLENGE_LAYOUTS: ChallengeLayoutOption[] = [
   { id: "grid", label: "方格", name: "标准方格" },
   { id: "radial", label: "圆盘", name: "圆盘舒尔特" },
+  { id: "hex", label: "蜂巢", name: "蜂巢舒尔特" },
 ];
 
 export const ROTATION_SPEEDS: RotationSpeedOption[] = [
@@ -93,7 +96,11 @@ export const THEMES: ThemeOption[] = [
 ];
 
 export function createGrid(size: number): number[] {
-  const values = Array.from({ length: size * size }, (_, index) => index + 1);
+  return createNumbers(size * size);
+}
+
+export function createNumbers(total: number): number[] {
+  const values = Array.from({ length: total }, (_, index) => index + 1);
 
   for (let index = values.length - 1; index > 0; index -= 1) {
     const swapIndex = Math.floor(Math.random() * (index + 1));
@@ -132,8 +139,12 @@ export function getAccentClass(number: number, colorCount: ColorCount): string {
   return accents[number % colorCount];
 }
 
-export function getInitialTarget(mode: GameMode, order: ChallengeOrder): number {
-  return order === "desc" ? mode.size * mode.size : 1;
+export function getChallengeTotal(mode: GameMode, layout: ChallengeLayout): number {
+  return layout === "hex" ? HEX_TOTAL : mode.size * mode.size;
+}
+
+export function getInitialTarget(mode: GameMode, order: ChallengeOrder, layout: ChallengeLayout = "grid"): number {
+  return order === "desc" ? getChallengeTotal(mode, layout) : 1;
 }
 
 export function getNextTarget(target: number, order: ChallengeOrder): number {
@@ -144,8 +155,12 @@ export function isFinalTarget(target: number, order: ChallengeOrder, total: numb
   return order === "desc" ? target === 1 : target === total;
 }
 
-export function getTargetRange(mode: GameMode, order: ChallengeOrder): { start: number; end: number } {
-  const total = mode.size * mode.size;
+export function getTargetRange(
+  mode: GameMode,
+  order: ChallengeOrder,
+  layout: ChallengeLayout = "grid",
+): { start: number; end: number } {
+  const total = getChallengeTotal(mode, layout);
   return order === "desc" ? { start: total, end: 1 } : { start: 1, end: total };
 }
 
