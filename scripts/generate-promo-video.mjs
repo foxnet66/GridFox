@@ -73,7 +73,8 @@ const colorCount = clamp(Number(args.colors ?? dailyChallenge?.colors ?? 4), 1, 
 const size = clamp(Number(args.size ?? dailyChallenge?.size ?? 6), 4, 6);
 const order = String(args.order ?? dailyChallenge?.order ?? "asc") === "desc" ? "desc" : "asc";
 const layoutArg = String(args.layout ?? dailyChallenge?.layout ?? "grid");
-const layout = layoutArg === "hex" ? "hex" : layoutArg === "radial" ? "radial" : "grid";
+const layout =
+  layoutArg === "mosaic" ? "mosaic" : layoutArg === "hex" ? "hex" : layoutArg === "radial" ? "radial" : "grid";
 const rotation = layout === "radial" && ["slow", "fast"].includes(String(args.rotation)) ? String(args.rotation) : "none";
 const captureFps = rotation === "none" ? 1 : clamp(Number(args["capture-fps"] ?? 12), 2, 24);
 const seed = Number.isFinite(Number(args.seed)) ? Number(args.seed) : (dailyChallenge?.seed ?? Date.now());
@@ -338,14 +339,16 @@ function renderChallengeHtml({ elapsedMs, grid, theme, colorCount, size, order, 
       ? renderRadialBoard({ grid, theme, colorCount, rotationDeg: getRotationDegrees(rotation, elapsedMs) })
       : layout === "hex"
         ? renderHexBoard({ grid, theme, colorCount })
-      : `<div class="grid">${grid
-          .map((number, index) => {
-            const row = Math.floor(index / size);
-            const col = index % size;
-            const color = theme.colors[number % colorCount];
-            return `<div class="cell" style="left:${col * cellSize}px;top:${row * cellSize}px;color:${color}">${number}</div>`;
-          })
-          .join("")}</div>`;
+        : layout === "mosaic"
+          ? renderMosaicBoard({ grid, theme, colorCount })
+          : `<div class="grid">${grid
+              .map((number, index) => {
+                const row = Math.floor(index / size);
+                const col = index % size;
+                const color = theme.colors[number % colorCount];
+                return `<div class="cell" style="left:${col * cellSize}px;top:${row * cellSize}px;color:${color}">${number}</div>`;
+              })
+              .join("")}</div>`;
 
   return `<!doctype html>
 <html lang="zh-CN">
@@ -391,8 +394,13 @@ function renderChallengeHtml({ elapsedMs, grid, theme, colorCount, size, order, 
         position: absolute; left: 76px; top: 548px; width: 928px; height: 965px;
         filter: drop-shadow(0 14px 34px rgba(24, 33, 47, 0.1));
       }
+      .mosaic {
+        position: absolute; left: 76px; top: 548px; width: 928px; height: 965px;
+        filter: drop-shadow(0 14px 34px rgba(24, 33, 47, 0.1));
+      }
       .radial svg { display: block; width: 100%; height: 100%; overflow: visible; }
       .hex svg { display: block; width: 100%; height: 100%; overflow: visible; }
+      .mosaic svg { display: block; width: 100%; height: 100%; overflow: visible; }
       .radial path { fill: white; stroke: ${theme.grid}; stroke-width: 0.42; }
       .radial .center { fill: ${theme.paper}; stroke: ${theme.grid}; stroke-width: 0.6; }
       .radial text {
@@ -403,6 +411,11 @@ function renderChallengeHtml({ elapsedMs, grid, theme, colorCount, size, order, 
       .hex text {
         dominant-baseline: middle; text-anchor: middle;
         font-size: 7.8px; font-weight: 950;
+      }
+      .mosaic polygon { fill: white; stroke: ${theme.grid}; stroke-width: 0.55; }
+      .mosaic text {
+        dominant-baseline: middle; text-anchor: middle;
+        font-size: 7.1px; font-weight: 950;
       }
       .cell {
         position: absolute; width: ${cellSize}px; height: ${cellSize}px;
@@ -429,7 +442,9 @@ function renderChallengeHtml({ elapsedMs, grid, theme, colorCount, size, order, 
             ? "圆盘舒尔特挑战"
             : layout === "hex"
               ? "蜂巢舒尔特挑战"
-            : "舒尔特方格挑战"
+              : layout === "mosaic"
+                ? "变形舒尔特挑战"
+                : "舒尔特方格挑战"
       }</div>
       <div class="title">请按顺序从 <span>${range.start}</span> 找到 <span>${range.end}</span></div>
       <div class="subtitle">从 ${range.start} 到 ${range.end}，看看你需要多久</div>
@@ -488,6 +503,26 @@ function renderHexBoard({ grid, theme, colorCount }) {
 
   return `<div class="hex">
     <svg viewBox="0 0 100 104" aria-label="蜂巢舒尔特数字盘">
+      ${cells}
+    </svg>
+  </div>`;
+}
+
+function renderMosaicBoard({ grid, theme, colorCount }) {
+  const geometry = getMosaicGeometry();
+  const cells = grid
+    .map((number, index) => {
+      const cellGeometry = geometry[index];
+      const color = theme.colors[number % colorCount];
+      return `<g>
+        <polygon points="${cellGeometry.points}"></polygon>
+        <text x="${cellGeometry.labelX.toFixed(3)}" y="${cellGeometry.labelY.toFixed(3)}" fill="${color}">${number}</text>
+      </g>`;
+    })
+    .join("");
+
+  return `<div class="mosaic">
+    <svg viewBox="0 0 100 104" aria-label="变形舒尔特数字盘">
       ${cells}
     </svg>
   </div>`;
@@ -611,12 +646,13 @@ function createGrid(total, seed) {
 }
 
 function getChallengeTotal(size, layout) {
-  return layout === "hex" ? 30 : size * size;
+  return layout === "hex" || layout === "mosaic" ? 30 : size * size;
 }
 
 function getProjectLabel({ layout, size, total }) {
   if (layout === "radial") return `圆盘舒尔特 ${total}`;
   if (layout === "hex") return "蜂巢舒尔特 30";
+  if (layout === "mosaic") return "变形舒尔特 30";
   return `舒尔特方格 ${size}×${size}`;
 }
 
@@ -717,6 +753,83 @@ function getHexPoints(centerX, centerY, radius) {
     return {
       x: centerX + radius * Math.cos(angle),
       y: centerY + radius * Math.sin(angle),
+    };
+  });
+}
+
+function getMosaicGeometry() {
+  const rows = 6;
+  const cols = 5;
+  const jitter = [
+    [0, 0],
+    [-1.4, 1.2],
+    [1.1, -0.8],
+    [-0.8, 1.4],
+    [1.2, -1.1],
+    [0, 0],
+    [0, 0],
+    [1.5, -1.2],
+    [-1.2, 1.3],
+    [1.4, 0.9],
+    [-1.1, -1.4],
+    [0, 0],
+    [0, 0],
+    [-1.1, 1.5],
+    [1.6, -1.1],
+    [-1.5, 0.8],
+    [1.1, 1.4],
+    [0, 0],
+    [0, 0],
+    [1.3, 1.1],
+    [-1.4, -1.3],
+    [1.2, 1.5],
+    [-1.6, -0.9],
+    [0, 0],
+    [0, 0],
+    [-1.5, -1.1],
+    [1.1, 1.4],
+    [-1.2, -1.5],
+    [1.5, 1.1],
+    [0, 0],
+    [0, 0],
+    [1.2, -1.4],
+    [-1.6, 1.1],
+    [1.5, -0.8],
+    [-1.1, 1.5],
+    [0, 0],
+    [0, 0],
+    [0, 0],
+    [0, 0],
+    [0, 0],
+    [0, 0],
+    [0, 0],
+  ];
+
+  const points = Array.from({ length: rows + 1 }, (_, row) =>
+    Array.from({ length: cols + 1 }, (_, col) => {
+      const baseX = 2.5 + (95 / cols) * col;
+      const baseY = 3.5 + (97 / rows) * row;
+      const isEdge = row === 0 || row === rows || col === 0 || col === cols;
+      const [dx, dy] = isEdge ? [0, 0] : jitter[row * (cols + 1) + col] ?? [0, 0];
+      return { x: baseX + dx * 1.75, y: baseY + dy * 1.75 };
+    }),
+  );
+
+  return Array.from({ length: rows * cols }, (_, index) => {
+    const row = Math.floor(index / cols);
+    const col = index % cols;
+    const corners = [
+      points[row][col],
+      points[row][col + 1],
+      points[row + 1][col + 1],
+      points[row + 1][col],
+    ];
+    const labelX = corners.reduce((sum, point) => sum + point.x, 0) / corners.length;
+    const labelY = corners.reduce((sum, point) => sum + point.y, 0) / corners.length + 0.55;
+    return {
+      points: corners.map((point) => `${point.x.toFixed(3)},${point.y.toFixed(3)}`).join(" "),
+      labelX,
+      labelY,
     };
   });
 }
