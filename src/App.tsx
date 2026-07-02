@@ -904,11 +904,11 @@ function getMosaicGeometry(): MosaicCellGeometry[] {
 
   const points = Array.from({ length: rows + 1 }, (_, row) =>
     Array.from({ length: cols + 1 }, (_, col) => {
-      const baseX = 3 + (94 / cols) * col;
-      const baseY = 4 + (96 / rows) * row;
+      const baseX = 2.5 + (95 / cols) * col;
+      const baseY = 3.5 + (97 / rows) * row;
       const isEdge = row === 0 || row === rows || col === 0 || col === cols;
       const [dx, dy] = isEdge ? [0, 0] : jitter[row * (cols + 1) + col] ?? [0, 0];
-      return { x: baseX + dx, y: baseY + dy };
+      return { x: baseX + dx * 1.75, y: baseY + dy * 1.75 };
     }),
   );
 
