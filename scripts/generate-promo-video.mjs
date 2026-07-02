@@ -4,14 +4,97 @@ import { dirname, resolve } from "node:path";
 import { spawn } from "node:child_process";
 import { getDailyChallenge } from "./daily-challenge.mjs";
 
-const WIDTH = 1080;
-const HEIGHT = 1920;
 const FPS = 30;
 const INTRO_SECONDS = 3;
 const ROOT = resolve(new URL("..", import.meta.url).pathname);
 const CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
 const FFMPEG = "/opt/homebrew/bin/ffmpeg";
 const DEFAULT_OUTPUT = resolve(ROOT, "dist/gridfox-xiaohongshu.mp4");
+
+const canvasProfiles = {
+  "9:16": {
+    width: 1080,
+    height: 1920,
+    intro: {
+      ghostLeft: 126,
+      ghostTop: 512,
+      ghostSize: 828,
+      titleTop: 232,
+      titleFont: 86,
+      projectTop: 358,
+      projectFont: 46,
+      ringLeft: 340,
+      ringTop: 690,
+      ringSize: 400,
+      countTop: 744,
+      countFont: 228,
+      readyTop: 1148,
+      readyFont: 42,
+      creditTop: 1668,
+      creditFont: 34,
+    },
+    challenge: {
+      brandTop: 86,
+      brandFont: 46,
+      titleTop: 178,
+      titleFont: 78,
+      subtitleTop: 296,
+      subtitleFont: 38,
+      timerTop: 370,
+      timerFont: 78,
+      boardLeft: 76,
+      boardTop: 540,
+      boardSize: 928,
+      tallBoardTop: 548,
+      tallBoardHeight: 965,
+      promptTop: 1548,
+      promptFont: 48,
+      creditTop: 1648,
+      creditFont: 34,
+    },
+  },
+  "3:4": {
+    width: 1080,
+    height: 1440,
+    intro: {
+      ghostLeft: 160,
+      ghostTop: 352,
+      ghostSize: 760,
+      titleTop: 130,
+      titleFont: 78,
+      projectTop: 238,
+      projectFont: 42,
+      ringLeft: 370,
+      ringTop: 482,
+      ringSize: 340,
+      countTop: 528,
+      countFont: 190,
+      readyTop: 880,
+      readyFont: 38,
+      creditTop: 1272,
+      creditFont: 32,
+    },
+    challenge: {
+      brandTop: 54,
+      brandFont: 42,
+      titleTop: 126,
+      titleFont: 70,
+      subtitleTop: 226,
+      subtitleFont: 34,
+      timerTop: 284,
+      timerFont: 72,
+      boardLeft: 120,
+      boardTop: 410,
+      boardSize: 840,
+      tallBoardTop: 414,
+      tallBoardHeight: 874,
+      promptTop: 1310,
+      promptFont: 40,
+      creditTop: 1362,
+      creditFont: 30,
+    },
+  },
+};
 
 const musicProfiles = {
   none: null,
@@ -67,6 +150,10 @@ const themes = {
 
 const args = parseArgs(process.argv.slice(2));
 const dailyChallenge = args.daily === true || args.daily === "true" ? getDailyChallenge() : null;
+const aspect = String(args.aspect ?? "9:16");
+const canvas = canvasProfiles[aspect] ?? canvasProfiles["9:16"];
+const WIDTH = canvas.width;
+const HEIGHT = canvas.height;
 const duration = clamp(Number(args.duration ?? 120), 1, 600);
 const themeName = String(args.theme ?? dailyChallenge?.theme ?? "fresh");
 const colorCount = clamp(Number(args.colors ?? dailyChallenge?.colors ?? 4), 1, 8);
@@ -261,6 +348,7 @@ function writeAscii(buffer, offset, value) {
 
 function renderIntroHtml({ countdown, theme, size, layout }) {
   const total = getChallengeTotal(size, layout);
+  const metrics = canvas.intro;
 
   return `<!doctype html>
 <html lang="zh-CN">
@@ -278,39 +366,41 @@ function renderIntroHtml({ countdown, theme, size, layout }) {
       }
       .stage { position: relative; width: ${WIDTH}px; height: ${HEIGHT}px; color: ${theme.ink}; }
       .ghost-grid {
-        position: absolute; left: 126px; top: 512px; width: 828px; height: 828px;
+        position: absolute; left: ${metrics.ghostLeft}px; top: ${metrics.ghostTop}px;
+        width: ${metrics.ghostSize}px; height: ${metrics.ghostSize}px;
         opacity: 0.16;
         background:
           linear-gradient(${theme.grid} 2px, transparent 2px),
           linear-gradient(90deg, ${theme.grid} 2px, transparent 2px);
-        background-size: ${828 / size}px ${828 / size}px;
+        background-size: ${metrics.ghostSize / size}px ${metrics.ghostSize / size}px;
         border: 2px solid ${theme.grid};
         border-radius: 22px;
       }
       .title {
-        position: absolute; top: 232px; left: 0; width: 100%;
-        text-align: center; color: ${theme.ink}; font-size: 86px; font-weight: 950;
+        position: absolute; top: ${metrics.titleTop}px; left: 0; width: 100%;
+        text-align: center; color: ${theme.ink}; font-size: ${metrics.titleFont}px; font-weight: 950;
       }
       .project {
-        position: absolute; top: 358px; left: 0; width: 100%;
-        text-align: center; color: ${theme.primary}; font-size: 46px; font-weight: 900;
+        position: absolute; top: ${metrics.projectTop}px; left: 0; width: 100%;
+        text-align: center; color: ${theme.primary}; font-size: ${metrics.projectFont}px; font-weight: 900;
       }
       .ring {
-        position: absolute; left: 340px; top: 690px; width: 400px; height: 400px;
+        position: absolute; left: ${metrics.ringLeft}px; top: ${metrics.ringTop}px;
+        width: ${metrics.ringSize}px; height: ${metrics.ringSize}px;
         border: 12px solid ${theme.grid}; border-top-color: ${theme.accent};
         border-radius: 50%;
       }
       .count {
-        position: absolute; top: 744px; left: 0; width: 100%;
-        text-align: center; color: ${theme.accent}; font-size: 228px; font-weight: 950;
+        position: absolute; top: ${metrics.countTop}px; left: 0; width: 100%;
+        text-align: center; color: ${theme.accent}; font-size: ${metrics.countFont}px; font-weight: 950;
       }
       .ready {
-        position: absolute; top: 1148px; left: 0; width: 100%;
-        text-align: center; color: ${theme.muted}; font-size: 42px; font-weight: 850;
+        position: absolute; top: ${metrics.readyTop}px; left: 0; width: 100%;
+        text-align: center; color: ${theme.muted}; font-size: ${metrics.readyFont}px; font-weight: 850;
       }
       .credit {
-        position: absolute; top: 1668px; left: 0; width: 100%;
-        text-align: center; color: ${theme.muted}; font-size: 34px; font-weight: 800;
+        position: absolute; top: ${metrics.creditTop}px; left: 0; width: 100%;
+        text-align: center; color: ${theme.muted}; font-size: ${metrics.creditFont}px; font-weight: 800;
       }
     </style>
   </head>
@@ -331,9 +421,10 @@ function renderIntroHtml({ countdown, theme, size, layout }) {
 function renderChallengeHtml({ elapsedMs, grid, theme, colorCount, size, order, layout, rotation }) {
   const total = getChallengeTotal(size, layout);
   const range = getTargetRange(total, order);
-  const gridSize = 928;
+  const metrics = canvas.challenge;
+  const gridSize = metrics.boardSize;
   const cellSize = gridSize / size;
-  const fontSize = size >= 6 ? 66 : 82;
+  const fontSize = Math.round((size >= 6 ? 66 : 82) * (gridSize / 928));
   const board =
     layout === "radial"
       ? renderRadialBoard({ grid, theme, colorCount, rotationDeg: getRotationDegrees(rotation, elapsedMs) })
@@ -366,36 +457,40 @@ function renderChallengeHtml({ elapsedMs, grid, theme, colorCount, size, order, 
       }
       .stage { position: relative; width: ${WIDTH}px; height: ${HEIGHT}px; color: ${theme.ink}; }
       .brand {
-        position: absolute; top: 86px; left: 0; width: 100%;
-        text-align: center; color: ${theme.primary}; font-size: 46px; font-weight: 900;
+        position: absolute; top: ${metrics.brandTop}px; left: 0; width: 100%;
+        text-align: center; color: ${theme.primary}; font-size: ${metrics.brandFont}px; font-weight: 900;
       }
       .title {
-        position: absolute; top: 178px; left: 0; width: 100%;
-        text-align: center; font-size: 78px; line-height: 1.15; font-weight: 900;
+        position: absolute; top: ${metrics.titleTop}px; left: 0; width: 100%;
+        text-align: center; font-size: ${metrics.titleFont}px; line-height: 1.15; font-weight: 900;
       }
       .title span { color: ${theme.accent}; }
       .subtitle {
-        position: absolute; top: 296px; left: 0; width: 100%;
-        text-align: center; color: ${theme.muted}; font-size: 38px; font-weight: 800;
+        position: absolute; top: ${metrics.subtitleTop}px; left: 0; width: 100%;
+        text-align: center; color: ${theme.muted}; font-size: ${metrics.subtitleFont}px; font-weight: 800;
       }
       .timer {
-        position: absolute; top: 370px; left: 0; width: 100%;
-        text-align: center; color: ${theme.primary}; font-size: 78px; font-weight: 900;
+        position: absolute; top: ${metrics.timerTop}px; left: 0; width: 100%;
+        text-align: center; color: ${theme.primary}; font-size: ${metrics.timerFont}px; font-weight: 900;
       }
       .grid {
-        position: absolute; left: 76px; top: 540px; width: 928px; height: 928px;
+        position: absolute; left: ${metrics.boardLeft}px; top: ${metrics.boardTop}px;
+        width: ${metrics.boardSize}px; height: ${metrics.boardSize}px;
         border: 3px solid ${theme.grid}; border-radius: 18px; overflow: hidden; background: white;
       }
       .radial {
-        position: absolute; left: 76px; top: 540px; width: 928px; height: 928px;
+        position: absolute; left: ${metrics.boardLeft}px; top: ${metrics.boardTop}px;
+        width: ${metrics.boardSize}px; height: ${metrics.boardSize}px;
         filter: drop-shadow(0 14px 34px rgba(24, 33, 47, 0.1));
       }
       .hex {
-        position: absolute; left: 76px; top: 548px; width: 928px; height: 965px;
+        position: absolute; left: ${metrics.boardLeft}px; top: ${metrics.tallBoardTop}px;
+        width: ${metrics.boardSize}px; height: ${metrics.tallBoardHeight}px;
         filter: drop-shadow(0 14px 34px rgba(24, 33, 47, 0.1));
       }
       .mosaic {
-        position: absolute; left: 76px; top: 548px; width: 928px; height: 965px;
+        position: absolute; left: ${metrics.boardLeft}px; top: ${metrics.tallBoardTop}px;
+        width: ${metrics.boardSize}px; height: ${metrics.tallBoardHeight}px;
         filter: drop-shadow(0 14px 34px rgba(24, 33, 47, 0.1));
       }
       .radial svg { display: block; width: 100%; height: 100%; overflow: visible; }
@@ -424,12 +519,12 @@ function renderChallengeHtml({ elapsedMs, grid, theme, colorCount, size, order, 
         font-size: ${fontSize}px; font-weight: 900; line-height: 1;
       }
       .prompt {
-        position: absolute; top: 1548px; left: 0; width: 100%;
-        text-align: center; color: ${theme.ink}; font-size: 48px; font-weight: 900;
+        position: absolute; top: ${metrics.promptTop}px; left: 0; width: 100%;
+        text-align: center; color: ${theme.ink}; font-size: ${metrics.promptFont}px; font-weight: 900;
       }
       .credit {
-        position: absolute; top: 1648px; left: 0; width: 100%;
-        text-align: center; color: ${theme.muted}; font-size: 34px; font-weight: 800;
+        position: absolute; top: ${metrics.creditTop}px; left: 0; width: 100%;
+        text-align: center; color: ${theme.muted}; font-size: ${metrics.creditFont}px; font-weight: 800;
       }
     </style>
   </head>
