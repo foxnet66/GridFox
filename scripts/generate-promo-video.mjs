@@ -19,17 +19,17 @@ const canvasProfiles = {
       ghostLeft: 126,
       ghostTop: 512,
       ghostSize: 828,
-      titleTop: 232,
-      titleFont: 86,
-      projectTop: 358,
-      projectFont: 46,
-      ringLeft: 340,
-      ringTop: 690,
+      titleTop: 214,
+      titleFont: 90,
+      projectTop: 350,
+      projectFont: 58,
+      ringLeft: 330,
+      ringTop: 674,
       ringSize: 400,
-      countTop: 744,
+      countTop: 728,
       countFont: 228,
-      readyTop: 1148,
-      readyFont: 42,
+      readyTop: 1118,
+      readyFont: 54,
       creditTop: 1668,
       creditFont: 34,
     },
@@ -60,17 +60,17 @@ const canvasProfiles = {
       ghostLeft: 160,
       ghostTop: 352,
       ghostSize: 760,
-      titleTop: 130,
-      titleFont: 78,
-      projectTop: 238,
-      projectFont: 42,
-      ringLeft: 370,
-      ringTop: 482,
+      titleTop: 104,
+      titleFont: 84,
+      projectTop: 226,
+      projectFont: 56,
+      ringLeft: 360,
+      ringTop: 474,
       ringSize: 340,
-      countTop: 528,
+      countTop: 520,
       countFont: 190,
-      readyTop: 880,
-      readyFont: 38,
+      readyTop: 850,
+      readyFont: 52,
       creditTop: 1272,
       creditFont: 32,
     },
@@ -368,7 +368,7 @@ function renderIntroHtml({ countdown, theme, size, layout }) {
       .ghost-grid {
         position: absolute; left: ${metrics.ghostLeft}px; top: ${metrics.ghostTop}px;
         width: ${metrics.ghostSize}px; height: ${metrics.ghostSize}px;
-        opacity: 0.16;
+        opacity: 0.1;
         background:
           linear-gradient(${theme.grid} 2px, transparent 2px),
           linear-gradient(90deg, ${theme.grid} 2px, transparent 2px);
@@ -382,8 +382,10 @@ function renderIntroHtml({ countdown, theme, size, layout }) {
       }
       .project {
         position: absolute; top: ${metrics.projectTop}px; left: 0; width: 100%;
-        text-align: center; color: ${theme.primary}; font-size: ${metrics.projectFont}px; font-weight: 900;
+        text-align: center; color: ${theme.primary}; font-size: ${metrics.projectFont}px; font-weight: 950;
+        letter-spacing: 1px;
       }
+      .project span { color: ${theme.accent}; font-size: 1.12em; }
       .ring {
         position: absolute; left: ${metrics.ringLeft}px; top: ${metrics.ringTop}px;
         width: ${metrics.ringSize}px; height: ${metrics.ringSize}px;
@@ -395,8 +397,11 @@ function renderIntroHtml({ countdown, theme, size, layout }) {
         text-align: center; color: ${theme.accent}; font-size: ${metrics.countFont}px; font-weight: 950;
       }
       .ready {
-        position: absolute; top: ${metrics.readyTop}px; left: 0; width: 100%;
-        text-align: center; color: ${theme.muted}; font-size: ${metrics.readyFont}px; font-weight: 850;
+        position: absolute; top: ${metrics.readyTop}px; left: 50%; transform: translateX(-50%);
+        min-width: 300px; padding: 18px 36px 20px;
+        text-align: center; color: white; background: ${theme.ink};
+        border-radius: 999px; font-size: ${metrics.readyFont}px; font-weight: 950;
+        box-shadow: 0 20px 45px rgba(24, 33, 47, 0.12);
       }
       .credit {
         position: absolute; top: ${metrics.creditTop}px; left: 0; width: 100%;
@@ -408,7 +413,7 @@ function renderIntroHtml({ countdown, theme, size, layout }) {
     <main class="stage">
       <div class="ghost-grid"></div>
       <div class="title">每日专注力训练</div>
-      <div class="project">${getProjectLabel({ layout, size, total })}</div>
+      <div class="project">${getProjectLabelHtml({ layout, size, total })}</div>
       <div class="ring"></div>
       <div class="count">${countdown}</div>
       <div class="ready">准备开始</div>
@@ -749,6 +754,13 @@ function getProjectLabel({ layout, size, total }) {
   if (layout === "hex") return "蜂巢舒尔特 30";
   if (layout === "mosaic") return "变形舒尔特 30";
   return `舒尔特方格 ${size}×${size}`;
+}
+
+function getProjectLabelHtml({ layout, size, total }) {
+  if (layout === "radial") return `圆盘舒尔特 <span>${total}</span>`;
+  if (layout === "hex") return "蜂巢舒尔特 <span>30</span>";
+  if (layout === "mosaic") return "变形舒尔特 <span>30</span>";
+  return `舒尔特方格 <span>${size}×${size}</span>`;
 }
 
 function mulberry32(seed) {
