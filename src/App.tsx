@@ -34,7 +34,7 @@ import { createPromoVideo } from "./promoVideo";
 import { getDailyChallenge } from "./dailyChallenge";
 
 type Screen = "ready" | "playing" | "finished";
-type PlayStyleId = "grid" | "radial" | "radial-rotate" | "hex";
+type PlayStyleId = "grid" | "radial" | "radial-rotate" | "hex" | "mosaic";
 type HexCellGeometry = {
   row: number;
   col: number;
@@ -42,6 +42,7 @@ type HexCellGeometry = {
   labelX: number;
   labelY: number;
 };
+type MosaicCellGeometry = HexCellGeometry;
 
 type PlayStyleOption = {
   id: PlayStyleId;
@@ -85,6 +86,14 @@ const PLAY_STYLES: PlayStyleOption[] = [
     layout: "hex",
     rotation: "none",
   },
+  {
+    id: "mosaic",
+    label: "变形",
+    name: "变形舒尔特",
+    description: "从 1 找到 30",
+    layout: "mosaic",
+    rotation: "none",
+  },
 ];
 
 const INITIAL_SETTINGS = getInitialSettings();
@@ -121,6 +130,7 @@ export default function App() {
   const activePlayStyle = getActivePlayStyle(layout, rotation);
   const radialGeometry = useMemo(() => getRadialGeometry(total), [total]);
   const hexGeometry = useMemo(() => getHexGeometry(), []);
+  const mosaicGeometry = useMemo(() => getMosaicGeometry(), []);
   const publishText = useMemo(
     () =>
       buildXiaohongshuPost({
@@ -171,7 +181,7 @@ export default function App() {
     setOrder(nextOrder);
     setLayout(nextLayout);
     if (nextLayout === "grid") setRotation("none");
-    if (nextLayout === "hex") setRotation("none");
+    if (nextLayout === "hex" || nextLayout === "mosaic") setRotation("none");
     setGrid(createChallengeNumbers(nextMode, nextLayout));
     setTarget(getInitialTarget(nextMode, nextOrder, nextLayout));
     setStartedAt(null);
@@ -182,7 +192,7 @@ export default function App() {
   }
 
   function applyPlayStyle(style: PlayStyleOption) {
-    resetGame(mode, style.layout === "hex" ? "asc" : order, style.layout);
+    resetGame(mode, style.layout === "hex" || style.layout === "mosaic" ? "asc" : order, style.layout);
     setRotation(style.rotation);
   }
 
@@ -341,7 +351,7 @@ export default function App() {
                     key={item.size}
                     type="button"
                     onClick={() => resetGame(item, order, layout)}
-                    disabled={screen === "playing" || layout === "hex"}
+                    disabled={screen === "playing" || layout === "hex" || layout === "mosaic"}
                   >
                     {item.label}
                   </button>
@@ -508,7 +518,7 @@ export default function App() {
               ))}
             </svg>
           </div>
-        ) : (
+        ) : layout === "hex" ? (
           <div className="hex-board" ref={boardRef}>
             <svg viewBox="0 0 100 104" role="group" aria-label="蜂巢舒尔特数字盘">
               {grid.map((number, index) => {
@@ -517,6 +527,37 @@ export default function App() {
                 return (
                   <g
                     className={`hex-cell ${getAccentClass(number, colorCount)} ${completed ? "completed" : ""}`}
+                    key={`${number}-${index}`}
+                    role="button"
+                    tabIndex={screen === "playing" ? 0 : -1}
+                    aria-label={`数字 ${number}`}
+                    onClick={() => handleCellClick(number, index)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        handleCellClick(number, index);
+                      }
+                    }}
+                    aria-disabled={screen !== "playing"}
+                  >
+                    <polygon points={geometry.points} />
+                    <text x={geometry.labelX} y={geometry.labelY}>
+                      {number}
+                    </text>
+                  </g>
+                );
+              })}
+            </svg>
+          </div>
+        ) : (
+          <div className="mosaic-board" ref={boardRef}>
+            <svg viewBox="0 0 100 104" role="group" aria-label="变形舒尔特数字盘">
+              {grid.map((number, index) => {
+                const geometry = mosaicGeometry[index];
+                const completed = screen === "playing" && (order === "desc" ? number > target : number < target);
+                return (
+                  <g
+                    className={`mosaic-cell ${getAccentClass(number, colorCount)} ${completed ? "completed" : ""}`}
                     key={`${number}-${index}`}
                     role="button"
                     tabIndex={screen === "playing" ? 0 : -1}
@@ -593,9 +634,13 @@ export default function App() {
                   className="secondary-action"
                   type="button"
                   onClick={handleCreatePromoVideo}
-                  disabled={promoStatus === "recording" || layout === "hex"}
+                  disabled={promoStatus === "recording" || layout === "hex" || layout === "mosaic"}
                 >
-                  {layout === "hex" ? "蜂巢暂不支持" : promoStatus === "recording" ? "录制中..." : "生成视频"}
+                  {layout === "hex" || layout === "mosaic"
+                    ? "当前玩法暂不支持"
+                    : promoStatus === "recording"
+                    ? "录制中..."
+                    : "生成视频"}
                 </button>
                 {promoStatus === "done" && promoUrl && (
                   <a
@@ -644,7 +689,16 @@ function buildXiaohongshuPost({
   dailyDay: number | null;
 }): string {
   const isRotating = layout === "radial" && rotation !== "none";
-  const layoutName = layout === "hex" ? "蜂巢舒尔特" : isRotating ? "旋转圆盘舒尔特" : layout === "radial" ? "圆盘舒尔特" : "舒尔特方格";
+  const layoutName =
+    layout === "mosaic"
+      ? "变形舒尔特"
+      : layout === "hex"
+      ? "蜂巢舒尔特"
+      : isRotating
+      ? "旋转圆盘舒尔特"
+      : layout === "radial"
+      ? "圆盘舒尔特"
+      : "舒尔特方格";
   const orderName = order === "desc" ? "倒序挑战" : "计时挑战";
   const rangeText = `${range.start} 找到 ${range.end}`;
   const title = dailyDay
@@ -657,6 +711,8 @@ function buildXiaohongshuPost({
   const modeLine =
     isRotating
       ? `${getRotationLabel(rotation)}圆盘会增加视觉追踪难度，适合进阶挑战。`
+      : layout === "mosaic"
+      ? "不规则格子会打乱横竖扫描习惯，更考验视觉搜索稳定性。"
       : layout === "hex"
       ? "蜂巢排列会改变横竖扫描习惯，倒序查找更容易打乱节奏。"
       : layout === "radial"
@@ -670,7 +726,15 @@ function buildXiaohongshuPost({
     "#专注力游戏",
     "#提升注意力",
     "#计时挑战",
-    layout === "hex" ? "#蜂巢舒尔特" : isRotating ? "#旋转舒尔特" : layout === "radial" ? "#圆盘舒尔特" : "#舒尔特训练",
+    layout === "mosaic"
+      ? "#变形舒尔特"
+      : layout === "hex"
+      ? "#蜂巢舒尔特"
+      : isRotating
+      ? "#旋转舒尔特"
+      : layout === "radial"
+      ? "#圆盘舒尔特"
+      : "#舒尔特训练",
   ].join(" ");
 
   return `${title}
@@ -695,7 +759,8 @@ function getInitialSettings(): {
   const params = new URLSearchParams(window.location.search);
   const mode = MODES.find((item) => item.size === Number(params.get("size"))) ?? DEFAULT_MODE;
   const layoutParam = params.get("layout");
-  const layout = layoutParam === "hex" ? "hex" : layoutParam === "radial" ? "radial" : "grid";
+  const layout =
+    layoutParam === "mosaic" ? "mosaic" : layoutParam === "hex" ? "hex" : layoutParam === "radial" ? "radial" : "grid";
   const order = params.get("order") === "desc" ? "desc" : "asc";
   const rotationParam = params.get("rotation");
   const rotation =
@@ -717,16 +782,17 @@ function getRotationLabel(rotation: RotationSpeed): string {
 function getActivePlayStyle(layout: ChallengeLayout, rotation: RotationSpeed): PlayStyleOption {
   if (layout === "grid") return PLAY_STYLES[0];
   if (layout === "hex") return PLAY_STYLES[3];
+  if (layout === "mosaic") return PLAY_STYLES[4];
   if (rotation !== "none") return PLAY_STYLES[2];
   return PLAY_STYLES[1];
 }
 
 function createChallengeNumbers(mode: GameMode, layout: ChallengeLayout): number[] {
-  return layout === "hex" ? createNumbers(getChallengeTotal(mode, layout)) : createGrid(mode.size);
+  return layout === "hex" || layout === "mosaic" ? createNumbers(getChallengeTotal(mode, layout)) : createGrid(mode.size);
 }
 
 function getSizeLabel(mode: GameMode, layout: ChallengeLayout): string {
-  return layout === "hex" ? "30格" : mode.label;
+  return layout === "hex" || layout === "mosaic" ? "30格" : mode.label;
 }
 
 function getTapPosition(
@@ -734,7 +800,7 @@ function getTapPosition(
   mode: GameMode,
   layout: ChallengeLayout,
 ): { row: number; col: number } {
-  if (layout === "hex") return { row: Math.floor(index / 5), col: index % 5 };
+  if (layout === "hex" || layout === "mosaic") return { row: Math.floor(index / 5), col: index % 5 };
   return { row: Math.floor(index / mode.size), col: index % mode.size };
 }
 
@@ -784,6 +850,86 @@ function getHexPoints(centerX: number, centerY: number, radius: number): Array<{
     return {
       x: centerX + radius * Math.cos(angle),
       y: centerY + radius * Math.sin(angle),
+    };
+  });
+}
+
+function getMosaicGeometry(): MosaicCellGeometry[] {
+  const rows = 6;
+  const cols = 5;
+  const jitter = [
+    [0, 0],
+    [-1.4, 1.2],
+    [1.1, -0.8],
+    [-0.8, 1.4],
+    [1.2, -1.1],
+    [0, 0],
+    [0, 0],
+    [1.5, -1.2],
+    [-1.2, 1.3],
+    [1.4, 0.9],
+    [-1.1, -1.4],
+    [0, 0],
+    [0, 0],
+    [-1.1, 1.5],
+    [1.6, -1.1],
+    [-1.5, 0.8],
+    [1.1, 1.4],
+    [0, 0],
+    [0, 0],
+    [1.3, 1.1],
+    [-1.4, -1.3],
+    [1.2, 1.5],
+    [-1.6, -0.9],
+    [0, 0],
+    [0, 0],
+    [-1.5, -1.1],
+    [1.1, 1.4],
+    [-1.2, -1.5],
+    [1.5, 1.1],
+    [0, 0],
+    [0, 0],
+    [1.2, -1.4],
+    [-1.6, 1.1],
+    [1.5, -0.8],
+    [-1.1, 1.5],
+    [0, 0],
+    [0, 0],
+    [0, 0],
+    [0, 0],
+    [0, 0],
+    [0, 0],
+    [0, 0],
+  ];
+
+  const points = Array.from({ length: rows + 1 }, (_, row) =>
+    Array.from({ length: cols + 1 }, (_, col) => {
+      const baseX = 3 + (94 / cols) * col;
+      const baseY = 4 + (96 / rows) * row;
+      const isEdge = row === 0 || row === rows || col === 0 || col === cols;
+      const [dx, dy] = isEdge ? [0, 0] : jitter[row * (cols + 1) + col] ?? [0, 0];
+      return { x: baseX + dx, y: baseY + dy };
+    }),
+  );
+
+  return Array.from({ length: rows * cols }, (_, index) => {
+    const row = Math.floor(index / cols);
+    const col = index % cols;
+    const corners = [
+      points[row][col],
+      points[row][col + 1],
+      points[row + 1][col + 1],
+      points[row + 1][col],
+    ];
+    const labelX = corners.reduce((sum, point) => sum + point.x, 0) / corners.length;
+    const labelY = corners.reduce((sum, point) => sum + point.y, 0) / corners.length + 0.55;
+
+    return {
+      row,
+      col,
+      points: corners.map((point) => `${point.x.toFixed(3)},${point.y.toFixed(3)}`).join(" "),
+      labelX,
+      labelY,
     };
   });
 }
