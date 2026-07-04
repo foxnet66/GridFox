@@ -354,7 +354,7 @@ button {
   aspect-ratio: 100 / 72;
   margin-top: clamp(18px, 4vh, 30px);
   border-radius: 18px;
-  filter: drop-shadow(0 18px 38px rgba(8, 18, 28, 0.2));
+  filter: drop-shadow(0 14px 34px rgba(24, 33, 47, 0.1));
 }
 
 .hex-board.shake {
@@ -391,13 +391,13 @@ button {
 }
 
 .float-panel {
-  fill: #18262f;
-  stroke: rgba(214, 236, 235, 0.52);
+  fill: var(--panel);
+  stroke: var(--line);
   stroke-width: 0.35;
 }
 
 .float-grid-line {
-  stroke: rgba(214, 236, 235, 0.07);
+  stroke: rgba(17, 107, 93, 0.12);
   stroke-width: 0.18;
 }
 
@@ -462,10 +462,10 @@ button {
 }
 
 .float-ball circle {
-  fill: #e8fffb;
-  stroke: #9ee0d7;
+  fill: var(--panel);
+  stroke: rgba(17, 107, 93, 0.42);
   stroke-width: 0.45;
-  filter: drop-shadow(0 1.2px 1px rgba(0, 0, 0, 0.38));
+  filter: drop-shadow(0 1px 1px rgba(24, 33, 47, 0.15));
   transition:
     fill 130ms ease,
     stroke 130ms ease,
@@ -473,7 +473,7 @@ button {
 }
 
 .float-ball text {
-  fill: #17222d;
+  fill: currentColor;
   font-size: 4.45px;
 }
 
@@ -496,7 +496,7 @@ button {
 }
 
 .float-ball:hover circle {
-  fill: #fff4ed;
+  fill: var(--primary-soft);
   stroke: var(--heading-accent);
 }
 
@@ -535,7 +535,7 @@ button {
 }
 
 .float-ball:active circle {
-  fill: #ffe8dd;
+  fill: var(--primary-soft);
   stroke: var(--heading-accent);
 }
 

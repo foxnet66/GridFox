@@ -635,6 +635,9 @@ export default function App() {
                       values={`0 0; ${geometry.driftX} ${geometry.driftY}; ${-geometry.driftX} ${geometry.driftY * 0.7}; 0 0`}
                       dur={`${geometry.duration}s`}
                       begin={`${geometry.delay}s`}
+                      calcMode="spline"
+                      keyTimes="0; 0.34; 0.68; 1"
+                      keySplines="0.42 0 0.58 1; 0.42 0 0.58 1; 0.42 0 0.58 1"
                       repeatCount="indefinite"
                     />
                     <circle cx={geometry.x} cy={geometry.y} r={geometry.radius} />

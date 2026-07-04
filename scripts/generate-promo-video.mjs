@@ -171,7 +171,7 @@ const layout =
           ? "radial"
           : "grid";
 const rotation = layout === "radial" && ["slow", "fast"].includes(String(args.rotation)) ? String(args.rotation) : "none";
-const captureFps = rotation === "none" ? 1 : clamp(Number(args["capture-fps"] ?? 12), 2, 24);
+const captureFps = rotation === "none" && layout !== "float" ? 1 : clamp(Number(args["capture-fps"] ?? 12), 2, 24);
 const seed = Number.isFinite(Number(args.seed)) ? Number(args.seed) : (dailyChallenge?.seed ?? Date.now());
 const musicName = String(args.music ?? "soft");
 const music = Object.hasOwn(musicProfiles, musicName) ? musicProfiles[musicName] : musicProfiles.soft;
@@ -511,7 +511,7 @@ function renderChallengeHtml({ elapsedMs, grid, theme, colorCount, size, order, 
       .float {
         position: absolute; left: ${metrics.boardLeft}px; top: ${metrics.boardTop + 38}px;
         width: ${metrics.boardSize}px; height: ${Math.round(metrics.boardSize * 0.72)}px;
-        filter: drop-shadow(0 18px 38px rgba(8, 18, 28, 0.22));
+        filter: drop-shadow(0 14px 34px rgba(24, 33, 47, 0.1));
       }
       .radial svg { display: block; width: 100%; height: 100%; overflow: visible; }
       .hex svg { display: block; width: 100%; height: 100%; overflow: visible; }
@@ -533,15 +533,15 @@ function renderChallengeHtml({ elapsedMs, grid, theme, colorCount, size, order, 
         dominant-baseline: middle; text-anchor: middle;
         font-size: 7.1px; font-weight: 950;
       }
-      .float .panel { fill: #18262f; stroke: rgba(214, 236, 235, 0.52); stroke-width: 0.35; }
-      .float .grid-line { stroke: rgba(214, 236, 235, 0.07); stroke-width: 0.18; }
+      .float .panel { fill: white; stroke: ${theme.grid}; stroke-width: 0.35; }
+      .float .grid-line { stroke: ${theme.grid}; stroke-opacity: 0.38; stroke-width: 0.18; }
       .float circle {
-        fill: #e8fffb; stroke: #9ee0d7; stroke-width: 0.45;
-        filter: drop-shadow(0 1.2px 1px rgba(0, 0, 0, 0.38));
+        fill: white; stroke: ${theme.primary}; stroke-opacity: 0.42; stroke-width: 0.45;
+        filter: drop-shadow(0 1px 1px rgba(24, 33, 47, 0.15));
       }
       .float text {
         dominant-baseline: middle; text-anchor: middle;
-        fill: #17222d; font-size: 4.45px; font-weight: 950;
+        font-size: 4.45px; font-weight: 950;
       }
       .cell {
         position: absolute; width: ${cellSize}px; height: ${cellSize}px;
@@ -677,11 +677,12 @@ function renderFloatBoard({ grid, theme, colorCount, elapsedMs }) {
   const cells = grid
     .map((number, index) => {
       const cellGeometry = geometry[index];
-      const color = number === 1 ? theme.accent : theme.colors[number % colorCount];
-      const fill = number === 1 ? "#fff4ed" : "#e8fffb";
-      const stroke = number === 1 ? theme.accent : "#9ee0d7";
+      const color = theme.colors[number % colorCount];
+      const fill = "white";
+      const stroke = number === 1 ? theme.accent : theme.primary;
+      const strokeOpacity = number === 1 ? 0.78 : 0.42;
       return `<g>
-        <circle cx="${cellGeometry.x.toFixed(3)}" cy="${cellGeometry.y.toFixed(3)}" r="${cellGeometry.radius}" fill="${fill}" stroke="${stroke}"></circle>
+        <circle cx="${cellGeometry.x.toFixed(3)}" cy="${cellGeometry.y.toFixed(3)}" r="${cellGeometry.radius}" fill="${fill}" stroke="${stroke}" stroke-opacity="${strokeOpacity}"></circle>
         <text x="${cellGeometry.x.toFixed(3)}" y="${(cellGeometry.y + 0.25).toFixed(3)}" fill="${color}">${number}</text>
       </g>`;
     })
