@@ -34,7 +34,7 @@ import { createPromoVideo } from "./promoVideo";
 import { getDailyChallenge } from "./dailyChallenge";
 
 type Screen = "ready" | "playing" | "finished";
-type PlayStyleId = "grid" | "radial" | "radial-rotate" | "hex" | "mosaic";
+type PlayStyleId = "grid" | "radial" | "radial-rotate" | "hex" | "mosaic" | "float";
 type HexCellGeometry = {
   row: number;
   col: number;
@@ -43,6 +43,17 @@ type HexCellGeometry = {
   labelY: number;
 };
 type MosaicCellGeometry = HexCellGeometry;
+type FloatBallGeometry = {
+  row: number;
+  col: number;
+  x: number;
+  y: number;
+  radius: number;
+  driftX: number;
+  driftY: number;
+  duration: number;
+  delay: number;
+};
 
 type PlayStyleOption = {
   id: PlayStyleId;
@@ -94,6 +105,14 @@ const PLAY_STYLES: PlayStyleOption[] = [
     layout: "mosaic",
     rotation: "none",
   },
+  {
+    id: "float",
+    label: "浮球",
+    name: "浮球舒尔特",
+    description: "小球动态漂浮",
+    layout: "float",
+    rotation: "none",
+  },
 ];
 
 const INITIAL_SETTINGS = getInitialSettings();
@@ -131,6 +150,7 @@ export default function App() {
   const radialGeometry = useMemo(() => getRadialGeometry(total), [total]);
   const hexGeometry = useMemo(() => getHexGeometry(), []);
   const mosaicGeometry = useMemo(() => getMosaicGeometry(), []);
+  const floatGeometry = useMemo(() => getFloatGeometry(), []);
   const publishText = useMemo(
     () =>
       buildXiaohongshuPost({
@@ -181,7 +201,7 @@ export default function App() {
     setOrder(nextOrder);
     setLayout(nextLayout);
     if (nextLayout === "grid") setRotation("none");
-    if (nextLayout === "hex" || nextLayout === "mosaic") setRotation("none");
+    if (nextLayout === "hex" || nextLayout === "mosaic" || nextLayout === "float") setRotation("none");
     setGrid(createChallengeNumbers(nextMode, nextLayout));
     setTarget(getInitialTarget(nextMode, nextOrder, nextLayout));
     setStartedAt(null);
@@ -192,7 +212,7 @@ export default function App() {
   }
 
   function applyPlayStyle(style: PlayStyleOption) {
-    resetGame(mode, style.layout === "hex" || style.layout === "mosaic" ? "asc" : order, style.layout);
+    resetGame(mode, isFixedLayout(style.layout) ? "asc" : order, style.layout);
     setRotation(style.rotation);
   }
 
@@ -351,7 +371,7 @@ export default function App() {
                     key={item.size}
                     type="button"
                     onClick={() => resetGame(item, order, layout)}
-                    disabled={screen === "playing" || layout === "hex" || layout === "mosaic"}
+                    disabled={screen === "playing" || isFixedLayout(layout)}
                   >
                     {item.label}
                   </button>
@@ -549,7 +569,7 @@ export default function App() {
               })}
             </svg>
           </div>
-        ) : (
+        ) : layout === "mosaic" ? (
           <div className="mosaic-board" ref={boardRef}>
             <svg viewBox="0 0 100 104" role="group" aria-label="变形舒尔特数字盘">
               {grid.map((number, index) => {
@@ -573,6 +593,52 @@ export default function App() {
                   >
                     <polygon points={geometry.points} />
                     <text x={geometry.labelX} y={geometry.labelY}>
+                      {number}
+                    </text>
+                  </g>
+                );
+              })}
+            </svg>
+          </div>
+        ) : (
+          <div className="float-board" ref={boardRef}>
+            <svg viewBox="0 0 100 72" role="group" aria-label="浮球舒尔特数字盘">
+              <rect className="float-panel" x="1.5" y="1.5" width="97" height="69" rx="3.8" />
+              {Array.from({ length: 13 }, (_, index) => (
+                <line className="float-grid-line" key={`v-${index}`} x1={4 + index * 7.7} x2={4 + index * 7.7} y1="2" y2="70" />
+              ))}
+              {Array.from({ length: 8 }, (_, index) => (
+                <line className="float-grid-line" key={`h-${index}`} x1="2" x2="98" y1={6 + index * 8.5} y2={6 + index * 8.5} />
+              ))}
+              {grid.map((number, index) => {
+                const geometry = floatGeometry[index];
+                const completed = screen === "playing" && (order === "desc" ? number > target : number < target);
+                return (
+                  <g
+                    className={`float-ball ${getAccentClass(number, colorCount)} ${completed ? "completed" : ""}`}
+                    key={`${number}-${index}`}
+                    role="button"
+                    tabIndex={screen === "playing" ? 0 : -1}
+                    aria-label={`数字 ${number}`}
+                    onClick={() => handleCellClick(number, index)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        handleCellClick(number, index);
+                      }
+                    }}
+                    aria-disabled={screen !== "playing"}
+                  >
+                    <animateTransform
+                      attributeName="transform"
+                      type="translate"
+                      values={`0 0; ${geometry.driftX} ${geometry.driftY}; ${-geometry.driftX} ${geometry.driftY * 0.7}; 0 0`}
+                      dur={`${geometry.duration}s`}
+                      begin={`${geometry.delay}s`}
+                      repeatCount="indefinite"
+                    />
+                    <circle cx={geometry.x} cy={geometry.y} r={geometry.radius} />
+                    <text x={geometry.x} y={geometry.y + 0.25}>
                       {number}
                     </text>
                   </g>
@@ -634,9 +700,9 @@ export default function App() {
                   className="secondary-action"
                   type="button"
                   onClick={handleCreatePromoVideo}
-                  disabled={promoStatus === "recording" || layout === "hex" || layout === "mosaic"}
+                  disabled={promoStatus === "recording" || layout === "hex" || layout === "mosaic" || layout === "float"}
                 >
-                  {layout === "hex" || layout === "mosaic"
+                  {layout === "hex" || layout === "mosaic" || layout === "float"
                     ? "当前玩法暂不支持"
                     : promoStatus === "recording"
                     ? "录制中..."
@@ -690,7 +756,9 @@ function buildXiaohongshuPost({
 }): string {
   const isRotating = layout === "radial" && rotation !== "none";
   const layoutName =
-    layout === "mosaic"
+    layout === "float"
+      ? "浮球舒尔特"
+      : layout === "mosaic"
       ? "变形舒尔特"
       : layout === "hex"
       ? "蜂巢舒尔特"
@@ -711,6 +779,8 @@ function buildXiaohongshuPost({
   const modeLine =
     isRotating
       ? `${getRotationLabel(rotation)}圆盘会增加视觉追踪难度，适合进阶挑战。`
+      : layout === "float"
+      ? "小球会持续轻微漂浮，更考验动态视觉追踪和注意力稳定性。"
       : layout === "mosaic"
       ? "不规则格子会打乱横竖扫描习惯，更考验视觉搜索稳定性。"
       : layout === "hex"
@@ -726,7 +796,9 @@ function buildXiaohongshuPost({
     "#专注力游戏",
     "#提升注意力",
     "#计时挑战",
-    layout === "mosaic"
+    layout === "float"
+      ? "#浮球舒尔特"
+      : layout === "mosaic"
       ? "#变形舒尔特"
       : layout === "hex"
       ? "#蜂巢舒尔特"
@@ -760,7 +832,15 @@ function getInitialSettings(): {
   const mode = MODES.find((item) => item.size === Number(params.get("size"))) ?? DEFAULT_MODE;
   const layoutParam = params.get("layout");
   const layout =
-    layoutParam === "mosaic" ? "mosaic" : layoutParam === "hex" ? "hex" : layoutParam === "radial" ? "radial" : "grid";
+    layoutParam === "float"
+      ? "float"
+      : layoutParam === "mosaic"
+      ? "mosaic"
+      : layoutParam === "hex"
+      ? "hex"
+      : layoutParam === "radial"
+      ? "radial"
+      : "grid";
   const order = params.get("order") === "desc" ? "desc" : "asc";
   const rotationParam = params.get("rotation");
   const rotation =
@@ -783,16 +863,22 @@ function getActivePlayStyle(layout: ChallengeLayout, rotation: RotationSpeed): P
   if (layout === "grid") return PLAY_STYLES[0];
   if (layout === "hex") return PLAY_STYLES[3];
   if (layout === "mosaic") return PLAY_STYLES[4];
+  if (layout === "float") return PLAY_STYLES[5];
   if (rotation !== "none") return PLAY_STYLES[2];
   return PLAY_STYLES[1];
 }
 
 function createChallengeNumbers(mode: GameMode, layout: ChallengeLayout): number[] {
-  return layout === "hex" || layout === "mosaic" ? createNumbers(getChallengeTotal(mode, layout)) : createGrid(mode.size);
+  return isFixedLayout(layout) ? createNumbers(getChallengeTotal(mode, layout)) : createGrid(mode.size);
 }
 
 function getSizeLabel(mode: GameMode, layout: ChallengeLayout): string {
+  if (layout === "float") return "36球";
   return layout === "hex" || layout === "mosaic" ? "30格" : mode.label;
+}
+
+function isFixedLayout(layout: ChallengeLayout): boolean {
+  return layout === "hex" || layout === "mosaic" || layout === "float";
 }
 
 function getTapPosition(
@@ -800,8 +886,62 @@ function getTapPosition(
   mode: GameMode,
   layout: ChallengeLayout,
 ): { row: number; col: number } {
+  if (layout === "float") return { row: Math.floor(index / 6), col: index % 6 };
   if (layout === "hex" || layout === "mosaic") return { row: Math.floor(index / 5), col: index % 5 };
   return { row: Math.floor(index / mode.size), col: index % mode.size };
+}
+
+function getFloatGeometry(): FloatBallGeometry[] {
+  const positions = [
+    [15, 12],
+    [22, 20],
+    [31, 16],
+    [39, 20],
+    [53, 12],
+    [63, 9],
+    [85, 13],
+    [92, 9],
+    [18, 29],
+    [27, 31],
+    [36, 28],
+    [48, 34],
+    [59, 31],
+    [72, 28],
+    [84, 30],
+    [10, 44],
+    [24, 42],
+    [36, 39],
+    [54, 45],
+    [67, 41],
+    [81, 43],
+    [92, 41],
+    [15, 55],
+    [28, 54],
+    [42, 51],
+    [57, 56],
+    [73, 54],
+    [88, 55],
+    [9, 63],
+    [20, 63],
+    [34, 64],
+    [49, 63],
+    [63, 62],
+    [77, 63],
+    [89, 64],
+    [95, 34],
+  ];
+
+  return positions.map(([x, y], index) => ({
+    row: Math.floor(index / 6),
+    col: index % 6,
+    x,
+    y,
+    radius: 3.35,
+    driftX: ((index % 5) - 2) * 0.28 + (index % 2 === 0 ? 0.35 : -0.35),
+    driftY: ((index % 4) - 1.5) * 0.22 + (index % 3 === 0 ? 0.28 : -0.18),
+    duration: 4.8 + (index % 6) * 0.45,
+    delay: -(index % 7) * 0.35,
+  }));
 }
 
 function getHexGeometry(): HexCellGeometry[] {

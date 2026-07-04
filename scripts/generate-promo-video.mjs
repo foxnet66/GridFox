@@ -161,7 +161,15 @@ const size = clamp(Number(args.size ?? dailyChallenge?.size ?? 6), 4, 6);
 const order = String(args.order ?? dailyChallenge?.order ?? "asc") === "desc" ? "desc" : "asc";
 const layoutArg = String(args.layout ?? dailyChallenge?.layout ?? "grid");
 const layout =
-  layoutArg === "mosaic" ? "mosaic" : layoutArg === "hex" ? "hex" : layoutArg === "radial" ? "radial" : "grid";
+  layoutArg === "float"
+    ? "float"
+    : layoutArg === "mosaic"
+      ? "mosaic"
+      : layoutArg === "hex"
+        ? "hex"
+        : layoutArg === "radial"
+          ? "radial"
+          : "grid";
 const rotation = layout === "radial" && ["slow", "fast"].includes(String(args.rotation)) ? String(args.rotation) : "none";
 const captureFps = rotation === "none" ? 1 : clamp(Number(args["capture-fps"] ?? 12), 2, 24);
 const seed = Number.isFinite(Number(args.seed)) ? Number(args.seed) : (dailyChallenge?.seed ?? Date.now());
@@ -437,6 +445,8 @@ function renderChallengeHtml({ elapsedMs, grid, theme, colorCount, size, order, 
         ? renderHexBoard({ grid, theme, colorCount })
         : layout === "mosaic"
           ? renderMosaicBoard({ grid, theme, colorCount })
+          : layout === "float"
+            ? renderFloatBoard({ grid, theme, colorCount, elapsedMs })
           : `<div class="grid">${grid
               .map((number, index) => {
                 const row = Math.floor(index / size);
@@ -498,9 +508,15 @@ function renderChallengeHtml({ elapsedMs, grid, theme, colorCount, size, order, 
         width: ${metrics.boardSize}px; height: ${metrics.tallBoardHeight}px;
         filter: drop-shadow(0 14px 34px rgba(24, 33, 47, 0.1));
       }
+      .float {
+        position: absolute; left: ${metrics.boardLeft}px; top: ${metrics.boardTop + 38}px;
+        width: ${metrics.boardSize}px; height: ${Math.round(metrics.boardSize * 0.72)}px;
+        filter: drop-shadow(0 18px 38px rgba(8, 18, 28, 0.22));
+      }
       .radial svg { display: block; width: 100%; height: 100%; overflow: visible; }
       .hex svg { display: block; width: 100%; height: 100%; overflow: visible; }
       .mosaic svg { display: block; width: 100%; height: 100%; overflow: visible; }
+      .float svg { display: block; width: 100%; height: 100%; overflow: visible; }
       .radial path { fill: white; stroke: ${theme.grid}; stroke-width: 0.42; }
       .radial .center { fill: ${theme.paper}; stroke: ${theme.grid}; stroke-width: 0.6; }
       .radial text {
@@ -516,6 +532,16 @@ function renderChallengeHtml({ elapsedMs, grid, theme, colorCount, size, order, 
       .mosaic text {
         dominant-baseline: middle; text-anchor: middle;
         font-size: 7.1px; font-weight: 950;
+      }
+      .float .panel { fill: #18262f; stroke: rgba(214, 236, 235, 0.52); stroke-width: 0.35; }
+      .float .grid-line { stroke: rgba(214, 236, 235, 0.07); stroke-width: 0.18; }
+      .float circle {
+        fill: #e8fffb; stroke: #9ee0d7; stroke-width: 0.45;
+        filter: drop-shadow(0 1.2px 1px rgba(0, 0, 0, 0.38));
+      }
+      .float text {
+        dominant-baseline: middle; text-anchor: middle;
+        fill: #17222d; font-size: 4.45px; font-weight: 950;
       }
       .cell {
         position: absolute; width: ${cellSize}px; height: ${cellSize}px;
@@ -544,6 +570,8 @@ function renderChallengeHtml({ elapsedMs, grid, theme, colorCount, size, order, 
               ? "蜂巢舒尔特挑战"
               : layout === "mosaic"
                 ? "变形舒尔特挑战"
+                : layout === "float"
+                  ? "浮球舒尔特挑战"
                 : "舒尔特方格挑战"
       }</div>
       <div class="title">请按顺序从 <span>${range.start}</span> 找到 <span>${range.end}</span></div>
@@ -623,6 +651,46 @@ function renderMosaicBoard({ grid, theme, colorCount }) {
 
   return `<div class="mosaic">
     <svg viewBox="0 0 100 104" aria-label="变形舒尔特数字盘">
+      ${cells}
+    </svg>
+  </div>`;
+}
+
+function renderFloatBoard({ grid, theme, colorCount, elapsedMs }) {
+  const geometry = getFloatGeometry(elapsedMs);
+  const gridLines = [
+    ...Array.from(
+      { length: 13 },
+      (_, index) =>
+        `<line class="grid-line" x1="${(4 + index * 7.7).toFixed(2)}" x2="${(4 + index * 7.7).toFixed(
+          2,
+        )}" y1="2" y2="70"></line>`,
+    ),
+    ...Array.from(
+      { length: 8 },
+      (_, index) =>
+        `<line class="grid-line" x1="2" x2="98" y1="${(6 + index * 8.5).toFixed(2)}" y2="${(
+          6 + index * 8.5
+        ).toFixed(2)}"></line>`,
+    ),
+  ].join("");
+  const cells = grid
+    .map((number, index) => {
+      const cellGeometry = geometry[index];
+      const color = number === 1 ? theme.accent : theme.colors[number % colorCount];
+      const fill = number === 1 ? "#fff4ed" : "#e8fffb";
+      const stroke = number === 1 ? theme.accent : "#9ee0d7";
+      return `<g>
+        <circle cx="${cellGeometry.x.toFixed(3)}" cy="${cellGeometry.y.toFixed(3)}" r="${cellGeometry.radius}" fill="${fill}" stroke="${stroke}"></circle>
+        <text x="${cellGeometry.x.toFixed(3)}" y="${(cellGeometry.y + 0.25).toFixed(3)}" fill="${color}">${number}</text>
+      </g>`;
+    })
+    .join("");
+
+  return `<div class="float">
+    <svg viewBox="0 0 100 72" aria-label="浮球舒尔特数字盘">
+      <rect class="panel" x="1.5" y="1.5" width="97" height="69" rx="3.8"></rect>
+      ${gridLines}
       ${cells}
     </svg>
   </div>`;
@@ -746,6 +814,7 @@ function createGrid(total, seed) {
 }
 
 function getChallengeTotal(size, layout) {
+  if (layout === "float") return 36;
   return layout === "hex" || layout === "mosaic" ? 30 : size * size;
 }
 
@@ -753,6 +822,7 @@ function getProjectLabel({ layout, size, total }) {
   if (layout === "radial") return `圆盘舒尔特 ${total}`;
   if (layout === "hex") return "蜂巢舒尔特 30";
   if (layout === "mosaic") return "变形舒尔特 30";
+  if (layout === "float") return "浮球舒尔特 36";
   return `舒尔特方格 ${size}×${size}`;
 }
 
@@ -760,6 +830,7 @@ function getProjectLabelHtml({ layout, size, total }) {
   if (layout === "radial") return `圆盘舒尔特 <span>${total}</span>`;
   if (layout === "hex") return "蜂巢舒尔特 <span>30</span>";
   if (layout === "mosaic") return "变形舒尔特 <span>30</span>";
+  if (layout === "float") return "浮球舒尔特 <span>36</span>";
   return `舒尔特方格 <span>${size}×${size}</span>`;
 }
 
@@ -937,6 +1008,60 @@ function getMosaicGeometry() {
       points: corners.map((point) => `${point.x.toFixed(3)},${point.y.toFixed(3)}`).join(" "),
       labelX,
       labelY,
+    };
+  });
+}
+
+function getFloatGeometry(elapsedMs = 0) {
+  const positions = [
+    [15, 12],
+    [22, 20],
+    [31, 16],
+    [39, 20],
+    [53, 12],
+    [63, 9],
+    [85, 13],
+    [92, 9],
+    [18, 29],
+    [27, 31],
+    [36, 28],
+    [48, 34],
+    [59, 31],
+    [72, 28],
+    [84, 30],
+    [10, 44],
+    [24, 42],
+    [36, 39],
+    [54, 45],
+    [67, 41],
+    [81, 43],
+    [92, 41],
+    [15, 55],
+    [28, 54],
+    [42, 51],
+    [57, 56],
+    [73, 54],
+    [88, 55],
+    [9, 63],
+    [20, 63],
+    [34, 64],
+    [49, 63],
+    [63, 62],
+    [77, 63],
+    [89, 64],
+    [95, 34],
+  ];
+  const time = elapsedMs / 1000;
+
+  return positions.map(([baseX, baseY], index) => {
+    const amplitudeX = 0.42 + (index % 5) * 0.08;
+    const amplitudeY = 0.34 + (index % 4) * 0.07;
+    const speed = 0.82 + (index % 6) * 0.06;
+    const phase = index * 0.71;
+    return {
+      x: baseX + Math.sin(time * speed + phase) * amplitudeX,
+      y: baseY + Math.cos(time * (speed * 0.9) + phase) * amplitudeY,
+      radius: 3.35,
     };
   });
 }
