@@ -9,11 +9,11 @@ import {
   createGrid,
   createNumbers,
   formatTime,
-  getAccentClass,
   getBestTime,
   getChallengeTotal,
   getInitialTarget,
   getNextTarget,
+  getNumberAccentClass,
   describeRadialSegment,
   polarToCartesian,
   getRadialGeometry,
@@ -481,7 +481,9 @@ export default function App() {
               const completed = screen === "playing" && (order === "desc" ? number > target : number < target);
               return (
                 <button
-                  className={`grid-cell ${getAccentClass(number, colorCount)} ${completed ? "completed" : ""}`}
+                  className={`grid-cell ${getNumberAccentClass(number, colorCount, range.start)} ${
+                    completed ? "completed" : ""
+                  }`}
                   key={`${number}-${index}`}
                   type="button"
                   onClick={() => handleCellClick(number, index)}
@@ -513,7 +515,9 @@ export default function App() {
                     const completed = screen === "playing" && (order === "desc" ? number > target : number < target);
                     return (
                       <g
-                        className={`radial-cell ${getAccentClass(number, colorCount)} ${completed ? "completed" : ""}`}
+                        className={`radial-cell ${getNumberAccentClass(number, colorCount, range.start)} ${
+                          completed ? "completed" : ""
+                        }`}
                         key={`${number}-${index}`}
                         role="button"
                         tabIndex={screen === "playing" ? 0 : -1}
@@ -546,7 +550,9 @@ export default function App() {
                 const completed = screen === "playing" && (order === "desc" ? number > target : number < target);
                 return (
                   <g
-                    className={`hex-cell ${getAccentClass(number, colorCount)} ${completed ? "completed" : ""}`}
+                    className={`hex-cell ${getNumberAccentClass(number, colorCount, range.start)} ${
+                      completed ? "completed" : ""
+                    }`}
                     key={`${number}-${index}`}
                     role="button"
                     tabIndex={screen === "playing" ? 0 : -1}
@@ -577,7 +583,9 @@ export default function App() {
                 const completed = screen === "playing" && (order === "desc" ? number > target : number < target);
                 return (
                   <g
-                    className={`mosaic-cell ${getAccentClass(number, colorCount)} ${completed ? "completed" : ""}`}
+                    className={`mosaic-cell ${getNumberAccentClass(number, colorCount, range.start)} ${
+                      completed ? "completed" : ""
+                    }`}
                     key={`${number}-${index}`}
                     role="button"
                     tabIndex={screen === "playing" ? 0 : -1}
@@ -615,7 +623,9 @@ export default function App() {
                 const completed = screen === "playing" && (order === "desc" ? number > target : number < target);
                 return (
                   <g
-                    className={`float-ball ${getAccentClass(number, colorCount)} ${completed ? "completed" : ""}`}
+                    className={`float-ball ${getNumberAccentClass(number, colorCount, range.start)} ${
+                      completed ? "completed" : ""
+                    }`}
                     key={`${number}-${index}`}
                     role="button"
                     tabIndex={screen === "playing" ? 0 : -1}

@@ -143,6 +143,11 @@ export function getAccentClass(number: number, colorCount: ColorCount): string {
   return accents[number % colorCount];
 }
 
+export function getNumberAccentClass(number: number, colorCount: ColorCount, startNumber: number): string {
+  if (colorCount === 1 && number === startNumber) return "number-red";
+  return getAccentClass(number, colorCount);
+}
+
 export function getChallengeTotal(mode: GameMode, layout: ChallengeLayout): number {
   if (layout === "float") return FLOAT_TOTAL;
   if (layout === "mosaic") return MOSAIC_TOTAL;

@@ -436,18 +436,24 @@ function renderChallengeHtml({ elapsedMs, grid, theme, colorCount, size, order, 
   const fontSize = Math.round((size >= 6 ? 66 : 82) * (gridSize / 928));
   const board =
     layout === "radial"
-      ? renderRadialBoard({ grid, theme, colorCount, rotationDeg: getRotationDegrees(rotation, elapsedMs) })
+      ? renderRadialBoard({
+          grid,
+          theme,
+          colorCount,
+          startNumber: range.start,
+          rotationDeg: getRotationDegrees(rotation, elapsedMs),
+        })
       : layout === "hex"
-        ? renderHexBoard({ grid, theme, colorCount })
+        ? renderHexBoard({ grid, theme, colorCount, startNumber: range.start })
         : layout === "mosaic"
-          ? renderMosaicBoard({ grid, theme, colorCount })
+          ? renderMosaicBoard({ grid, theme, colorCount, startNumber: range.start })
           : layout === "float"
-            ? renderFloatBoard({ grid, theme, colorCount, elapsedMs })
+            ? renderFloatBoard({ grid, theme, colorCount, startNumber: range.start, elapsedMs })
           : `<div class="grid">${grid
               .map((number, index) => {
                 const row = Math.floor(index / size);
                 const col = index % size;
-                const color = theme.colors[number % colorCount];
+                const color = getNumberColor(theme, number, colorCount, range.start);
                 return `<div class="cell" style="left:${col * cellSize}px;top:${row * cellSize}px;color:${color}">${number}</div>`;
               })
               .join("")}</div>`;
@@ -576,7 +582,7 @@ function renderChallengeHtml({ elapsedMs, grid, theme, colorCount, size, order, 
 </html>`;
 }
 
-function renderRadialBoard({ grid, theme, colorCount, rotationDeg }) {
+function renderRadialBoard({ grid, theme, colorCount, startNumber, rotationDeg }) {
   const geometry = getRadialGeometry(grid.length);
   const rings = Array.from(new Set(geometry.map((cell) => cell.ring)));
   const cells = rings
@@ -588,7 +594,7 @@ function renderRadialBoard({ grid, theme, colorCount, rotationDeg }) {
           const ringRotation = rotationDeg;
           const rotatedGeometry = rotateRadialGeometry(cellGeometry, ringRotation);
           const point = polarToCartesian(50, rotatedGeometry.labelRadius, rotatedGeometry.labelAngle);
-          const color = theme.colors[number % colorCount];
+          const color = getNumberColor(theme, number, colorCount, startNumber);
           return `<g>
             <path d="${describeRadialSegment(rotatedGeometry)}"></path>
             <text x="${point.x.toFixed(3)}" y="${(point.y + 0.25).toFixed(3)}" fill="${color}">${number}</text>
@@ -607,12 +613,12 @@ function renderRadialBoard({ grid, theme, colorCount, rotationDeg }) {
   </div>`;
 }
 
-function renderHexBoard({ grid, theme, colorCount }) {
+function renderHexBoard({ grid, theme, colorCount, startNumber }) {
   const geometry = getHexGeometry();
   const cells = grid
     .map((number, index) => {
       const cellGeometry = geometry[index];
-      const color = theme.colors[number % colorCount];
+      const color = getNumberColor(theme, number, colorCount, startNumber);
       return `<g>
         <polygon points="${cellGeometry.points}"></polygon>
         <text x="${cellGeometry.labelX.toFixed(3)}" y="${cellGeometry.labelY.toFixed(3)}" fill="${color}">${number}</text>
@@ -627,12 +633,12 @@ function renderHexBoard({ grid, theme, colorCount }) {
   </div>`;
 }
 
-function renderMosaicBoard({ grid, theme, colorCount }) {
+function renderMosaicBoard({ grid, theme, colorCount, startNumber }) {
   const geometry = getMosaicGeometry();
   const cells = grid
     .map((number, index) => {
       const cellGeometry = geometry[index];
-      const color = theme.colors[number % colorCount];
+      const color = getNumberColor(theme, number, colorCount, startNumber);
       return `<g>
         <polygon points="${cellGeometry.points}"></polygon>
         <text x="${cellGeometry.labelX.toFixed(3)}" y="${cellGeometry.labelY.toFixed(3)}" fill="${color}">${number}</text>
@@ -647,7 +653,7 @@ function renderMosaicBoard({ grid, theme, colorCount }) {
   </div>`;
 }
 
-function renderFloatBoard({ grid, theme, colorCount, elapsedMs }) {
+function renderFloatBoard({ grid, theme, colorCount, startNumber, elapsedMs }) {
   const geometry = getFloatGeometry(elapsedMs);
   const gridLines = [
     ...Array.from(
@@ -668,10 +674,11 @@ function renderFloatBoard({ grid, theme, colorCount, elapsedMs }) {
   const cells = grid
     .map((number, index) => {
       const cellGeometry = geometry[index];
-      const color = theme.colors[number % colorCount];
+      const color = getNumberColor(theme, number, colorCount, startNumber);
       const fill = "white";
-      const stroke = number === 1 ? theme.accent : theme.primary;
-      const strokeOpacity = number === 1 ? 0.78 : 0.42;
+      const isHighlightedStart = colorCount === 1 && number === startNumber;
+      const stroke = isHighlightedStart ? theme.accent : theme.primary;
+      const strokeOpacity = isHighlightedStart ? 0.78 : 0.42;
       return `<g>
         <circle cx="${cellGeometry.x.toFixed(3)}" cy="${cellGeometry.y.toFixed(3)}" r="${cellGeometry.radius}" fill="${fill}" stroke="${stroke}" stroke-opacity="${strokeOpacity}"></circle>
         <text x="${cellGeometry.x.toFixed(3)}" y="${(cellGeometry.y + 0.25).toFixed(3)}" fill="${color}">${number}</text>
@@ -844,6 +851,11 @@ function formatTime(ms) {
 
 function getTargetRange(total, order) {
   return order === "desc" ? { start: total, end: 1 } : { start: 1, end: total };
+}
+
+function getNumberColor(theme, number, colorCount, startNumber) {
+  if (colorCount === 1 && number === startNumber) return theme.accent;
+  return theme.colors[number % colorCount];
 }
 
 function getRadialRingCounts(total) {

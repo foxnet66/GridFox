@@ -2,7 +2,7 @@ import {
   createGrid,
   describeRadialSegment,
   formatTime,
-  getAccentClass,
+  getNumberAccentClass,
   getRadialGeometry,
   getTargetRange,
   polarToCartesian,
@@ -272,7 +272,7 @@ function drawFrame(
       context.lineWidth = 2;
       context.strokeRect(x, y, cellSize, cellSize);
 
-      context.fillStyle = palette.colors[getAccentClass(number, options.colorCount)];
+      context.fillStyle = palette.colors[getNumberAccentClass(number, options.colorCount, range.start)];
       context.font = `900 ${options.size >= 6 ? 66 : 82}px Arial, sans-serif`;
       context.fillText(String(number), x + cellSize / 2, y + cellSize / 2 + 2);
     });
@@ -295,6 +295,7 @@ function drawRadialBoard(
 ) {
   const scale = size / 100;
   const geometry = getRadialGeometry(options.size * options.size);
+  const range = getTargetRange({ size: options.size, label: `${options.size}x${options.size}`, title: "" }, options.order);
 
   context.save();
   context.translate(left, top);
@@ -317,7 +318,7 @@ function drawRadialBoard(
     context.stroke(path);
 
     const labelPoint = polarToCartesian(50, rotatedGeometry.labelRadius, rotatedGeometry.labelAngle);
-    context.fillStyle = palette.colors[getAccentClass(number, options.colorCount)];
+    context.fillStyle = palette.colors[getNumberAccentClass(number, options.colorCount, range.start)];
     context.font = "950 5.4px Arial, sans-serif";
     context.textAlign = "center";
     context.textBaseline = "middle";
