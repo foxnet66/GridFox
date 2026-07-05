@@ -47,8 +47,6 @@ const canvasProfiles = {
       boardSize: 928,
       tallBoardTop: 548,
       tallBoardHeight: 965,
-      promptTop: 1548,
-      promptFont: 48,
       creditTop: 1648,
       creditFont: 34,
     },
@@ -88,8 +86,6 @@ const canvasProfiles = {
       boardSize: 840,
       tallBoardTop: 414,
       tallBoardHeight: 874,
-      promptTop: 1310,
-      promptFont: 40,
       creditTop: 1362,
       creditFont: 30,
     },
@@ -549,10 +545,6 @@ function renderChallengeHtml({ elapsedMs, grid, theme, colorCount, size, order, 
         border-right: 2px solid ${theme.grid}; border-bottom: 2px solid ${theme.grid};
         font-size: ${fontSize}px; font-weight: 900; line-height: 1;
       }
-      .prompt {
-        position: absolute; top: ${metrics.promptTop}px; left: 0; width: 100%;
-        text-align: center; color: ${theme.ink}; font-size: ${metrics.promptFont}px; font-weight: 900;
-      }
       .credit {
         position: absolute; top: ${metrics.creditTop}px; left: 0; width: 100%;
         text-align: center; color: ${theme.muted}; font-size: ${metrics.creditFont}px; font-weight: 800;
@@ -578,7 +570,6 @@ function renderChallengeHtml({ elapsedMs, grid, theme, colorCount, size, order, 
       <div class="subtitle">从 ${range.start} 到 ${range.end}，看看你需要多久</div>
       <div class="timer">${formatTime(elapsedMs)}</div>
       ${board}
-      <div class="prompt">评论区留下年龄和成绩</div>
       <div class="credit">计时挑战@新加坡大小AI玩</div>
     </main>
   </body>
