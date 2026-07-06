@@ -1130,7 +1130,7 @@ function getSpiralGeometry() {
     return {
       x: 50 + Math.cos(angle) * (radius + wobble),
       y: 50 + Math.sin(angle) * (radius + wobble),
-      radius: 3.55,
+      radius: 3.95,
     };
   });
 }
