@@ -34,7 +34,7 @@ import { createPromoVideo } from "./promoVideo";
 import { getDailyChallenge } from "./dailyChallenge";
 
 type Screen = "ready" | "playing" | "finished";
-type PlayStyleId = "grid" | "radial" | "radial-rotate" | "hex" | "mosaic" | "float";
+type PlayStyleId = "grid" | "radial" | "radial-rotate" | "hex" | "mosaic" | "float" | "spiral";
 type HexCellGeometry = {
   row: number;
   col: number;
@@ -53,6 +53,13 @@ type FloatBallGeometry = {
   driftY: number;
   duration: number;
   delay: number;
+};
+type SpiralCellGeometry = {
+  row: number;
+  col: number;
+  x: number;
+  y: number;
+  radius: number;
 };
 
 type PlayStyleOption = {
@@ -113,6 +120,14 @@ const PLAY_STYLES: PlayStyleOption[] = [
     layout: "float",
     rotation: "none",
   },
+  {
+    id: "spiral",
+    label: "螺旋",
+    name: "螺旋舒尔特",
+    description: "中心向外搜索",
+    layout: "spiral",
+    rotation: "none",
+  },
 ];
 
 const INITIAL_SETTINGS = getInitialSettings();
@@ -151,6 +166,7 @@ export default function App() {
   const hexGeometry = useMemo(() => getHexGeometry(), []);
   const mosaicGeometry = useMemo(() => getMosaicGeometry(), []);
   const floatGeometry = useMemo(() => getFloatGeometry(), []);
+  const spiralGeometry = useMemo(() => getSpiralGeometry(), []);
   const publishText = useMemo(
     () =>
       buildXiaohongshuPost({
@@ -201,7 +217,9 @@ export default function App() {
     setOrder(nextOrder);
     setLayout(nextLayout);
     if (nextLayout === "grid") setRotation("none");
-    if (nextLayout === "hex" || nextLayout === "mosaic" || nextLayout === "float") setRotation("none");
+    if (nextLayout === "hex" || nextLayout === "mosaic" || nextLayout === "float" || nextLayout === "spiral") {
+      setRotation("none");
+    }
     setGrid(createChallengeNumbers(nextMode, nextLayout));
     setTarget(getInitialTarget(nextMode, nextOrder, nextLayout));
     setStartedAt(null);
@@ -608,15 +626,15 @@ export default function App() {
               })}
             </svg>
           </div>
-        ) : (
+        ) : layout === "float" ? (
           <div className="float-board" ref={boardRef}>
-            <svg viewBox="0 0 100 72" role="group" aria-label="浮球舒尔特数字盘">
-              <rect className="float-panel" x="1.5" y="1.5" width="97" height="69" rx="3.8" />
+            <svg viewBox="0 0 100 86" role="group" aria-label="浮球舒尔特数字盘">
+              <rect className="float-panel" x="1.5" y="1.5" width="97" height="83" rx="3.8" />
               {Array.from({ length: 13 }, (_, index) => (
-                <line className="float-grid-line" key={`v-${index}`} x1={4 + index * 7.7} x2={4 + index * 7.7} y1="2" y2="70" />
+                <line className="float-grid-line" key={`v-${index}`} x1={4 + index * 7.7} x2={4 + index * 7.7} y1="2" y2="84" />
               ))}
-              {Array.from({ length: 8 }, (_, index) => (
-                <line className="float-grid-line" key={`h-${index}`} x1="2" x2="98" y1={6 + index * 8.5} y2={6 + index * 8.5} />
+              {Array.from({ length: 10 }, (_, index) => (
+                <line className="float-grid-line" key={`h-${index}`} x1="2" x2="98" y1={6 + index * 8.2} y2={6 + index * 8.2} />
               ))}
               {grid.map((number, index) => {
                 const geometry = floatGeometry[index];
@@ -652,6 +670,40 @@ export default function App() {
                     />
                     <circle cx={geometry.x} cy={geometry.y} r={geometry.radius} />
                     <text x={geometry.x} y={geometry.y + 0.25}>
+                      {number}
+                    </text>
+                  </g>
+                );
+              })}
+            </svg>
+          </div>
+        ) : (
+          <div className="spiral-board" ref={boardRef}>
+            <svg viewBox="0 0 100 100" role="group" aria-label="螺旋舒尔特数字盘">
+              <path className="spiral-guide" d={describeSpiralGuide()} />
+              {grid.map((number, index) => {
+                const geometry = spiralGeometry[index];
+                const completed = screen === "playing" && (order === "desc" ? number > target : number < target);
+                return (
+                  <g
+                    className={`spiral-cell ${getNumberAccentClass(number, colorCount, range.start)} ${
+                      completed ? "completed" : ""
+                    }`}
+                    key={`${number}-${index}`}
+                    role="button"
+                    tabIndex={screen === "playing" ? 0 : -1}
+                    aria-label={`数字 ${number}`}
+                    onClick={() => handleCellClick(number, index)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        handleCellClick(number, index);
+                      }
+                    }}
+                    aria-disabled={screen !== "playing"}
+                  >
+                    <circle cx={geometry.x} cy={geometry.y} r={geometry.radius} />
+                    <text x={geometry.x} y={geometry.y + 0.28}>
                       {number}
                     </text>
                   </g>
@@ -713,9 +765,15 @@ export default function App() {
                   className="secondary-action"
                   type="button"
                   onClick={handleCreatePromoVideo}
-                  disabled={promoStatus === "recording" || layout === "hex" || layout === "mosaic" || layout === "float"}
+                  disabled={
+                    promoStatus === "recording" ||
+                    layout === "hex" ||
+                    layout === "mosaic" ||
+                    layout === "float" ||
+                    layout === "spiral"
+                  }
                 >
-                  {layout === "hex" || layout === "mosaic" || layout === "float"
+                  {layout === "hex" || layout === "mosaic" || layout === "float" || layout === "spiral"
                     ? "当前玩法暂不支持"
                     : promoStatus === "recording"
                     ? "录制中..."
@@ -769,7 +827,9 @@ function buildXiaohongshuPost({
 }): string {
   const isRotating = layout === "radial" && rotation !== "none";
   const layoutName =
-    layout === "float"
+    layout === "spiral"
+      ? "螺旋舒尔特"
+      : layout === "float"
       ? "浮球舒尔特"
       : layout === "mosaic"
       ? "变形舒尔特"
@@ -792,6 +852,8 @@ function buildXiaohongshuPost({
   const modeLine =
     isRotating
       ? `${getRotationLabel(rotation)}圆盘会增加视觉追踪难度，适合进阶挑战。`
+      : layout === "spiral"
+      ? "螺旋路径会打破横竖扫描习惯，更考验连续视觉搜索。"
       : layout === "float"
       ? "小球会持续轻微漂浮，更考验动态视觉追踪和注意力稳定性。"
       : layout === "mosaic"
@@ -809,7 +871,9 @@ function buildXiaohongshuPost({
     "#专注力游戏",
     "#提升注意力",
     "#计时挑战",
-    layout === "float"
+    layout === "spiral"
+      ? "#螺旋舒尔特"
+      : layout === "float"
       ? "#浮球舒尔特"
       : layout === "mosaic"
       ? "#变形舒尔特"
@@ -845,7 +909,9 @@ function getInitialSettings(): {
   const mode = MODES.find((item) => item.size === Number(params.get("size"))) ?? DEFAULT_MODE;
   const layoutParam = params.get("layout");
   const layout =
-    layoutParam === "float"
+    layoutParam === "spiral"
+      ? "spiral"
+      : layoutParam === "float"
       ? "float"
       : layoutParam === "mosaic"
       ? "mosaic"
@@ -877,6 +943,7 @@ function getActivePlayStyle(layout: ChallengeLayout, rotation: RotationSpeed): P
   if (layout === "hex") return PLAY_STYLES[3];
   if (layout === "mosaic") return PLAY_STYLES[4];
   if (layout === "float") return PLAY_STYLES[5];
+  if (layout === "spiral") return PLAY_STYLES[6];
   if (rotation !== "none") return PLAY_STYLES[2];
   return PLAY_STYLES[1];
 }
@@ -886,12 +953,13 @@ function createChallengeNumbers(mode: GameMode, layout: ChallengeLayout): number
 }
 
 function getSizeLabel(mode: GameMode, layout: ChallengeLayout): string {
+  if (layout === "spiral") return "36点";
   if (layout === "float") return "36球";
   return layout === "hex" || layout === "mosaic" ? "30格" : mode.label;
 }
 
 function isFixedLayout(layout: ChallengeLayout): boolean {
-  return layout === "hex" || layout === "mosaic" || layout === "float";
+  return layout === "hex" || layout === "mosaic" || layout === "float" || layout === "spiral";
 }
 
 function getTapPosition(
@@ -900,6 +968,7 @@ function getTapPosition(
   layout: ChallengeLayout,
 ): { row: number; col: number } {
   if (layout === "float") return { row: Math.floor(index / 6), col: index % 6 };
+  if (layout === "spiral") return { row: Math.floor(index / 6), col: index % 6 };
   if (layout === "hex" || layout === "mosaic") return { row: Math.floor(index / 5), col: index % 5 };
   return { row: Math.floor(index / mode.size), col: index % mode.size };
 }
@@ -944,17 +1013,39 @@ function getFloatGeometry(): FloatBallGeometry[] {
     [95, 34],
   ];
 
-  return positions.map(([x, y], index) => ({
+  return positions.map(([baseX, baseY], index) => ({
     row: Math.floor(index / 6),
     col: index % 6,
-    x,
-    y,
-    radius: 3.35,
+    x: 50 + (baseX - 50) * 0.9,
+    y: 43 + (baseY - 36) * 1.14,
+    radius: 4.15,
     driftX: ((index % 5) - 2) * 0.28 + (index % 2 === 0 ? 0.35 : -0.35),
     driftY: ((index % 4) - 1.5) * 0.22 + (index % 3 === 0 ? 0.28 : -0.18),
     duration: 4.8 + (index % 6) * 0.45,
     delay: -(index % 7) * 0.35,
   }));
+}
+
+function getSpiralGeometry(): SpiralCellGeometry[] {
+  const total = 36;
+  return Array.from({ length: total }, (_, index) => {
+    const angle = -Math.PI / 2 + index * 0.82;
+    const radius = 8 + index * 1.08;
+    const wobble = Math.sin(index * 1.7) * 0.55;
+    return {
+      row: Math.floor(index / 6),
+      col: index % 6,
+      x: 50 + Math.cos(angle) * (radius + wobble),
+      y: 50 + Math.sin(angle) * (radius + wobble),
+      radius: 3.55,
+    };
+  });
+}
+
+function describeSpiralGuide(): string {
+  return getSpiralGeometry()
+    .map((point, index) => `${index === 0 ? "M" : "L"} ${point.x.toFixed(3)} ${point.y.toFixed(3)}`)
+    .join(" ");
 }
 
 function getHexGeometry(): HexCellGeometry[] {

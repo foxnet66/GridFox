@@ -12,7 +12,7 @@ export type ChallengeOrderOption = {
   name: string;
 };
 
-export type ChallengeLayout = "grid" | "radial" | "hex" | "mosaic" | "float";
+export type ChallengeLayout = "grid" | "radial" | "hex" | "mosaic" | "float" | "spiral";
 
 export type ChallengeLayoutOption = {
   id: ChallengeLayout;
@@ -65,6 +65,7 @@ export const DEFAULT_MODE: GameMode = {
 export const HEX_TOTAL = 30;
 export const MOSAIC_TOTAL = 30;
 export const FLOAT_TOTAL = 36;
+export const SPIRAL_TOTAL = 36;
 
 export const MODES: GameMode[] = [
   { size: 4, label: "4x4", title: "按顺序从 1 找到 16" },
@@ -85,6 +86,7 @@ export const CHALLENGE_LAYOUTS: ChallengeLayoutOption[] = [
   { id: "hex", label: "蜂巢", name: "蜂巢舒尔特" },
   { id: "mosaic", label: "变形", name: "变形舒尔特" },
   { id: "float", label: "浮球", name: "浮球舒尔特" },
+  { id: "spiral", label: "螺旋", name: "螺旋舒尔特" },
 ];
 
 export const ROTATION_SPEEDS: RotationSpeedOption[] = [
@@ -149,6 +151,7 @@ export function getNumberAccentClass(number: number, colorCount: ColorCount, sta
 }
 
 export function getChallengeTotal(mode: GameMode, layout: ChallengeLayout): number {
+  if (layout === "spiral") return SPIRAL_TOTAL;
   if (layout === "float") return FLOAT_TOTAL;
   if (layout === "mosaic") return MOSAIC_TOTAL;
   return layout === "hex" ? HEX_TOTAL : mode.size * mode.size;

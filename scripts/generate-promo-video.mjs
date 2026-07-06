@@ -157,9 +157,11 @@ const size = clamp(Number(args.size ?? dailyChallenge?.size ?? 6), 4, 6);
 const order = String(args.order ?? dailyChallenge?.order ?? "asc") === "desc" ? "desc" : "asc";
 const layoutArg = String(args.layout ?? dailyChallenge?.layout ?? "grid");
 const layout =
-  layoutArg === "float"
-    ? "float"
-    : layoutArg === "mosaic"
+  layoutArg === "spiral"
+    ? "spiral"
+    : layoutArg === "float"
+      ? "float"
+      : layoutArg === "mosaic"
       ? "mosaic"
       : layoutArg === "hex"
         ? "hex"
@@ -447,8 +449,10 @@ function renderChallengeHtml({ elapsedMs, grid, theme, colorCount, size, order, 
         ? renderHexBoard({ grid, theme, colorCount, startNumber: range.start })
         : layout === "mosaic"
           ? renderMosaicBoard({ grid, theme, colorCount, startNumber: range.start })
-          : layout === "float"
-            ? renderFloatBoard({ grid, theme, colorCount, startNumber: range.start, elapsedMs })
+        : layout === "float"
+          ? renderFloatBoard({ grid, theme, colorCount, startNumber: range.start, elapsedMs })
+          : layout === "spiral"
+            ? renderSpiralBoard({ grid, theme, colorCount, startNumber: range.start })
           : `<div class="grid">${grid
               .map((number, index) => {
                 const row = Math.floor(index / size);
@@ -512,13 +516,19 @@ function renderChallengeHtml({ elapsedMs, grid, theme, colorCount, size, order, 
       }
       .float {
         position: absolute; left: ${metrics.boardLeft}px; top: ${metrics.boardTop + 38}px;
-        width: ${metrics.boardSize}px; height: ${Math.round(metrics.boardSize * 0.72)}px;
+        width: ${metrics.boardSize}px; height: ${Math.round(metrics.boardSize * 0.86)}px;
+        filter: drop-shadow(0 14px 34px rgba(24, 33, 47, 0.1));
+      }
+      .spiral {
+        position: absolute; left: ${metrics.boardLeft}px; top: ${metrics.boardTop}px;
+        width: ${metrics.boardSize}px; height: ${metrics.boardSize}px;
         filter: drop-shadow(0 14px 34px rgba(24, 33, 47, 0.1));
       }
       .radial svg { display: block; width: 100%; height: 100%; overflow: visible; }
       .hex svg { display: block; width: 100%; height: 100%; overflow: visible; }
       .mosaic svg { display: block; width: 100%; height: 100%; overflow: visible; }
       .float svg { display: block; width: 100%; height: 100%; overflow: visible; }
+      .spiral svg { display: block; width: 100%; height: 100%; overflow: visible; }
       .radial path { fill: white; stroke: ${theme.grid}; stroke-width: 0.42; }
       .radial .center { fill: ${theme.paper}; stroke: ${theme.grid}; stroke-width: 0.6; }
       .radial text {
@@ -543,7 +553,19 @@ function renderChallengeHtml({ elapsedMs, grid, theme, colorCount, size, order, 
       }
       .float text {
         dominant-baseline: middle; text-anchor: middle;
-        font-size: 4.45px; font-weight: 950;
+        font-size: 5.15px; font-weight: 950;
+      }
+      .spiral .guide {
+        fill: none; stroke: ${theme.primary}; stroke-opacity: 0.22;
+        stroke-width: 0.52; stroke-linecap: round; stroke-linejoin: round;
+      }
+      .spiral circle {
+        fill: white; stroke: ${theme.primary}; stroke-opacity: 0.42; stroke-width: 0.45;
+        filter: drop-shadow(0 1px 1px rgba(24, 33, 47, 0.14));
+      }
+      .spiral text {
+        dominant-baseline: middle; text-anchor: middle;
+        font-size: 5.05px; font-weight: 950;
       }
       .cell {
         position: absolute; width: ${cellSize}px; height: ${cellSize}px;
@@ -570,6 +592,8 @@ function renderChallengeHtml({ elapsedMs, grid, theme, colorCount, size, order, 
                 ? "变形舒尔特挑战"
                 : layout === "float"
                   ? "浮球舒尔特挑战"
+                  : layout === "spiral"
+                    ? "螺旋舒尔特挑战"
                 : "舒尔特方格挑战"
       }</div>
       <div class="title">请按顺序从 <span>${range.start}</span> 找到 <span>${range.end}</span></div>
@@ -661,13 +685,13 @@ function renderFloatBoard({ grid, theme, colorCount, startNumber, elapsedMs }) {
       (_, index) =>
         `<line class="grid-line" x1="${(4 + index * 7.7).toFixed(2)}" x2="${(4 + index * 7.7).toFixed(
           2,
-        )}" y1="2" y2="70"></line>`,
+        )}" y1="2" y2="84"></line>`,
     ),
     ...Array.from(
-      { length: 8 },
+      { length: 10 },
       (_, index) =>
-        `<line class="grid-line" x1="2" x2="98" y1="${(6 + index * 8.5).toFixed(2)}" y2="${(
-          6 + index * 8.5
+        `<line class="grid-line" x1="2" x2="98" y1="${(6 + index * 8.2).toFixed(2)}" y2="${(
+          6 + index * 8.2
         ).toFixed(2)}"></line>`,
     ),
   ].join("");
@@ -687,9 +711,31 @@ function renderFloatBoard({ grid, theme, colorCount, startNumber, elapsedMs }) {
     .join("");
 
   return `<div class="float">
-    <svg viewBox="0 0 100 72" aria-label="浮球舒尔特数字盘">
-      <rect class="panel" x="1.5" y="1.5" width="97" height="69" rx="3.8"></rect>
+    <svg viewBox="0 0 100 86" aria-label="浮球舒尔特数字盘">
+      <rect class="panel" x="1.5" y="1.5" width="97" height="83" rx="3.8"></rect>
       ${gridLines}
+      ${cells}
+    </svg>
+  </div>`;
+}
+
+function renderSpiralBoard({ grid, theme, colorCount, startNumber }) {
+  const geometry = getSpiralGeometry();
+  const guide = describeSpiralGuide();
+  const cells = grid
+    .map((number, index) => {
+      const cellGeometry = geometry[index];
+      const color = getNumberColor(theme, number, colorCount, startNumber);
+      return `<g>
+        <circle cx="${cellGeometry.x.toFixed(3)}" cy="${cellGeometry.y.toFixed(3)}" r="${cellGeometry.radius}"></circle>
+        <text x="${cellGeometry.x.toFixed(3)}" y="${(cellGeometry.y + 0.28).toFixed(3)}" fill="${color}">${number}</text>
+      </g>`;
+    })
+    .join("");
+
+  return `<div class="spiral">
+    <svg viewBox="0 0 100 100" aria-label="螺旋舒尔特数字盘">
+      <path class="guide" d="${guide}"></path>
       ${cells}
     </svg>
   </div>`;
@@ -813,6 +859,7 @@ function createGrid(total, seed) {
 }
 
 function getChallengeTotal(size, layout) {
+  if (layout === "spiral") return 36;
   if (layout === "float") return 36;
   return layout === "hex" || layout === "mosaic" ? 30 : size * size;
 }
@@ -822,6 +869,7 @@ function getProjectLabel({ layout, size, total }) {
   if (layout === "hex") return "蜂巢舒尔特 30";
   if (layout === "mosaic") return "变形舒尔特 30";
   if (layout === "float") return "浮球舒尔特 36";
+  if (layout === "spiral") return "螺旋舒尔特 36";
   return `舒尔特方格 ${size}×${size}`;
 }
 
@@ -830,6 +878,7 @@ function getProjectLabelHtml({ layout, size, total }) {
   if (layout === "hex") return "蜂巢舒尔特 <span>30</span>";
   if (layout === "mosaic") return "变形舒尔特 <span>30</span>";
   if (layout === "float") return "浮球舒尔特 <span>36</span>";
+  if (layout === "spiral") return "螺旋舒尔特 <span>36</span>";
   return `舒尔特方格 <span>${size}×${size}</span>`;
 }
 
@@ -1062,12 +1111,34 @@ function getFloatGeometry(elapsedMs = 0) {
     const amplitudeY = 0.34 + (index % 4) * 0.07;
     const speed = 0.82 + (index % 6) * 0.06;
     const phase = index * 0.71;
+    const x = 50 + (baseX - 50) * 0.9;
+    const y = 43 + (baseY - 36) * 1.14;
     return {
-      x: baseX + Math.sin(time * speed + phase) * amplitudeX,
-      y: baseY + Math.cos(time * (speed * 0.9) + phase) * amplitudeY,
-      radius: 3.35,
+      x: x + Math.sin(time * speed + phase) * amplitudeX,
+      y: y + Math.cos(time * (speed * 0.9) + phase) * amplitudeY,
+      radius: 4.15,
     };
   });
+}
+
+function getSpiralGeometry() {
+  const total = 36;
+  return Array.from({ length: total }, (_, index) => {
+    const angle = -Math.PI / 2 + index * 0.82;
+    const radius = 8 + index * 1.08;
+    const wobble = Math.sin(index * 1.7) * 0.55;
+    return {
+      x: 50 + Math.cos(angle) * (radius + wobble),
+      y: 50 + Math.sin(angle) * (radius + wobble),
+      radius: 3.55,
+    };
+  });
+}
+
+function describeSpiralGuide() {
+  return getSpiralGeometry()
+    .map((point, index) => `${index === 0 ? "M" : "L"} ${point.x.toFixed(3)} ${point.y.toFixed(3)}`)
+    .join(" ");
 }
 
 function polarToCartesian(center, radius, angleDegrees) {
