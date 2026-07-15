@@ -34,7 +34,7 @@ import { createPromoVideo } from "./promoVideo";
 import { getDailyChallenge } from "./dailyChallenge";
 
 type Screen = "ready" | "playing" | "finished";
-type PlayStyleId = "grid" | "radial" | "radial-rotate" | "hex" | "mosaic" | "float" | "spiral";
+type PlayStyleId = "grid" | "radial" | "radial-rotate" | "hex" | "mosaic" | "float" | "spiral" | "maze" | "wave";
 type HexCellGeometry = {
   row: number;
   col: number;
@@ -61,6 +61,8 @@ type SpiralCellGeometry = {
   y: number;
   radius: number;
 };
+type MazeCellGeometry = SpiralCellGeometry;
+type WaveCellGeometry = SpiralCellGeometry;
 
 type PlayStyleOption = {
   id: PlayStyleId;
@@ -128,6 +130,22 @@ const PLAY_STYLES: PlayStyleOption[] = [
     layout: "spiral",
     rotation: "none",
   },
+  {
+    id: "maze",
+    label: "迷宫",
+    name: "迷宫舒尔特",
+    description: "路径视觉搜索",
+    layout: "maze",
+    rotation: "none",
+  },
+  {
+    id: "wave",
+    label: "波浪",
+    name: "波浪舒尔特",
+    description: "波浪轨道搜索",
+    layout: "wave",
+    rotation: "none",
+  },
 ];
 
 const INITIAL_SETTINGS = getInitialSettings();
@@ -167,6 +185,8 @@ export default function App() {
   const mosaicGeometry = useMemo(() => getMosaicGeometry(), []);
   const floatGeometry = useMemo(() => getFloatGeometry(), []);
   const spiralGeometry = useMemo(() => getSpiralGeometry(), []);
+  const mazeGeometry = useMemo(() => getMazeGeometry(), []);
+  const waveGeometry = useMemo(() => getWaveGeometry(), []);
   const publishText = useMemo(
     () =>
       buildXiaohongshuPost({
@@ -217,7 +237,14 @@ export default function App() {
     setOrder(nextOrder);
     setLayout(nextLayout);
     if (nextLayout === "grid") setRotation("none");
-    if (nextLayout === "hex" || nextLayout === "mosaic" || nextLayout === "float" || nextLayout === "spiral") {
+    if (
+      nextLayout === "hex" ||
+      nextLayout === "mosaic" ||
+      nextLayout === "float" ||
+      nextLayout === "spiral" ||
+      nextLayout === "maze" ||
+      nextLayout === "wave"
+    ) {
       setRotation("none");
     }
     setGrid(createChallengeNumbers(nextMode, nextLayout));
@@ -677,7 +704,7 @@ export default function App() {
               })}
             </svg>
           </div>
-        ) : (
+        ) : layout === "spiral" ? (
           <div className="spiral-board" ref={boardRef}>
             <svg viewBox="0 0 100 100" role="group" aria-label="螺旋舒尔特数字盘">
               <path className="spiral-guide" d={describeSpiralGuide()} />
@@ -687,6 +714,79 @@ export default function App() {
                 return (
                   <g
                     className={`spiral-cell ${getNumberAccentClass(number, colorCount, range.start)} ${
+                      completed ? "completed" : ""
+                    }`}
+                    key={`${number}-${index}`}
+                    role="button"
+                    tabIndex={screen === "playing" ? 0 : -1}
+                    aria-label={`数字 ${number}`}
+                    onClick={() => handleCellClick(number, index)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        handleCellClick(number, index);
+                      }
+                    }}
+                    aria-disabled={screen !== "playing"}
+                  >
+                    <circle cx={geometry.x} cy={geometry.y} r={geometry.radius} />
+                    <text x={geometry.x} y={geometry.y + 0.28}>
+                      {number}
+                    </text>
+                  </g>
+                );
+              })}
+            </svg>
+          </div>
+        ) : layout === "maze" ? (
+          <div className="maze-board" ref={boardRef}>
+            <svg viewBox="0 0 100 100" role="group" aria-label="迷宫舒尔特数字盘">
+              <rect className="maze-panel" x="3" y="3" width="94" height="94" rx="5" />
+              <path className="maze-corridor" d={describeMazeGuide()} />
+              <path className="maze-guide" d={describeMazeGuide()} />
+              {mazeGeometry.map((geometry, index) => {
+                const number = grid[index];
+                const completed = screen === "playing" && (order === "desc" ? number > target : number < target);
+                return (
+                  <g
+                    className={`maze-cell ${getNumberAccentClass(number, colorCount, range.start)} ${
+                      completed ? "completed" : ""
+                    }`}
+                    key={`${number}-${index}`}
+                    role="button"
+                    tabIndex={screen === "playing" ? 0 : -1}
+                    aria-label={`数字 ${number}`}
+                    onClick={() => handleCellClick(number, index)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        handleCellClick(number, index);
+                      }
+                    }}
+                    aria-disabled={screen !== "playing"}
+                  >
+                    <circle cx={geometry.x} cy={geometry.y} r={geometry.radius} />
+                    <text x={geometry.x} y={geometry.y + 0.28}>
+                      {number}
+                    </text>
+                  </g>
+                );
+              })}
+            </svg>
+          </div>
+        ) : (
+          <div className="wave-board" ref={boardRef}>
+            <svg viewBox="0 0 100 100" role="group" aria-label="波浪舒尔特数字盘">
+              <rect className="wave-panel" x="3" y="3" width="94" height="94" rx="5" />
+              {describeWaveGuides().map((guide, index) => (
+                <path className="wave-guide" d={guide} key={`wave-${index}`} />
+              ))}
+              {waveGeometry.map((geometry, index) => {
+                const number = grid[index];
+                const completed = screen === "playing" && (order === "desc" ? number > target : number < target);
+                return (
+                  <g
+                    className={`wave-cell ${getNumberAccentClass(number, colorCount, range.start)} ${
                       completed ? "completed" : ""
                     }`}
                     key={`${number}-${index}`}
@@ -770,10 +870,17 @@ export default function App() {
                     layout === "hex" ||
                     layout === "mosaic" ||
                     layout === "float" ||
-                    layout === "spiral"
+                    layout === "spiral" ||
+                    layout === "maze" ||
+                    layout === "wave"
                   }
                 >
-                  {layout === "hex" || layout === "mosaic" || layout === "float" || layout === "spiral"
+                  {layout === "hex" ||
+                  layout === "mosaic" ||
+                  layout === "float" ||
+                  layout === "spiral" ||
+                  layout === "maze" ||
+                  layout === "wave"
                     ? "当前玩法暂不支持"
                     : promoStatus === "recording"
                     ? "录制中..."
@@ -827,7 +934,11 @@ function buildXiaohongshuPost({
 }): string {
   const isRotating = layout === "radial" && rotation !== "none";
   const layoutName =
-    layout === "spiral"
+    layout === "wave"
+      ? "波浪舒尔特"
+      : layout === "maze"
+      ? "迷宫舒尔特"
+      : layout === "spiral"
       ? "螺旋舒尔特"
       : layout === "float"
       ? "浮球舒尔特"
@@ -852,6 +963,10 @@ function buildXiaohongshuPost({
   const modeLine =
     isRotating
       ? `${getRotationLabel(rotation)}圆盘会增加视觉追踪难度，适合进阶挑战。`
+      : layout === "wave"
+      ? "波浪轨道会打破直线扫描节奏，更考验连续视觉追踪。"
+      : layout === "maze"
+      ? "迷宫路径会迫使视线不断转向，更考验搜索路线感和注意力稳定性。"
       : layout === "spiral"
       ? "螺旋路径会打破横竖扫描习惯，更考验连续视觉搜索。"
       : layout === "float"
@@ -871,7 +986,11 @@ function buildXiaohongshuPost({
     "#专注力游戏",
     "#提升注意力",
     "#计时挑战",
-    layout === "spiral"
+    layout === "wave"
+      ? "#波浪舒尔特"
+      : layout === "maze"
+      ? "#迷宫舒尔特"
+      : layout === "spiral"
       ? "#螺旋舒尔特"
       : layout === "float"
       ? "#浮球舒尔特"
@@ -909,7 +1028,11 @@ function getInitialSettings(): {
   const mode = MODES.find((item) => item.size === Number(params.get("size"))) ?? DEFAULT_MODE;
   const layoutParam = params.get("layout");
   const layout =
-    layoutParam === "spiral"
+    layoutParam === "wave"
+      ? "wave"
+      : layoutParam === "maze"
+      ? "maze"
+      : layoutParam === "spiral"
       ? "spiral"
       : layoutParam === "float"
       ? "float"
@@ -944,6 +1067,8 @@ function getActivePlayStyle(layout: ChallengeLayout, rotation: RotationSpeed): P
   if (layout === "mosaic") return PLAY_STYLES[4];
   if (layout === "float") return PLAY_STYLES[5];
   if (layout === "spiral") return PLAY_STYLES[6];
+  if (layout === "maze") return PLAY_STYLES[7];
+  if (layout === "wave") return PLAY_STYLES[8];
   if (rotation !== "none") return PLAY_STYLES[2];
   return PLAY_STYLES[1];
 }
@@ -953,13 +1078,22 @@ function createChallengeNumbers(mode: GameMode, layout: ChallengeLayout): number
 }
 
 function getSizeLabel(mode: GameMode, layout: ChallengeLayout): string {
+  if (layout === "wave") return "36点";
+  if (layout === "maze") return "36点";
   if (layout === "spiral") return "36点";
   if (layout === "float") return "36球";
   return layout === "hex" || layout === "mosaic" ? "30格" : mode.label;
 }
 
 function isFixedLayout(layout: ChallengeLayout): boolean {
-  return layout === "hex" || layout === "mosaic" || layout === "float" || layout === "spiral";
+  return (
+    layout === "hex" ||
+    layout === "mosaic" ||
+    layout === "float" ||
+    layout === "spiral" ||
+    layout === "maze" ||
+    layout === "wave"
+  );
 }
 
 function getTapPosition(
@@ -969,6 +1103,8 @@ function getTapPosition(
 ): { row: number; col: number } {
   if (layout === "float") return { row: Math.floor(index / 6), col: index % 6 };
   if (layout === "spiral") return { row: Math.floor(index / 6), col: index % 6 };
+  if (layout === "maze") return { row: Math.floor(index / 6), col: index % 6 };
+  if (layout === "wave") return { row: Math.floor(index / 6), col: index % 6 };
   if (layout === "hex" || layout === "mosaic") return { row: Math.floor(index / 5), col: index % 5 };
   return { row: Math.floor(index / mode.size), col: index % mode.size };
 }
@@ -1046,6 +1182,53 @@ function describeSpiralGuide(): string {
   return getSpiralGeometry()
     .map((point, index) => `${index === 0 ? "M" : "L"} ${point.x.toFixed(3)} ${point.y.toFixed(3)}`)
     .join(" ");
+}
+
+function getMazeGeometry(): MazeCellGeometry[] {
+  const columns = [10, 26, 42, 58, 74, 90];
+  const rows = [12, 26, 40, 54, 68, 82];
+  const points = rows.flatMap((y, row) => {
+    const xs = row % 2 === 0 ? columns : [...columns].reverse();
+    return xs.map((x) => [x, y]);
+  });
+
+  return points.map(([x, y], index) => ({
+    row: Math.floor(index / 6),
+    col: index % 6,
+    x,
+    y,
+    radius: 4.05,
+  }));
+}
+
+function describeMazeGuide(): string {
+  return getMazeGeometry()
+    .map((point, index) => `${index === 0 ? "M" : "L"} ${point.x.toFixed(3)} ${point.y.toFixed(3)}`)
+    .join(" ");
+}
+
+function getWaveGeometry(): WaveCellGeometry[] {
+  const columns = [10, 26, 42, 58, 74, 90];
+  const rows = [14, 28, 42, 56, 70, 84];
+  return rows.flatMap((baseY, row) =>
+    columns.map((x, col) => ({
+      row,
+      col,
+      x,
+      y: baseY + Math.sin((col / (columns.length - 1)) * Math.PI * 2 + row * 0.72) * 3.8,
+      radius: 4.05,
+    })),
+  );
+}
+
+function describeWaveGuides(): string[] {
+  const geometry = getWaveGeometry();
+  return Array.from({ length: 6 }, (_, row) =>
+    geometry
+      .filter((point) => point.row === row)
+      .map((point, index) => `${index === 0 ? "M" : "L"} ${point.x.toFixed(3)} ${point.y.toFixed(3)}`)
+      .join(" "),
+  );
 }
 
 function getHexGeometry(): HexCellGeometry[] {

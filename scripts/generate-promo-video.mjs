@@ -157,7 +157,11 @@ const size = clamp(Number(args.size ?? dailyChallenge?.size ?? 6), 4, 6);
 const order = String(args.order ?? dailyChallenge?.order ?? "asc") === "desc" ? "desc" : "asc";
 const layoutArg = String(args.layout ?? dailyChallenge?.layout ?? "grid");
 const layout =
-  layoutArg === "spiral"
+  layoutArg === "wave"
+    ? "wave"
+    : layoutArg === "maze"
+    ? "maze"
+    : layoutArg === "spiral"
     ? "spiral"
     : layoutArg === "float"
       ? "float"
@@ -453,6 +457,10 @@ function renderChallengeHtml({ elapsedMs, grid, theme, colorCount, size, order, 
           ? renderFloatBoard({ grid, theme, colorCount, startNumber: range.start, elapsedMs })
           : layout === "spiral"
             ? renderSpiralBoard({ grid, theme, colorCount, startNumber: range.start })
+            : layout === "maze"
+              ? renderMazeBoard({ grid, theme, colorCount, startNumber: range.start })
+              : layout === "wave"
+                ? renderWaveBoard({ grid, theme, colorCount, startNumber: range.start })
           : `<div class="grid">${grid
               .map((number, index) => {
                 const row = Math.floor(index / size);
@@ -524,11 +532,23 @@ function renderChallengeHtml({ elapsedMs, grid, theme, colorCount, size, order, 
         width: ${metrics.boardSize}px; height: ${metrics.boardSize}px;
         filter: drop-shadow(0 14px 34px rgba(24, 33, 47, 0.1));
       }
+      .maze {
+        position: absolute; left: ${metrics.boardLeft}px; top: ${metrics.boardTop}px;
+        width: ${metrics.boardSize}px; height: ${metrics.boardSize}px;
+        filter: drop-shadow(0 14px 34px rgba(24, 33, 47, 0.1));
+      }
+      .wave {
+        position: absolute; left: ${metrics.boardLeft}px; top: ${metrics.boardTop}px;
+        width: ${metrics.boardSize}px; height: ${metrics.boardSize}px;
+        filter: drop-shadow(0 14px 34px rgba(24, 33, 47, 0.1));
+      }
       .radial svg { display: block; width: 100%; height: 100%; overflow: visible; }
       .hex svg { display: block; width: 100%; height: 100%; overflow: visible; }
       .mosaic svg { display: block; width: 100%; height: 100%; overflow: visible; }
       .float svg { display: block; width: 100%; height: 100%; overflow: visible; }
       .spiral svg { display: block; width: 100%; height: 100%; overflow: visible; }
+      .maze svg { display: block; width: 100%; height: 100%; overflow: visible; }
+      .wave svg { display: block; width: 100%; height: 100%; overflow: visible; }
       .radial path { fill: white; stroke: ${theme.grid}; stroke-width: 0.42; }
       .radial .center { fill: ${theme.paper}; stroke: ${theme.grid}; stroke-width: 0.6; }
       .radial text {
@@ -567,6 +587,36 @@ function renderChallengeHtml({ elapsedMs, grid, theme, colorCount, size, order, 
         dominant-baseline: middle; text-anchor: middle;
         font-size: 5.05px; font-weight: 950;
       }
+      .maze .panel { fill: white; stroke: ${theme.grid}; stroke-width: 0.45; }
+      .maze .corridor {
+        fill: none; stroke: ${theme.primary}; stroke-opacity: 0.12; stroke-width: 7.6;
+        stroke-linecap: round; stroke-linejoin: round;
+      }
+      .maze .guide {
+        fill: none; stroke: ${theme.primary}; stroke-opacity: 0.38; stroke-width: 0.72;
+        stroke-linecap: round; stroke-linejoin: round;
+      }
+      .maze circle {
+        fill: white; stroke: ${theme.primary}; stroke-opacity: 0.46; stroke-width: 0.5;
+        filter: drop-shadow(0 1px 1px rgba(24, 33, 47, 0.14));
+      }
+      .maze text {
+        dominant-baseline: middle; text-anchor: middle;
+        font-size: 5.05px; font-weight: 950;
+      }
+      .wave .panel { fill: white; stroke: ${theme.grid}; stroke-width: 0.45; }
+      .wave .guide {
+        fill: none; stroke: ${theme.primary}; stroke-opacity: 0.24; stroke-width: 2.4;
+        stroke-linecap: round; stroke-linejoin: round;
+      }
+      .wave circle {
+        fill: white; stroke: ${theme.primary}; stroke-opacity: 0.46; stroke-width: 0.5;
+        filter: drop-shadow(0 1px 1px rgba(24, 33, 47, 0.14));
+      }
+      .wave text {
+        dominant-baseline: middle; text-anchor: middle;
+        font-size: 5.05px; font-weight: 950;
+      }
       .cell {
         position: absolute; width: ${cellSize}px; height: ${cellSize}px;
         display: flex; align-items: center; justify-content: center;
@@ -594,6 +644,10 @@ function renderChallengeHtml({ elapsedMs, grid, theme, colorCount, size, order, 
                   ? "浮球舒尔特挑战"
                   : layout === "spiral"
                     ? "螺旋舒尔特挑战"
+                    : layout === "maze"
+                      ? "迷宫舒尔特挑战"
+                      : layout === "wave"
+                        ? "波浪舒尔特挑战"
                 : "舒尔特方格挑战"
       }</div>
       <div class="title">请按顺序从 <span>${range.start}</span> 找到 <span>${range.end}</span></div>
@@ -741,6 +795,53 @@ function renderSpiralBoard({ grid, theme, colorCount, startNumber }) {
   </div>`;
 }
 
+function renderMazeBoard({ grid, theme, colorCount, startNumber }) {
+  const geometry = getMazeGeometry();
+  const guide = describeMazeGuide();
+  const cells = grid
+    .map((number, index) => {
+      const cellGeometry = geometry[index];
+      const color = getNumberColor(theme, number, colorCount, startNumber);
+      return `<g>
+        <circle cx="${cellGeometry.x.toFixed(3)}" cy="${cellGeometry.y.toFixed(3)}" r="${cellGeometry.radius}"></circle>
+        <text x="${cellGeometry.x.toFixed(3)}" y="${(cellGeometry.y + 0.28).toFixed(3)}" fill="${color}">${number}</text>
+      </g>`;
+    })
+    .join("");
+
+  return `<div class="maze">
+    <svg viewBox="0 0 100 100" aria-label="迷宫舒尔特数字盘">
+      <rect class="panel" x="3" y="3" width="94" height="94" rx="5"></rect>
+      <path class="corridor" d="${guide}"></path>
+      <path class="guide" d="${guide}"></path>
+      ${cells}
+    </svg>
+  </div>`;
+}
+
+function renderWaveBoard({ grid, theme, colorCount, startNumber }) {
+  const geometry = getWaveGeometry();
+  const guides = describeWaveGuides();
+  const cells = grid
+    .map((number, index) => {
+      const cellGeometry = geometry[index];
+      const color = getNumberColor(theme, number, colorCount, startNumber);
+      return `<g>
+        <circle cx="${cellGeometry.x.toFixed(3)}" cy="${cellGeometry.y.toFixed(3)}" r="${cellGeometry.radius}"></circle>
+        <text x="${cellGeometry.x.toFixed(3)}" y="${(cellGeometry.y + 0.28).toFixed(3)}" fill="${color}">${number}</text>
+      </g>`;
+    })
+    .join("");
+
+  return `<div class="wave">
+    <svg viewBox="0 0 100 100" aria-label="波浪舒尔特数字盘">
+      <rect class="panel" x="3" y="3" width="94" height="94" rx="5"></rect>
+      ${guides.map((guide) => `<path class="guide" d="${guide}"></path>`).join("")}
+      ${cells}
+    </svg>
+  </div>`;
+}
+
 function getRotationDegrees(rotation, elapsedMs) {
   if (rotation === "slow") return (elapsedMs / 1000) * 6;
   if (rotation === "fast") return (elapsedMs / 1000) * 10;
@@ -859,6 +960,8 @@ function createGrid(total, seed) {
 }
 
 function getChallengeTotal(size, layout) {
+  if (layout === "wave") return 36;
+  if (layout === "maze") return 36;
   if (layout === "spiral") return 36;
   if (layout === "float") return 36;
   return layout === "hex" || layout === "mosaic" ? 30 : size * size;
@@ -870,6 +973,8 @@ function getProjectLabel({ layout, size, total }) {
   if (layout === "mosaic") return "变形舒尔特 30";
   if (layout === "float") return "浮球舒尔特 36";
   if (layout === "spiral") return "螺旋舒尔特 36";
+  if (layout === "maze") return "迷宫舒尔特 36";
+  if (layout === "wave") return "波浪舒尔特 36";
   return `舒尔特方格 ${size}×${size}`;
 }
 
@@ -879,6 +984,8 @@ function getProjectLabelHtml({ layout, size, total }) {
   if (layout === "mosaic") return "变形舒尔特 <span>30</span>";
   if (layout === "float") return "浮球舒尔特 <span>36</span>";
   if (layout === "spiral") return "螺旋舒尔特 <span>36</span>";
+  if (layout === "maze") return "迷宫舒尔特 <span>36</span>";
+  if (layout === "wave") return "波浪舒尔特 <span>36</span>";
   return `舒尔特方格 <span>${size}×${size}</span>`;
 }
 
@@ -1139,6 +1246,50 @@ function describeSpiralGuide() {
   return getSpiralGeometry()
     .map((point, index) => `${index === 0 ? "M" : "L"} ${point.x.toFixed(3)} ${point.y.toFixed(3)}`)
     .join(" ");
+}
+
+function getMazeGeometry() {
+  const columns = [10, 26, 42, 58, 74, 90];
+  const rows = [12, 26, 40, 54, 68, 82];
+  const points = rows.flatMap((y, row) => {
+    const xs = row % 2 === 0 ? columns : [...columns].reverse();
+    return xs.map((x) => [x, y]);
+  });
+
+  return points.map(([x, y]) => ({
+    x,
+    y,
+    radius: 4.05,
+  }));
+}
+
+function describeMazeGuide() {
+  return getMazeGeometry()
+    .map((point, index) => `${index === 0 ? "M" : "L"} ${point.x.toFixed(3)} ${point.y.toFixed(3)}`)
+    .join(" ");
+}
+
+function getWaveGeometry() {
+  const columns = [10, 26, 42, 58, 74, 90];
+  const rows = [14, 28, 42, 56, 70, 84];
+  return rows.flatMap((baseY, row) =>
+    columns.map((x, col) => ({
+      x,
+      y: baseY + Math.sin((col / (columns.length - 1)) * Math.PI * 2 + row * 0.72) * 3.8,
+      radius: 4.05,
+      row,
+    })),
+  );
+}
+
+function describeWaveGuides() {
+  const geometry = getWaveGeometry();
+  return Array.from({ length: 6 }, (_, row) =>
+    geometry
+      .filter((point) => point.row === row)
+      .map((point, index) => `${index === 0 ? "M" : "L"} ${point.x.toFixed(3)} ${point.y.toFixed(3)}`)
+      .join(" "),
+  );
 }
 
 function polarToCartesian(center, radius, angleDegrees) {
