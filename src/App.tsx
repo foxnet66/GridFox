@@ -73,7 +73,15 @@ type SpiralCellGeometry = {
 };
 type MazeCellGeometry = SpiralCellGeometry;
 type WaveCellGeometry = SpiralCellGeometry;
-type DualCellGeometry = SpiralCellGeometry & {
+type DualCellGeometry = {
+  row: number;
+  col: number;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  labelX: number;
+  labelY: number;
   zone: "left" | "right";
 };
 
@@ -837,8 +845,8 @@ export default function App() {
         ) : (
           <div className="dual-board" ref={boardRef}>
             <svg viewBox="0 0 100 100" role="group" aria-label="双区舒尔特数字盘">
-              <rect className="dual-panel" x="3" y="3" width="44" height="94" rx="5" />
-              <rect className="dual-panel" x="53" y="3" width="44" height="94" rx="5" />
+              <rect className="dual-panel" x="4" y="6" width="42" height="88" rx="4" />
+              <rect className="dual-panel" x="54" y="6" width="42" height="88" rx="4" />
               <line className="dual-divider" x1="50" x2="50" y1="8" y2="92" />
               {dualGeometry.map((geometry, index) => {
                 const number = grid[index];
@@ -861,8 +869,8 @@ export default function App() {
                     }}
                     aria-disabled={screen !== "playing"}
                   >
-                    <circle cx={geometry.x} cy={geometry.y} r={geometry.radius} />
-                    <text x={geometry.x} y={geometry.y + 0.28}>
+                    <rect x={geometry.x} y={geometry.y} width={geometry.width} height={geometry.height} />
+                    <text x={geometry.labelX} y={geometry.labelY}>
                       {number}
                     </text>
                   </g>
@@ -1305,28 +1313,31 @@ function describeWaveGuides(): string[] {
 }
 
 function getDualGeometry(): DualCellGeometry[] {
-  const leftColumns = [12, 28, 42];
-  const rightColumns = [58, 72, 88];
-  const rows = [13, 28, 43, 58, 73, 88];
-  return rows.flatMap((y, row) => {
-    const left = leftColumns.map((x, col) => ({
-      row,
-      col,
-      x,
-      y: y + (col % 2 === 0 ? -1.5 : 1.2),
-      radius: 4.05,
-      zone: "left" as const,
-    }));
-    const right = rightColumns.map((x, col) => ({
-      row,
-      col: col + 3,
-      x,
-      y: y + (col % 2 === 0 ? 1.2 : -1.5),
-      radius: 4.05,
-      zone: "right" as const,
-    }));
-    return row % 2 === 0 ? [...left, ...right] : [...right, ...left];
-  });
+  const cellWidth = 14;
+  const cellHeight = 14.67;
+  const top = 6;
+  const leftX = 4;
+  const rightX = 54;
+  const buildZone = (zone: "left" | "right", offsetX: number, colOffset: number) =>
+    Array.from({ length: 18 }, (_, index) => {
+      const row = Math.floor(index / 3);
+      const col = index % 3;
+      const x = offsetX + col * cellWidth;
+      const y = top + row * cellHeight;
+      return {
+        row,
+        col: col + colOffset,
+        x,
+        y,
+        width: cellWidth,
+        height: cellHeight,
+        labelX: x + cellWidth / 2,
+        labelY: y + cellHeight / 2 + 0.4,
+        zone,
+      };
+    });
+
+  return [...buildZone("left", leftX, 0), ...buildZone("right", rightX, 3)];
 }
 
 function getHexGeometry(): HexCellGeometry[] {

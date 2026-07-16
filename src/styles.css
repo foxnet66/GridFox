@@ -661,11 +661,14 @@ button {
   font-size: 5.05px;
 }
 
-.dual-cell circle {
+.dual-cell rect {
   fill: var(--panel);
-  stroke: rgba(17, 107, 93, 0.46);
-  stroke-width: 0.5;
-  filter: drop-shadow(0 1px 1px rgba(24, 33, 47, 0.14));
+  stroke: rgba(17, 107, 93, 0.28);
+  stroke-width: 0.38;
+  transition:
+    fill 130ms ease,
+    opacity 130ms ease,
+    transform 130ms ease;
 }
 
 .dual-cell text {
@@ -711,7 +714,7 @@ button {
   stroke: var(--heading-accent);
 }
 
-.dual-cell:hover circle {
+.dual-cell:hover rect {
   fill: var(--primary-soft);
   stroke: var(--heading-accent);
 }
@@ -762,7 +765,7 @@ button {
   stroke-width: 0.78;
 }
 
-.dual-cell:focus-visible circle {
+.dual-cell:focus-visible rect {
   stroke: var(--heading-accent);
   stroke-width: 0.78;
 }
@@ -794,7 +797,7 @@ button {
   stroke: var(--heading-accent);
 }
 
-.dual-cell:active circle {
+.dual-cell:active rect {
   fill: var(--primary-soft);
   stroke: var(--heading-accent);
 }
@@ -853,7 +856,7 @@ button {
   opacity: 0.72;
 }
 
-.dual-cell.completed circle {
+.dual-cell.completed rect {
   fill: var(--primary-soft);
   opacity: 0.84;
 }

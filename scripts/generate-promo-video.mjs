@@ -632,13 +632,12 @@ function renderChallengeHtml({ elapsedMs, grid, theme, colorCount, size, order, 
         stroke: ${theme.primary}; stroke-opacity: 0.18; stroke-width: 0.8;
         stroke-dasharray: 2.6 2.6;
       }
-      .dual circle {
-        fill: white; stroke: ${theme.primary}; stroke-opacity: 0.46; stroke-width: 0.5;
-        filter: drop-shadow(0 1px 1px rgba(24, 33, 47, 0.14));
+      .dual .dual-grid-cell {
+        fill: white; stroke: ${theme.primary}; stroke-opacity: 0.28; stroke-width: 0.38;
       }
       .dual text {
         dominant-baseline: middle; text-anchor: middle;
-        font-size: 5.05px; font-weight: 950;
+        font-size: 5.75px; font-weight: 950;
       }
       .cell {
         position: absolute; width: ${cellSize}px; height: ${cellSize}px;
@@ -874,16 +873,16 @@ function renderDualBoard({ grid, theme, colorCount, startNumber }) {
       const cellGeometry = geometry[index];
       const color = getNumberColor(theme, number, colorCount, startNumber);
       return `<g>
-        <circle cx="${cellGeometry.x.toFixed(3)}" cy="${cellGeometry.y.toFixed(3)}" r="${cellGeometry.radius}"></circle>
-        <text x="${cellGeometry.x.toFixed(3)}" y="${(cellGeometry.y + 0.28).toFixed(3)}" fill="${color}">${number}</text>
+        <rect class="dual-grid-cell" x="${cellGeometry.x.toFixed(3)}" y="${cellGeometry.y.toFixed(3)}" width="${cellGeometry.width}" height="${cellGeometry.height}"></rect>
+        <text x="${cellGeometry.labelX.toFixed(3)}" y="${cellGeometry.labelY.toFixed(3)}" fill="${color}">${number}</text>
       </g>`;
     })
     .join("");
 
   return `<div class="dual">
     <svg viewBox="0 0 100 100" aria-label="双区舒尔特数字盘">
-      <rect class="panel" x="3" y="3" width="44" height="94" rx="5"></rect>
-      <rect class="panel" x="53" y="3" width="44" height="94" rx="5"></rect>
+      <rect class="panel" x="4" y="6" width="42" height="88" rx="4"></rect>
+      <rect class="panel" x="54" y="6" width="42" height="88" rx="4"></rect>
       <line class="divider" x1="50" x2="50" y1="8" y2="92"></line>
       ${cells}
     </svg>
@@ -1344,26 +1343,31 @@ function describeWaveGuides() {
 }
 
 function getDualGeometry() {
-  const leftColumns = [12, 28, 42];
-  const rightColumns = [58, 72, 88];
-  const rows = [13, 28, 43, 58, 73, 88];
-  return rows.flatMap((y, row) => {
-    const left = leftColumns.map((x, col) => ({
-      x,
-      y: y + (col % 2 === 0 ? -1.5 : 1.2),
-      radius: 4.05,
-      row,
-      zone: "left",
-    }));
-    const right = rightColumns.map((x, col) => ({
-      x,
-      y: y + (col % 2 === 0 ? 1.2 : -1.5),
-      radius: 4.05,
-      row,
-      zone: "right",
-    }));
-    return row % 2 === 0 ? [...left, ...right] : [...right, ...left];
-  });
+  const cellWidth = 14;
+  const cellHeight = 14.67;
+  const top = 6;
+  const leftX = 4;
+  const rightX = 54;
+  const buildZone = (zone, offsetX, colOffset) =>
+    Array.from({ length: 18 }, (_, index) => {
+      const row = Math.floor(index / 3);
+      const col = index % 3;
+      const x = offsetX + col * cellWidth;
+      const y = top + row * cellHeight;
+      return {
+        row,
+        col: col + colOffset,
+        x,
+        y,
+        width: cellWidth,
+        height: cellHeight,
+        labelX: x + cellWidth / 2,
+        labelY: y + cellHeight / 2 + 0.4,
+        zone,
+      };
+    });
+
+  return [...buildZone("left", leftX, 0), ...buildZone("right", rightX, 3)];
 }
 
 function polarToCartesian(center, radius, angleDegrees) {
