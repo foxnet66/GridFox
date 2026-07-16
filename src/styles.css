@@ -145,7 +145,7 @@ button {
 
 .play-tabs {
   display: grid;
-  grid-template-columns: repeat(9, minmax(0, 1fr));
+  grid-template-columns: repeat(10, minmax(0, 1fr));
   gap: 5px;
   padding: 4px;
   border: 1px solid var(--line);
@@ -384,6 +384,15 @@ button {
   filter: drop-shadow(0 14px 34px rgba(24, 33, 47, 0.1));
 }
 
+.dual-board {
+  width: 100%;
+  max-width: 100%;
+  aspect-ratio: 1;
+  margin-top: clamp(18px, 4vh, 30px);
+  border-radius: 18px;
+  filter: drop-shadow(0 14px 34px rgba(24, 33, 47, 0.1));
+}
+
 .hex-board.shake {
   animation: shake 170ms ease-out;
 }
@@ -405,6 +414,10 @@ button {
 }
 
 .wave-board.shake {
+  animation: shake 170ms ease-out;
+}
+
+.dual-board.shake {
   animation: shake 170ms ease-out;
 }
 
@@ -450,6 +463,13 @@ button {
   overflow: visible;
 }
 
+.dual-board svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
 .maze-panel {
   fill: var(--panel);
   stroke: var(--line);
@@ -484,6 +504,18 @@ button {
   stroke-width: 2.4;
   stroke-linecap: round;
   stroke-linejoin: round;
+}
+
+.dual-panel {
+  fill: var(--panel);
+  stroke: var(--line);
+  stroke-width: 0.45;
+}
+
+.dual-divider {
+  stroke: rgba(17, 107, 93, 0.18);
+  stroke-width: 0.8;
+  stroke-dasharray: 2.6 2.6;
 }
 
 .spiral-guide {
@@ -554,7 +586,9 @@ button {
 .maze-cell,
 .maze-cell:focus,
 .wave-cell,
-.wave-cell:focus {
+.wave-cell:focus,
+.dual-cell,
+.dual-cell:focus {
   outline: none;
   -webkit-tap-highlight-color: transparent;
   user-select: none;
@@ -566,7 +600,8 @@ button {
 .float-ball text,
 .spiral-cell text,
 .maze-cell text,
-.wave-cell text {
+.wave-cell text,
+.dual-cell text {
   dominant-baseline: middle;
   text-anchor: middle;
   font-weight: 950;
@@ -626,6 +661,18 @@ button {
   font-size: 5.05px;
 }
 
+.dual-cell circle {
+  fill: var(--panel);
+  stroke: rgba(17, 107, 93, 0.46);
+  stroke-width: 0.5;
+  filter: drop-shadow(0 1px 1px rgba(24, 33, 47, 0.14));
+}
+
+.dual-cell text {
+  fill: currentColor;
+  font-size: 5.05px;
+}
+
 .radial-cell text {
   font-size: 5.4px;
 }
@@ -664,13 +711,19 @@ button {
   stroke: var(--heading-accent);
 }
 
+.dual-cell:hover circle {
+  fill: var(--primary-soft);
+  stroke: var(--heading-accent);
+}
+
 .radial-cell:focus-visible,
 .hex-cell:focus-visible,
 .mosaic-cell:focus-visible,
 .float-ball:focus-visible,
 .spiral-cell:focus-visible,
 .maze-cell:focus-visible,
-.wave-cell:focus-visible {
+.wave-cell:focus-visible,
+.dual-cell:focus-visible {
   outline: none;
 }
 
@@ -709,6 +762,11 @@ button {
   stroke-width: 0.78;
 }
 
+.dual-cell:focus-visible circle {
+  stroke: var(--heading-accent);
+  stroke-width: 0.78;
+}
+
 .radial-cell:active path,
 .hex-cell:active polygon,
 .mosaic-cell:active polygon {
@@ -732,6 +790,11 @@ button {
 }
 
 .wave-cell:active circle {
+  fill: var(--primary-soft);
+  stroke: var(--heading-accent);
+}
+
+.dual-cell:active circle {
   fill: var(--primary-soft);
   stroke: var(--heading-accent);
 }
@@ -786,6 +849,16 @@ button {
 }
 
 .wave-cell.completed text {
+  fill: var(--primary-dark);
+  opacity: 0.72;
+}
+
+.dual-cell.completed circle {
+  fill: var(--primary-soft);
+  opacity: 0.84;
+}
+
+.dual-cell.completed text {
   fill: var(--primary-dark);
   opacity: 0.72;
 }
@@ -1232,6 +1305,11 @@ button {
   }
 
   .wave-board {
+    width: min(100%, 342px);
+    margin: 10px auto 0;
+  }
+
+  .dual-board {
     width: min(100%, 342px);
     margin: 10px auto 0;
   }

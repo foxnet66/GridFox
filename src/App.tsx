@@ -34,7 +34,17 @@ import { createPromoVideo } from "./promoVideo";
 import { getDailyChallenge } from "./dailyChallenge";
 
 type Screen = "ready" | "playing" | "finished";
-type PlayStyleId = "grid" | "radial" | "radial-rotate" | "hex" | "mosaic" | "float" | "spiral" | "maze" | "wave";
+type PlayStyleId =
+  | "grid"
+  | "radial"
+  | "radial-rotate"
+  | "hex"
+  | "mosaic"
+  | "float"
+  | "spiral"
+  | "maze"
+  | "wave"
+  | "dual";
 type HexCellGeometry = {
   row: number;
   col: number;
@@ -63,6 +73,9 @@ type SpiralCellGeometry = {
 };
 type MazeCellGeometry = SpiralCellGeometry;
 type WaveCellGeometry = SpiralCellGeometry;
+type DualCellGeometry = SpiralCellGeometry & {
+  zone: "left" | "right";
+};
 
 type PlayStyleOption = {
   id: PlayStyleId;
@@ -146,6 +159,14 @@ const PLAY_STYLES: PlayStyleOption[] = [
     layout: "wave",
     rotation: "none",
   },
+  {
+    id: "dual",
+    label: "双区",
+    name: "双区舒尔特",
+    description: "左右切换搜索",
+    layout: "dual",
+    rotation: "none",
+  },
 ];
 
 const INITIAL_SETTINGS = getInitialSettings();
@@ -187,6 +208,7 @@ export default function App() {
   const spiralGeometry = useMemo(() => getSpiralGeometry(), []);
   const mazeGeometry = useMemo(() => getMazeGeometry(), []);
   const waveGeometry = useMemo(() => getWaveGeometry(), []);
+  const dualGeometry = useMemo(() => getDualGeometry(), []);
   const publishText = useMemo(
     () =>
       buildXiaohongshuPost({
@@ -243,7 +265,8 @@ export default function App() {
       nextLayout === "float" ||
       nextLayout === "spiral" ||
       nextLayout === "maze" ||
-      nextLayout === "wave"
+      nextLayout === "wave" ||
+      nextLayout === "dual"
     ) {
       setRotation("none");
     }
@@ -774,7 +797,7 @@ export default function App() {
               })}
             </svg>
           </div>
-        ) : (
+        ) : layout === "wave" ? (
           <div className="wave-board" ref={boardRef}>
             <svg viewBox="0 0 100 100" role="group" aria-label="波浪舒尔特数字盘">
               <rect className="wave-panel" x="3" y="3" width="94" height="94" rx="5" />
@@ -787,6 +810,42 @@ export default function App() {
                 return (
                   <g
                     className={`wave-cell ${getNumberAccentClass(number, colorCount, range.start)} ${
+                      completed ? "completed" : ""
+                    }`}
+                    key={`${number}-${index}`}
+                    role="button"
+                    tabIndex={screen === "playing" ? 0 : -1}
+                    aria-label={`数字 ${number}`}
+                    onClick={() => handleCellClick(number, index)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        handleCellClick(number, index);
+                      }
+                    }}
+                    aria-disabled={screen !== "playing"}
+                  >
+                    <circle cx={geometry.x} cy={geometry.y} r={geometry.radius} />
+                    <text x={geometry.x} y={geometry.y + 0.28}>
+                      {number}
+                    </text>
+                  </g>
+                );
+              })}
+            </svg>
+          </div>
+        ) : (
+          <div className="dual-board" ref={boardRef}>
+            <svg viewBox="0 0 100 100" role="group" aria-label="双区舒尔特数字盘">
+              <rect className="dual-panel" x="3" y="3" width="44" height="94" rx="5" />
+              <rect className="dual-panel" x="53" y="3" width="44" height="94" rx="5" />
+              <line className="dual-divider" x1="50" x2="50" y1="8" y2="92" />
+              {dualGeometry.map((geometry, index) => {
+                const number = grid[index];
+                const completed = screen === "playing" && (order === "desc" ? number > target : number < target);
+                return (
+                  <g
+                    className={`dual-cell ${getNumberAccentClass(number, colorCount, range.start)} ${
                       completed ? "completed" : ""
                     }`}
                     key={`${number}-${index}`}
@@ -872,7 +931,8 @@ export default function App() {
                     layout === "float" ||
                     layout === "spiral" ||
                     layout === "maze" ||
-                    layout === "wave"
+                    layout === "wave" ||
+                    layout === "dual"
                   }
                 >
                   {layout === "hex" ||
@@ -880,7 +940,8 @@ export default function App() {
                   layout === "float" ||
                   layout === "spiral" ||
                   layout === "maze" ||
-                  layout === "wave"
+                  layout === "wave" ||
+                  layout === "dual"
                     ? "当前玩法暂不支持"
                     : promoStatus === "recording"
                     ? "录制中..."
@@ -934,7 +995,9 @@ function buildXiaohongshuPost({
 }): string {
   const isRotating = layout === "radial" && rotation !== "none";
   const layoutName =
-    layout === "wave"
+    layout === "dual"
+      ? "双区舒尔特"
+      : layout === "wave"
       ? "波浪舒尔特"
       : layout === "maze"
       ? "迷宫舒尔特"
@@ -963,6 +1026,8 @@ function buildXiaohongshuPost({
   const modeLine =
     isRotating
       ? `${getRotationLabel(rotation)}圆盘会增加视觉追踪难度，适合进阶挑战。`
+      : layout === "dual"
+      ? "左右双区会迫使视线来回切换，更考验搜索切换和注意力稳定性。"
       : layout === "wave"
       ? "波浪轨道会打破直线扫描节奏，更考验连续视觉追踪。"
       : layout === "maze"
@@ -986,7 +1051,9 @@ function buildXiaohongshuPost({
     "#专注力游戏",
     "#提升注意力",
     "#计时挑战",
-    layout === "wave"
+    layout === "dual"
+      ? "#双区舒尔特"
+      : layout === "wave"
       ? "#波浪舒尔特"
       : layout === "maze"
       ? "#迷宫舒尔特"
@@ -1028,7 +1095,9 @@ function getInitialSettings(): {
   const mode = MODES.find((item) => item.size === Number(params.get("size"))) ?? DEFAULT_MODE;
   const layoutParam = params.get("layout");
   const layout =
-    layoutParam === "wave"
+    layoutParam === "dual"
+      ? "dual"
+      : layoutParam === "wave"
       ? "wave"
       : layoutParam === "maze"
       ? "maze"
@@ -1069,6 +1138,7 @@ function getActivePlayStyle(layout: ChallengeLayout, rotation: RotationSpeed): P
   if (layout === "spiral") return PLAY_STYLES[6];
   if (layout === "maze") return PLAY_STYLES[7];
   if (layout === "wave") return PLAY_STYLES[8];
+  if (layout === "dual") return PLAY_STYLES[9];
   if (rotation !== "none") return PLAY_STYLES[2];
   return PLAY_STYLES[1];
 }
@@ -1078,6 +1148,7 @@ function createChallengeNumbers(mode: GameMode, layout: ChallengeLayout): number
 }
 
 function getSizeLabel(mode: GameMode, layout: ChallengeLayout): string {
+  if (layout === "dual") return "36点";
   if (layout === "wave") return "36点";
   if (layout === "maze") return "36点";
   if (layout === "spiral") return "36点";
@@ -1092,7 +1163,8 @@ function isFixedLayout(layout: ChallengeLayout): boolean {
     layout === "float" ||
     layout === "spiral" ||
     layout === "maze" ||
-    layout === "wave"
+    layout === "wave" ||
+    layout === "dual"
   );
 }
 
@@ -1105,6 +1177,7 @@ function getTapPosition(
   if (layout === "spiral") return { row: Math.floor(index / 6), col: index % 6 };
   if (layout === "maze") return { row: Math.floor(index / 6), col: index % 6 };
   if (layout === "wave") return { row: Math.floor(index / 6), col: index % 6 };
+  if (layout === "dual") return { row: Math.floor(index / 6), col: index % 6 };
   if (layout === "hex" || layout === "mosaic") return { row: Math.floor(index / 5), col: index % 5 };
   return { row: Math.floor(index / mode.size), col: index % mode.size };
 }
@@ -1229,6 +1302,31 @@ function describeWaveGuides(): string[] {
       .map((point, index) => `${index === 0 ? "M" : "L"} ${point.x.toFixed(3)} ${point.y.toFixed(3)}`)
       .join(" "),
   );
+}
+
+function getDualGeometry(): DualCellGeometry[] {
+  const leftColumns = [12, 28, 42];
+  const rightColumns = [58, 72, 88];
+  const rows = [13, 28, 43, 58, 73, 88];
+  return rows.flatMap((y, row) => {
+    const left = leftColumns.map((x, col) => ({
+      row,
+      col,
+      x,
+      y: y + (col % 2 === 0 ? -1.5 : 1.2),
+      radius: 4.05,
+      zone: "left" as const,
+    }));
+    const right = rightColumns.map((x, col) => ({
+      row,
+      col: col + 3,
+      x,
+      y: y + (col % 2 === 0 ? 1.2 : -1.5),
+      radius: 4.05,
+      zone: "right" as const,
+    }));
+    return row % 2 === 0 ? [...left, ...right] : [...right, ...left];
+  });
 }
 
 function getHexGeometry(): HexCellGeometry[] {

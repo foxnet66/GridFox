@@ -12,7 +12,7 @@ export type ChallengeOrderOption = {
   name: string;
 };
 
-export type ChallengeLayout = "grid" | "radial" | "hex" | "mosaic" | "float" | "spiral" | "maze" | "wave";
+export type ChallengeLayout = "grid" | "radial" | "hex" | "mosaic" | "float" | "spiral" | "maze" | "wave" | "dual";
 
 export type ChallengeLayoutOption = {
   id: ChallengeLayout;
@@ -68,6 +68,7 @@ export const FLOAT_TOTAL = 36;
 export const SPIRAL_TOTAL = 36;
 export const MAZE_TOTAL = 36;
 export const WAVE_TOTAL = 36;
+export const DUAL_TOTAL = 36;
 
 export const MODES: GameMode[] = [
   { size: 4, label: "4x4", title: "按顺序从 1 找到 16" },
@@ -91,6 +92,7 @@ export const CHALLENGE_LAYOUTS: ChallengeLayoutOption[] = [
   { id: "spiral", label: "螺旋", name: "螺旋舒尔特" },
   { id: "maze", label: "迷宫", name: "迷宫舒尔特" },
   { id: "wave", label: "波浪", name: "波浪舒尔特" },
+  { id: "dual", label: "双区", name: "双区舒尔特" },
 ];
 
 export const ROTATION_SPEEDS: RotationSpeedOption[] = [
@@ -155,6 +157,7 @@ export function getNumberAccentClass(number: number, colorCount: ColorCount, sta
 }
 
 export function getChallengeTotal(mode: GameMode, layout: ChallengeLayout): number {
+  if (layout === "dual") return DUAL_TOTAL;
   if (layout === "wave") return WAVE_TOTAL;
   if (layout === "maze") return MAZE_TOTAL;
   if (layout === "spiral") return SPIRAL_TOTAL;

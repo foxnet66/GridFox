@@ -157,7 +157,9 @@ const size = clamp(Number(args.size ?? dailyChallenge?.size ?? 6), 4, 6);
 const order = String(args.order ?? dailyChallenge?.order ?? "asc") === "desc" ? "desc" : "asc";
 const layoutArg = String(args.layout ?? dailyChallenge?.layout ?? "grid");
 const layout =
-  layoutArg === "wave"
+  layoutArg === "dual"
+    ? "dual"
+    : layoutArg === "wave"
     ? "wave"
     : layoutArg === "maze"
     ? "maze"
@@ -461,6 +463,8 @@ function renderChallengeHtml({ elapsedMs, grid, theme, colorCount, size, order, 
               ? renderMazeBoard({ grid, theme, colorCount, startNumber: range.start })
               : layout === "wave"
                 ? renderWaveBoard({ grid, theme, colorCount, startNumber: range.start })
+                : layout === "dual"
+                  ? renderDualBoard({ grid, theme, colorCount, startNumber: range.start })
           : `<div class="grid">${grid
               .map((number, index) => {
                 const row = Math.floor(index / size);
@@ -542,6 +546,11 @@ function renderChallengeHtml({ elapsedMs, grid, theme, colorCount, size, order, 
         width: ${metrics.boardSize}px; height: ${metrics.boardSize}px;
         filter: drop-shadow(0 14px 34px rgba(24, 33, 47, 0.1));
       }
+      .dual {
+        position: absolute; left: ${metrics.boardLeft}px; top: ${metrics.boardTop}px;
+        width: ${metrics.boardSize}px; height: ${metrics.boardSize}px;
+        filter: drop-shadow(0 14px 34px rgba(24, 33, 47, 0.1));
+      }
       .radial svg { display: block; width: 100%; height: 100%; overflow: visible; }
       .hex svg { display: block; width: 100%; height: 100%; overflow: visible; }
       .mosaic svg { display: block; width: 100%; height: 100%; overflow: visible; }
@@ -549,6 +558,7 @@ function renderChallengeHtml({ elapsedMs, grid, theme, colorCount, size, order, 
       .spiral svg { display: block; width: 100%; height: 100%; overflow: visible; }
       .maze svg { display: block; width: 100%; height: 100%; overflow: visible; }
       .wave svg { display: block; width: 100%; height: 100%; overflow: visible; }
+      .dual svg { display: block; width: 100%; height: 100%; overflow: visible; }
       .radial path { fill: white; stroke: ${theme.grid}; stroke-width: 0.42; }
       .radial .center { fill: ${theme.paper}; stroke: ${theme.grid}; stroke-width: 0.6; }
       .radial text {
@@ -617,6 +627,19 @@ function renderChallengeHtml({ elapsedMs, grid, theme, colorCount, size, order, 
         dominant-baseline: middle; text-anchor: middle;
         font-size: 5.05px; font-weight: 950;
       }
+      .dual .panel { fill: white; stroke: ${theme.grid}; stroke-width: 0.45; }
+      .dual .divider {
+        stroke: ${theme.primary}; stroke-opacity: 0.18; stroke-width: 0.8;
+        stroke-dasharray: 2.6 2.6;
+      }
+      .dual circle {
+        fill: white; stroke: ${theme.primary}; stroke-opacity: 0.46; stroke-width: 0.5;
+        filter: drop-shadow(0 1px 1px rgba(24, 33, 47, 0.14));
+      }
+      .dual text {
+        dominant-baseline: middle; text-anchor: middle;
+        font-size: 5.05px; font-weight: 950;
+      }
       .cell {
         position: absolute; width: ${cellSize}px; height: ${cellSize}px;
         display: flex; align-items: center; justify-content: center;
@@ -648,6 +671,8 @@ function renderChallengeHtml({ elapsedMs, grid, theme, colorCount, size, order, 
                       ? "迷宫舒尔特挑战"
                       : layout === "wave"
                         ? "波浪舒尔特挑战"
+                        : layout === "dual"
+                          ? "双区舒尔特挑战"
                 : "舒尔特方格挑战"
       }</div>
       <div class="title">请按顺序从 <span>${range.start}</span> 找到 <span>${range.end}</span></div>
@@ -842,6 +867,29 @@ function renderWaveBoard({ grid, theme, colorCount, startNumber }) {
   </div>`;
 }
 
+function renderDualBoard({ grid, theme, colorCount, startNumber }) {
+  const geometry = getDualGeometry();
+  const cells = grid
+    .map((number, index) => {
+      const cellGeometry = geometry[index];
+      const color = getNumberColor(theme, number, colorCount, startNumber);
+      return `<g>
+        <circle cx="${cellGeometry.x.toFixed(3)}" cy="${cellGeometry.y.toFixed(3)}" r="${cellGeometry.radius}"></circle>
+        <text x="${cellGeometry.x.toFixed(3)}" y="${(cellGeometry.y + 0.28).toFixed(3)}" fill="${color}">${number}</text>
+      </g>`;
+    })
+    .join("");
+
+  return `<div class="dual">
+    <svg viewBox="0 0 100 100" aria-label="双区舒尔特数字盘">
+      <rect class="panel" x="3" y="3" width="44" height="94" rx="5"></rect>
+      <rect class="panel" x="53" y="3" width="44" height="94" rx="5"></rect>
+      <line class="divider" x1="50" x2="50" y1="8" y2="92"></line>
+      ${cells}
+    </svg>
+  </div>`;
+}
+
 function getRotationDegrees(rotation, elapsedMs) {
   if (rotation === "slow") return (elapsedMs / 1000) * 6;
   if (rotation === "fast") return (elapsedMs / 1000) * 10;
@@ -960,6 +1008,7 @@ function createGrid(total, seed) {
 }
 
 function getChallengeTotal(size, layout) {
+  if (layout === "dual") return 36;
   if (layout === "wave") return 36;
   if (layout === "maze") return 36;
   if (layout === "spiral") return 36;
@@ -975,6 +1024,7 @@ function getProjectLabel({ layout, size, total }) {
   if (layout === "spiral") return "螺旋舒尔特 36";
   if (layout === "maze") return "迷宫舒尔特 36";
   if (layout === "wave") return "波浪舒尔特 36";
+  if (layout === "dual") return "双区舒尔特 36";
   return `舒尔特方格 ${size}×${size}`;
 }
 
@@ -986,6 +1036,7 @@ function getProjectLabelHtml({ layout, size, total }) {
   if (layout === "spiral") return "螺旋舒尔特 <span>36</span>";
   if (layout === "maze") return "迷宫舒尔特 <span>36</span>";
   if (layout === "wave") return "波浪舒尔特 <span>36</span>";
+  if (layout === "dual") return "双区舒尔特 <span>36</span>";
   return `舒尔特方格 <span>${size}×${size}</span>`;
 }
 
@@ -1290,6 +1341,29 @@ function describeWaveGuides() {
       .map((point, index) => `${index === 0 ? "M" : "L"} ${point.x.toFixed(3)} ${point.y.toFixed(3)}`)
       .join(" "),
   );
+}
+
+function getDualGeometry() {
+  const leftColumns = [12, 28, 42];
+  const rightColumns = [58, 72, 88];
+  const rows = [13, 28, 43, 58, 73, 88];
+  return rows.flatMap((y, row) => {
+    const left = leftColumns.map((x, col) => ({
+      x,
+      y: y + (col % 2 === 0 ? -1.5 : 1.2),
+      radius: 4.05,
+      row,
+      zone: "left",
+    }));
+    const right = rightColumns.map((x, col) => ({
+      x,
+      y: y + (col % 2 === 0 ? 1.2 : -1.5),
+      radius: 4.05,
+      row,
+      zone: "right",
+    }));
+    return row % 2 === 0 ? [...left, ...right] : [...right, ...left];
+  });
 }
 
 function polarToCartesian(center, radius, angleDegrees) {
