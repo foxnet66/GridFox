@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import {
   DEFAULT_MODE,
   CHALLENGE_ORDERS,
@@ -44,7 +44,8 @@ type PlayStyleId =
   | "spiral"
   | "maze"
   | "wave"
-  | "dual";
+  | "dual"
+  | "breathe";
 type HexCellGeometry = {
   row: number;
   col: number;
@@ -73,6 +74,10 @@ type SpiralCellGeometry = {
 };
 type MazeCellGeometry = SpiralCellGeometry;
 type WaveCellGeometry = SpiralCellGeometry;
+type BreatheCellGeometry = SpiralCellGeometry & {
+  duration: number;
+  delay: number;
+};
 type DualCellGeometry = {
   row: number;
   col: number;
@@ -175,6 +180,14 @@ const PLAY_STYLES: PlayStyleOption[] = [
     layout: "dual",
     rotation: "none",
   },
+  {
+    id: "breathe",
+    label: "呼吸",
+    name: "呼吸舒尔特",
+    description: "圆点节奏缩放",
+    layout: "breathe",
+    rotation: "none",
+  },
 ];
 
 const INITIAL_SETTINGS = getInitialSettings();
@@ -217,6 +230,7 @@ export default function App() {
   const mazeGeometry = useMemo(() => getMazeGeometry(), []);
   const waveGeometry = useMemo(() => getWaveGeometry(), []);
   const dualGeometry = useMemo(() => getDualGeometry(), []);
+  const breatheGeometry = useMemo(() => getBreatheGeometry(), []);
   const publishText = useMemo(
     () =>
       buildXiaohongshuPost({
@@ -274,7 +288,8 @@ export default function App() {
       nextLayout === "spiral" ||
       nextLayout === "maze" ||
       nextLayout === "wave" ||
-      nextLayout === "dual"
+      nextLayout === "dual" ||
+      nextLayout === "breathe"
     ) {
       setRotation("none");
     }
@@ -842,7 +857,7 @@ export default function App() {
               })}
             </svg>
           </div>
-        ) : (
+        ) : layout === "dual" ? (
           <div className="dual-board" ref={boardRef}>
             <svg viewBox="0 0 100 100" role="group" aria-label="双区舒尔特数字盘">
               <rect className="dual-panel" x="4" y="6" width="42" height="88" rx="4" />
@@ -871,6 +886,54 @@ export default function App() {
                   >
                     <rect x={geometry.x} y={geometry.y} width={geometry.width} height={geometry.height} />
                     <text x={geometry.labelX} y={geometry.labelY}>
+                      {number}
+                    </text>
+                  </g>
+                );
+              })}
+            </svg>
+          </div>
+        ) : (
+          <div className="breathe-board" ref={boardRef}>
+            <svg viewBox="0 0 100 100" role="group" aria-label="呼吸舒尔特数字盘">
+              <rect className="breathe-panel" x="4" y="6" width="92" height="88" rx="5" />
+              {Array.from({ length: 5 }, (_, index) => {
+                const x = 4 + (92 / 6) * (index + 1);
+                return <line className="breathe-grid-line" x1={x} x2={x} y1="7" y2="93" key={`breathe-x-${index}`} />;
+              })}
+              {Array.from({ length: 5 }, (_, index) => {
+                const y = 6 + (88 / 6) * (index + 1);
+                return <line className="breathe-grid-line" x1="5" x2="95" y1={y} y2={y} key={`breathe-y-${index}`} />;
+              })}
+              {breatheGeometry.map((geometry, index) => {
+                const number = grid[index];
+                const completed = screen === "playing" && (order === "desc" ? number > target : number < target);
+                return (
+                  <g
+                    className={`breathe-cell ${getNumberAccentClass(number, colorCount, range.start)} ${
+                      completed ? "completed" : ""
+                    }`}
+                    key={`${number}-${index}`}
+                    role="button"
+                    tabIndex={screen === "playing" ? 0 : -1}
+                    aria-label={`数字 ${number}`}
+                    onClick={() => handleCellClick(number, index)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        handleCellClick(number, index);
+                      }
+                    }}
+                    aria-disabled={screen !== "playing"}
+                    style={
+                      {
+                        "--breath-duration": `${geometry.duration}s`,
+                        "--breath-delay": `${geometry.delay}s`,
+                    } as CSSProperties
+                    }
+                  >
+                    <circle cx={geometry.x} cy={geometry.y} r={geometry.radius} />
+                    <text x={geometry.x} y={geometry.y + 0.28}>
                       {number}
                     </text>
                   </g>
@@ -940,7 +1003,8 @@ export default function App() {
                     layout === "spiral" ||
                     layout === "maze" ||
                     layout === "wave" ||
-                    layout === "dual"
+                    layout === "dual" ||
+                    layout === "breathe"
                   }
                 >
                   {layout === "hex" ||
@@ -949,7 +1013,8 @@ export default function App() {
                   layout === "spiral" ||
                   layout === "maze" ||
                   layout === "wave" ||
-                  layout === "dual"
+                  layout === "dual" ||
+                  layout === "breathe"
                     ? "当前玩法暂不支持"
                     : promoStatus === "recording"
                     ? "录制中..."
@@ -1003,7 +1068,9 @@ function buildXiaohongshuPost({
 }): string {
   const isRotating = layout === "radial" && rotation !== "none";
   const layoutName =
-    layout === "dual"
+    layout === "breathe"
+      ? "呼吸舒尔特"
+      : layout === "dual"
       ? "双区舒尔特"
       : layout === "wave"
       ? "波浪舒尔特"
@@ -1034,6 +1101,8 @@ function buildXiaohongshuPost({
   const modeLine =
     isRotating
       ? `${getRotationLabel(rotation)}圆盘会增加视觉追踪难度，适合进阶挑战。`
+      : layout === "breathe"
+      ? "圆点会轻微呼吸缩放，画面稳定但节奏干扰更强。"
       : layout === "dual"
       ? "左右双区会迫使视线来回切换，更考验搜索切换和注意力稳定性。"
       : layout === "wave"
@@ -1061,6 +1130,8 @@ function buildXiaohongshuPost({
     "#计时挑战",
     layout === "dual"
       ? "#双区舒尔特"
+      : layout === "breathe"
+      ? "#呼吸舒尔特"
       : layout === "wave"
       ? "#波浪舒尔特"
       : layout === "maze"
@@ -1103,7 +1174,9 @@ function getInitialSettings(): {
   const mode = MODES.find((item) => item.size === Number(params.get("size"))) ?? DEFAULT_MODE;
   const layoutParam = params.get("layout");
   const layout =
-    layoutParam === "dual"
+    layoutParam === "breathe"
+      ? "breathe"
+      : layoutParam === "dual"
       ? "dual"
       : layoutParam === "wave"
       ? "wave"
@@ -1147,6 +1220,7 @@ function getActivePlayStyle(layout: ChallengeLayout, rotation: RotationSpeed): P
   if (layout === "maze") return PLAY_STYLES[7];
   if (layout === "wave") return PLAY_STYLES[8];
   if (layout === "dual") return PLAY_STYLES[9];
+  if (layout === "breathe") return PLAY_STYLES[10];
   if (rotation !== "none") return PLAY_STYLES[2];
   return PLAY_STYLES[1];
 }
@@ -1156,6 +1230,7 @@ function createChallengeNumbers(mode: GameMode, layout: ChallengeLayout): number
 }
 
 function getSizeLabel(mode: GameMode, layout: ChallengeLayout): string {
+  if (layout === "breathe") return "36点";
   if (layout === "dual") return "36点";
   if (layout === "wave") return "36点";
   if (layout === "maze") return "36点";
@@ -1172,7 +1247,8 @@ function isFixedLayout(layout: ChallengeLayout): boolean {
     layout === "spiral" ||
     layout === "maze" ||
     layout === "wave" ||
-    layout === "dual"
+    layout === "dual" ||
+    layout === "breathe"
   );
 }
 
@@ -1186,6 +1262,7 @@ function getTapPosition(
   if (layout === "maze") return { row: Math.floor(index / 6), col: index % 6 };
   if (layout === "wave") return { row: Math.floor(index / 6), col: index % 6 };
   if (layout === "dual") return { row: Math.floor(index / 6), col: index % 6 };
+  if (layout === "breathe") return { row: Math.floor(index / 6), col: index % 6 };
   if (layout === "hex" || layout === "mosaic") return { row: Math.floor(index / 5), col: index % 5 };
   return { row: Math.floor(index / mode.size), col: index % mode.size };
 }
@@ -1310,6 +1387,27 @@ function describeWaveGuides(): string[] {
       .map((point, index) => `${index === 0 ? "M" : "L"} ${point.x.toFixed(3)} ${point.y.toFixed(3)}`)
       .join(" "),
   );
+}
+
+function getBreatheGeometry(): BreatheCellGeometry[] {
+  const left = 4;
+  const top = 6;
+  const cellWidth = 92 / 6;
+  const cellHeight = 88 / 6;
+
+  return Array.from({ length: 36 }, (_, index) => {
+    const row = Math.floor(index / 6);
+    const col = index % 6;
+    return {
+      row,
+      col,
+      x: left + cellWidth * (col + 0.5),
+      y: top + cellHeight * (row + 0.5),
+      radius: 4.35,
+      duration: 3.1 + (index % 5) * 0.24,
+      delay: -(index % 7) * 0.22,
+    };
+  });
 }
 
 function getDualGeometry(): DualCellGeometry[] {

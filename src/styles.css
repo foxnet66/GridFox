@@ -145,7 +145,7 @@ button {
 
 .play-tabs {
   display: grid;
-  grid-template-columns: repeat(10, minmax(0, 1fr));
+  grid-template-columns: repeat(11, minmax(0, 1fr));
   gap: 5px;
   padding: 4px;
   border: 1px solid var(--line);
@@ -393,6 +393,15 @@ button {
   filter: drop-shadow(0 14px 34px rgba(24, 33, 47, 0.1));
 }
 
+.breathe-board {
+  width: 100%;
+  max-width: 100%;
+  aspect-ratio: 1;
+  margin-top: clamp(18px, 4vh, 30px);
+  border-radius: 18px;
+  filter: drop-shadow(0 14px 34px rgba(24, 33, 47, 0.1));
+}
+
 .hex-board.shake {
   animation: shake 170ms ease-out;
 }
@@ -418,6 +427,10 @@ button {
 }
 
 .dual-board.shake {
+  animation: shake 170ms ease-out;
+}
+
+.breathe-board.shake {
   animation: shake 170ms ease-out;
 }
 
@@ -470,6 +483,13 @@ button {
   overflow: visible;
 }
 
+.breathe-board svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
 .maze-panel {
   fill: var(--panel);
   stroke: var(--line);
@@ -516,6 +536,17 @@ button {
   stroke: rgba(17, 107, 93, 0.18);
   stroke-width: 0.8;
   stroke-dasharray: 2.6 2.6;
+}
+
+.breathe-panel {
+  fill: var(--panel);
+  stroke: var(--line);
+  stroke-width: 0.45;
+}
+
+.breathe-grid-line {
+  stroke: rgba(17, 107, 93, 0.13);
+  stroke-width: 0.2;
 }
 
 .spiral-guide {
@@ -588,7 +619,9 @@ button {
 .wave-cell,
 .wave-cell:focus,
 .dual-cell,
-.dual-cell:focus {
+.dual-cell:focus,
+.breathe-cell,
+.breathe-cell:focus {
   outline: none;
   -webkit-tap-highlight-color: transparent;
   user-select: none;
@@ -601,7 +634,8 @@ button {
 .spiral-cell text,
 .maze-cell text,
 .wave-cell text,
-.dual-cell text {
+.dual-cell text,
+.breathe-cell text {
   dominant-baseline: middle;
   text-anchor: middle;
   font-weight: 950;
@@ -676,6 +710,26 @@ button {
   font-size: 5.05px;
 }
 
+.breathe-cell circle {
+  fill: var(--panel);
+  stroke: rgba(17, 107, 93, 0.48);
+  stroke-width: 0.5;
+  filter: drop-shadow(0 1px 1px rgba(24, 33, 47, 0.14));
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: breathePulse var(--breath-duration, 3.4s) ease-in-out infinite;
+  animation-delay: var(--breath-delay, 0s);
+  transition:
+    fill 130ms ease,
+    stroke 130ms ease,
+    opacity 130ms ease;
+}
+
+.breathe-cell text {
+  fill: currentColor;
+  font-size: 5.15px;
+}
+
 .radial-cell text {
   font-size: 5.4px;
 }
@@ -719,6 +773,11 @@ button {
   stroke: var(--heading-accent);
 }
 
+.breathe-cell:hover circle {
+  fill: var(--primary-soft);
+  stroke: var(--heading-accent);
+}
+
 .radial-cell:focus-visible,
 .hex-cell:focus-visible,
 .mosaic-cell:focus-visible,
@@ -726,7 +785,8 @@ button {
 .spiral-cell:focus-visible,
 .maze-cell:focus-visible,
 .wave-cell:focus-visible,
-.dual-cell:focus-visible {
+.dual-cell:focus-visible,
+.breathe-cell:focus-visible {
   outline: none;
 }
 
@@ -770,6 +830,11 @@ button {
   stroke-width: 0.78;
 }
 
+.breathe-cell:focus-visible circle {
+  stroke: var(--heading-accent);
+  stroke-width: 0.78;
+}
+
 .radial-cell:active path,
 .hex-cell:active polygon,
 .mosaic-cell:active polygon {
@@ -798,6 +863,11 @@ button {
 }
 
 .dual-cell:active rect {
+  fill: var(--primary-soft);
+  stroke: var(--heading-accent);
+}
+
+.breathe-cell:active circle {
   fill: var(--primary-soft);
   stroke: var(--heading-accent);
 }
@@ -864,6 +934,27 @@ button {
 .dual-cell.completed text {
   fill: var(--primary-dark);
   opacity: 0.72;
+}
+
+.breathe-cell.completed circle {
+  fill: var(--primary-soft);
+  opacity: 0.84;
+}
+
+.breathe-cell.completed text {
+  fill: var(--primary-dark);
+  opacity: 0.72;
+}
+
+@keyframes breathePulse {
+  0%,
+  100% {
+    transform: scale(0.95);
+  }
+
+  50% {
+    transform: scale(1.12);
+  }
 }
 
 .grid-cell {
@@ -1313,6 +1404,11 @@ button {
   }
 
   .dual-board {
+    width: min(100%, 342px);
+    margin: 10px auto 0;
+  }
+
+  .breathe-board {
     width: min(100%, 342px);
     margin: 10px auto 0;
   }

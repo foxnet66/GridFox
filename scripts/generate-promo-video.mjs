@@ -157,7 +157,9 @@ const size = clamp(Number(args.size ?? dailyChallenge?.size ?? 6), 4, 6);
 const order = String(args.order ?? dailyChallenge?.order ?? "asc") === "desc" ? "desc" : "asc";
 const layoutArg = String(args.layout ?? dailyChallenge?.layout ?? "grid");
 const layout =
-  layoutArg === "dual"
+  layoutArg === "breathe"
+    ? "breathe"
+    : layoutArg === "dual"
     ? "dual"
     : layoutArg === "wave"
     ? "wave"
@@ -175,7 +177,10 @@ const layout =
           ? "radial"
           : "grid";
 const rotation = layout === "radial" && ["slow", "fast"].includes(String(args.rotation)) ? String(args.rotation) : "none";
-const captureFps = rotation === "none" && layout !== "float" ? 1 : clamp(Number(args["capture-fps"] ?? 12), 2, 24);
+const captureFps =
+  rotation === "none" && layout !== "float" && layout !== "breathe"
+    ? 1
+    : clamp(Number(args["capture-fps"] ?? 12), 2, 24);
 const seed = Number.isFinite(Number(args.seed)) ? Number(args.seed) : (dailyChallenge?.seed ?? Date.now());
 const musicName = String(args.music ?? "soft");
 const music = Object.hasOwn(musicProfiles, musicName) ? musicProfiles[musicName] : musicProfiles.soft;
@@ -465,6 +470,8 @@ function renderChallengeHtml({ elapsedMs, grid, theme, colorCount, size, order, 
                 ? renderWaveBoard({ grid, theme, colorCount, startNumber: range.start })
                 : layout === "dual"
                   ? renderDualBoard({ grid, theme, colorCount, startNumber: range.start })
+                  : layout === "breathe"
+                    ? renderBreatheBoard({ grid, theme, colorCount, startNumber: range.start, elapsedMs })
           : `<div class="grid">${grid
               .map((number, index) => {
                 const row = Math.floor(index / size);
@@ -551,6 +558,11 @@ function renderChallengeHtml({ elapsedMs, grid, theme, colorCount, size, order, 
         width: ${metrics.boardSize}px; height: ${metrics.boardSize}px;
         filter: drop-shadow(0 14px 34px rgba(24, 33, 47, 0.1));
       }
+      .breathe {
+        position: absolute; left: ${metrics.boardLeft}px; top: ${metrics.boardTop}px;
+        width: ${metrics.boardSize}px; height: ${metrics.boardSize}px;
+        filter: drop-shadow(0 14px 34px rgba(24, 33, 47, 0.1));
+      }
       .radial svg { display: block; width: 100%; height: 100%; overflow: visible; }
       .hex svg { display: block; width: 100%; height: 100%; overflow: visible; }
       .mosaic svg { display: block; width: 100%; height: 100%; overflow: visible; }
@@ -559,6 +571,7 @@ function renderChallengeHtml({ elapsedMs, grid, theme, colorCount, size, order, 
       .maze svg { display: block; width: 100%; height: 100%; overflow: visible; }
       .wave svg { display: block; width: 100%; height: 100%; overflow: visible; }
       .dual svg { display: block; width: 100%; height: 100%; overflow: visible; }
+      .breathe svg { display: block; width: 100%; height: 100%; overflow: visible; }
       .radial path { fill: white; stroke: ${theme.grid}; stroke-width: 0.42; }
       .radial .center { fill: ${theme.paper}; stroke: ${theme.grid}; stroke-width: 0.6; }
       .radial text {
@@ -639,6 +652,16 @@ function renderChallengeHtml({ elapsedMs, grid, theme, colorCount, size, order, 
         dominant-baseline: middle; text-anchor: middle;
         font-size: 5.75px; font-weight: 950;
       }
+      .breathe .panel { fill: white; stroke: ${theme.grid}; stroke-width: 0.45; }
+      .breathe .grid-line { stroke: ${theme.primary}; stroke-opacity: 0.13; stroke-width: 0.2; }
+      .breathe circle {
+        fill: white; stroke: ${theme.primary}; stroke-opacity: 0.48; stroke-width: 0.5;
+        filter: drop-shadow(0 1px 1px rgba(24, 33, 47, 0.14));
+      }
+      .breathe text {
+        dominant-baseline: middle; text-anchor: middle;
+        font-size: 5.15px; font-weight: 950;
+      }
       .cell {
         position: absolute; width: ${cellSize}px; height: ${cellSize}px;
         display: flex; align-items: center; justify-content: center;
@@ -672,6 +695,8 @@ function renderChallengeHtml({ elapsedMs, grid, theme, colorCount, size, order, 
                         ? "波浪舒尔特挑战"
                         : layout === "dual"
                           ? "双区舒尔特挑战"
+                          : layout === "breathe"
+                            ? "呼吸舒尔特挑战"
                 : "舒尔特方格挑战"
       }</div>
       <div class="title">请按顺序从 <span>${range.start}</span> 找到 <span>${range.end}</span></div>
@@ -889,6 +914,38 @@ function renderDualBoard({ grid, theme, colorCount, startNumber }) {
   </div>`;
 }
 
+function renderBreatheBoard({ grid, theme, colorCount, startNumber, elapsedMs }) {
+  const geometry = getBreatheGeometry(elapsedMs);
+  const gridLines = [
+    ...Array.from({ length: 5 }, (_, index) => {
+      const x = 4 + (92 / 6) * (index + 1);
+      return `<line class="grid-line" x1="${x.toFixed(3)}" x2="${x.toFixed(3)}" y1="7" y2="93"></line>`;
+    }),
+    ...Array.from({ length: 5 }, (_, index) => {
+      const y = 6 + (88 / 6) * (index + 1);
+      return `<line class="grid-line" x1="5" x2="95" y1="${y.toFixed(3)}" y2="${y.toFixed(3)}"></line>`;
+    }),
+  ].join("");
+  const cells = grid
+    .map((number, index) => {
+      const cellGeometry = geometry[index];
+      const color = getNumberColor(theme, number, colorCount, startNumber);
+      return `<g>
+        <circle cx="${cellGeometry.x.toFixed(3)}" cy="${cellGeometry.y.toFixed(3)}" r="${cellGeometry.radius.toFixed(3)}"></circle>
+        <text x="${cellGeometry.x.toFixed(3)}" y="${(cellGeometry.y + 0.28).toFixed(3)}" fill="${color}">${number}</text>
+      </g>`;
+    })
+    .join("");
+
+  return `<div class="breathe">
+    <svg viewBox="0 0 100 100" aria-label="呼吸舒尔特数字盘">
+      <rect class="panel" x="4" y="6" width="92" height="88" rx="5"></rect>
+      ${gridLines}
+      ${cells}
+    </svg>
+  </div>`;
+}
+
 function getRotationDegrees(rotation, elapsedMs) {
   if (rotation === "slow") return (elapsedMs / 1000) * 6;
   if (rotation === "fast") return (elapsedMs / 1000) * 10;
@@ -1007,6 +1064,7 @@ function createGrid(total, seed) {
 }
 
 function getChallengeTotal(size, layout) {
+  if (layout === "breathe") return 36;
   if (layout === "dual") return 36;
   if (layout === "wave") return 36;
   if (layout === "maze") return 36;
@@ -1024,6 +1082,7 @@ function getProjectLabel({ layout, size, total }) {
   if (layout === "maze") return "迷宫舒尔特 36";
   if (layout === "wave") return "波浪舒尔特 36";
   if (layout === "dual") return "双区舒尔特 36";
+  if (layout === "breathe") return "呼吸舒尔特 36";
   return `舒尔特方格 ${size}×${size}`;
 }
 
@@ -1036,6 +1095,7 @@ function getProjectLabelHtml({ layout, size, total }) {
   if (layout === "maze") return "迷宫舒尔特 <span>36</span>";
   if (layout === "wave") return "波浪舒尔特 <span>36</span>";
   if (layout === "dual") return "双区舒尔特 <span>36</span>";
+  if (layout === "breathe") return "呼吸舒尔特 <span>36</span>";
   return `舒尔特方格 <span>${size}×${size}</span>`;
 }
 
@@ -1368,6 +1428,27 @@ function getDualGeometry() {
     });
 
   return [...buildZone("left", leftX, 0), ...buildZone("right", rightX, 3)];
+}
+
+function getBreatheGeometry(elapsedMs = 0) {
+  const left = 4;
+  const top = 6;
+  const cellWidth = 92 / 6;
+  const cellHeight = 88 / 6;
+  const time = elapsedMs / 1000;
+
+  return Array.from({ length: 36 }, (_, index) => {
+    const row = Math.floor(index / 6);
+    const col = index % 6;
+    const speed = 1.75 + (index % 5) * 0.12;
+    const phase = index * 0.56;
+    const pulse = 1 + Math.sin(time * speed + phase) * 0.1;
+    return {
+      x: left + cellWidth * (col + 0.5),
+      y: top + cellHeight * (row + 0.5),
+      radius: 4.35 * pulse,
+    };
+  });
 }
 
 function polarToCartesian(center, radius, angleDegrees) {
