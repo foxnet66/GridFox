@@ -45,7 +45,8 @@ type PlayStyleId =
   | "maze"
   | "wave"
   | "dual"
-  | "breathe";
+  | "breathe"
+  | "star";
 type HexCellGeometry = {
   row: number;
   col: number;
@@ -74,6 +75,9 @@ type SpiralCellGeometry = {
 };
 type MazeCellGeometry = SpiralCellGeometry;
 type WaveCellGeometry = SpiralCellGeometry;
+type StarCellGeometry = SpiralCellGeometry & {
+  orbit: number;
+};
 type BreatheCellGeometry = SpiralCellGeometry & {
   duration: number;
   delay: number;
@@ -188,6 +192,14 @@ const PLAY_STYLES: PlayStyleOption[] = [
     layout: "breathe",
     rotation: "none",
   },
+  {
+    id: "star",
+    label: "星轨",
+    name: "星轨舒尔特",
+    description: "轨道视觉搜索",
+    layout: "star",
+    rotation: "none",
+  },
 ];
 
 const INITIAL_SETTINGS = getInitialSettings();
@@ -231,6 +243,7 @@ export default function App() {
   const waveGeometry = useMemo(() => getWaveGeometry(), []);
   const dualGeometry = useMemo(() => getDualGeometry(), []);
   const breatheGeometry = useMemo(() => getBreatheGeometry(), []);
+  const starGeometry = useMemo(() => getStarGeometry(), []);
   const publishText = useMemo(
     () =>
       buildXiaohongshuPost({
@@ -289,7 +302,8 @@ export default function App() {
       nextLayout === "maze" ||
       nextLayout === "wave" ||
       nextLayout === "dual" ||
-      nextLayout === "breathe"
+      nextLayout === "breathe" ||
+      nextLayout === "star"
     ) {
       setRotation("none");
     }
@@ -893,7 +907,7 @@ export default function App() {
               })}
             </svg>
           </div>
-        ) : (
+        ) : layout === "breathe" ? (
           <div className="breathe-board" ref={boardRef}>
             <svg viewBox="0 0 100 100" role="group" aria-label="呼吸舒尔特数字盘">
               <rect className="breathe-panel" x="4" y="6" width="92" height="88" rx="5" />
@@ -931,6 +945,56 @@ export default function App() {
                         "--breath-delay": `${geometry.delay}s`,
                     } as CSSProperties
                     }
+                  >
+                    <circle cx={geometry.x} cy={geometry.y} r={geometry.radius} />
+                    <text x={geometry.x} y={geometry.y + 0.28}>
+                      {number}
+                    </text>
+                  </g>
+                );
+              })}
+            </svg>
+          </div>
+        ) : (
+          <div className="star-board" ref={boardRef}>
+            <svg viewBox="0 0 100 100" role="group" aria-label="星轨舒尔特数字盘">
+              <rect className="star-panel" x="3" y="3" width="94" height="94" rx="5" />
+              {describeStarGuides().map((guide, index) => (
+                <ellipse
+                  className="star-guide"
+                  cx="50"
+                  cy="50"
+                  rx={guide.rx}
+                  ry={guide.ry}
+                  transform={`rotate(${guide.rotate} 50 50)`}
+                  key={`star-guide-${index}`}
+                />
+              ))}
+              {describeStarPaths().map((path, index) => (
+                <path className="star-path" d={path} key={`star-path-${index}`} />
+              ))}
+              <path className="star-sweep" d="M 11 30 C 30 6, 73 7, 89 30" />
+              <path className="star-sweep" d="M 12 72 C 31 94, 69 94, 88 72" />
+              {starGeometry.map((geometry, index) => {
+                const number = grid[index];
+                const completed = screen === "playing" && (order === "desc" ? number > target : number < target);
+                return (
+                  <g
+                    className={`star-cell orbit-${geometry.orbit} ${getNumberAccentClass(number, colorCount, range.start)} ${
+                      completed ? "completed" : ""
+                    }`}
+                    key={`${number}-${index}`}
+                    role="button"
+                    tabIndex={screen === "playing" ? 0 : -1}
+                    aria-label={`数字 ${number}`}
+                    onClick={() => handleCellClick(number, index)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        handleCellClick(number, index);
+                      }
+                    }}
+                    aria-disabled={screen !== "playing"}
                   >
                     <circle cx={geometry.x} cy={geometry.y} r={geometry.radius} />
                     <text x={geometry.x} y={geometry.y + 0.28}>
@@ -1004,7 +1068,8 @@ export default function App() {
                     layout === "maze" ||
                     layout === "wave" ||
                     layout === "dual" ||
-                    layout === "breathe"
+                    layout === "breathe" ||
+                    layout === "star"
                   }
                 >
                   {layout === "hex" ||
@@ -1014,7 +1079,8 @@ export default function App() {
                   layout === "maze" ||
                   layout === "wave" ||
                   layout === "dual" ||
-                  layout === "breathe"
+                  layout === "breathe" ||
+                  layout === "star"
                     ? "当前玩法暂不支持"
                     : promoStatus === "recording"
                     ? "录制中..."
@@ -1068,7 +1134,9 @@ function buildXiaohongshuPost({
 }): string {
   const isRotating = layout === "radial" && rotation !== "none";
   const layoutName =
-    layout === "breathe"
+    layout === "star"
+      ? "星轨舒尔特"
+      : layout === "breathe"
       ? "呼吸舒尔特"
       : layout === "dual"
       ? "双区舒尔特"
@@ -1101,6 +1169,8 @@ function buildXiaohongshuPost({
   const modeLine =
     isRotating
       ? `${getRotationLabel(rotation)}圆盘会增加视觉追踪难度，适合进阶挑战。`
+      : layout === "star"
+      ? "多条轨道会打乱常规扫描路线，更考验弧线视觉搜索和节奏稳定性。"
       : layout === "breathe"
       ? "圆点会轻微呼吸缩放，画面稳定但节奏干扰更强。"
       : layout === "dual"
@@ -1130,6 +1200,8 @@ function buildXiaohongshuPost({
     "#计时挑战",
     layout === "dual"
       ? "#双区舒尔特"
+      : layout === "star"
+      ? "#星轨舒尔特"
       : layout === "breathe"
       ? "#呼吸舒尔特"
       : layout === "wave"
@@ -1174,7 +1246,9 @@ function getInitialSettings(): {
   const mode = MODES.find((item) => item.size === Number(params.get("size"))) ?? DEFAULT_MODE;
   const layoutParam = params.get("layout");
   const layout =
-    layoutParam === "breathe"
+    layoutParam === "star"
+      ? "star"
+      : layoutParam === "breathe"
       ? "breathe"
       : layoutParam === "dual"
       ? "dual"
@@ -1221,6 +1295,7 @@ function getActivePlayStyle(layout: ChallengeLayout, rotation: RotationSpeed): P
   if (layout === "wave") return PLAY_STYLES[8];
   if (layout === "dual") return PLAY_STYLES[9];
   if (layout === "breathe") return PLAY_STYLES[10];
+  if (layout === "star") return PLAY_STYLES[11];
   if (rotation !== "none") return PLAY_STYLES[2];
   return PLAY_STYLES[1];
 }
@@ -1230,6 +1305,7 @@ function createChallengeNumbers(mode: GameMode, layout: ChallengeLayout): number
 }
 
 function getSizeLabel(mode: GameMode, layout: ChallengeLayout): string {
+  if (layout === "star") return "36点";
   if (layout === "breathe") return "36点";
   if (layout === "dual") return "36点";
   if (layout === "wave") return "36点";
@@ -1248,7 +1324,8 @@ function isFixedLayout(layout: ChallengeLayout): boolean {
     layout === "maze" ||
     layout === "wave" ||
     layout === "dual" ||
-    layout === "breathe"
+    layout === "breathe" ||
+    layout === "star"
   );
 }
 
@@ -1263,6 +1340,7 @@ function getTapPosition(
   if (layout === "wave") return { row: Math.floor(index / 6), col: index % 6 };
   if (layout === "dual") return { row: Math.floor(index / 6), col: index % 6 };
   if (layout === "breathe") return { row: Math.floor(index / 6), col: index % 6 };
+  if (layout === "star") return { row: Math.floor(index / 6), col: index % 6 };
   if (layout === "hex" || layout === "mosaic") return { row: Math.floor(index / 5), col: index % 5 };
   return { row: Math.floor(index / mode.size), col: index % mode.size };
 }
@@ -1408,6 +1486,41 @@ function getBreatheGeometry(): BreatheCellGeometry[] {
       delay: -(index % 7) * 0.22,
     };
   });
+}
+
+function getStarGeometry(): StarCellGeometry[] {
+  return Array.from({ length: 36 }, (_, index) => {
+    const row = Math.floor(index / 6);
+    const col = index % 6;
+    const x = 10.5 + col * 15.8 + (row % 2 === 0 ? -1.8 : 1.8);
+    const y = 14 + row * 14.2 + Math.sin((col / 5) * Math.PI * 2 + row * 0.82) * 3.5;
+    return {
+      row,
+      col,
+      x,
+      y,
+      radius: 4.2,
+      orbit: row,
+    };
+  });
+}
+
+function describeStarPaths(): string[] {
+  return Array.from({ length: 6 }, (_, row) =>
+    Array.from({ length: 6 }, (_, col) => {
+      const x = 10.5 + col * 15.8 + (row % 2 === 0 ? -1.8 : 1.8);
+      const y = 14 + row * 14.2 + Math.sin((col / 5) * Math.PI * 2 + row * 0.82) * 3.5;
+      return `${col === 0 ? "M" : "L"} ${x.toFixed(3)} ${y.toFixed(3)}`;
+    }).join(" "),
+  );
+}
+
+function describeStarGuides(): Array<{ rx: number; ry: number; rotate: number }> {
+  return [
+    { rx: 42, ry: 15, rotate: -18 },
+    { rx: 37, ry: 27, rotate: 18 },
+    { rx: 29, ry: 39, rotate: -43 },
+  ];
 }
 
 function getDualGeometry(): DualCellGeometry[] {

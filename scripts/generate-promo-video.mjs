@@ -157,7 +157,9 @@ const size = clamp(Number(args.size ?? dailyChallenge?.size ?? 6), 4, 6);
 const order = String(args.order ?? dailyChallenge?.order ?? "asc") === "desc" ? "desc" : "asc";
 const layoutArg = String(args.layout ?? dailyChallenge?.layout ?? "grid");
 const layout =
-  layoutArg === "breathe"
+  layoutArg === "star"
+    ? "star"
+    : layoutArg === "breathe"
     ? "breathe"
     : layoutArg === "dual"
     ? "dual"
@@ -472,6 +474,8 @@ function renderChallengeHtml({ elapsedMs, grid, theme, colorCount, size, order, 
                   ? renderDualBoard({ grid, theme, colorCount, startNumber: range.start })
                   : layout === "breathe"
                     ? renderBreatheBoard({ grid, theme, colorCount, startNumber: range.start, elapsedMs })
+                    : layout === "star"
+                      ? renderStarBoard({ grid, theme, colorCount, startNumber: range.start })
           : `<div class="grid">${grid
               .map((number, index) => {
                 const row = Math.floor(index / size);
@@ -563,6 +567,11 @@ function renderChallengeHtml({ elapsedMs, grid, theme, colorCount, size, order, 
         width: ${metrics.boardSize}px; height: ${metrics.boardSize}px;
         filter: drop-shadow(0 14px 34px rgba(24, 33, 47, 0.1));
       }
+      .star {
+        position: absolute; left: ${metrics.boardLeft}px; top: ${metrics.boardTop}px;
+        width: ${metrics.boardSize}px; height: ${metrics.boardSize}px;
+        filter: drop-shadow(0 14px 34px rgba(24, 33, 47, 0.1));
+      }
       .radial svg { display: block; width: 100%; height: 100%; overflow: visible; }
       .hex svg { display: block; width: 100%; height: 100%; overflow: visible; }
       .mosaic svg { display: block; width: 100%; height: 100%; overflow: visible; }
@@ -572,6 +581,7 @@ function renderChallengeHtml({ elapsedMs, grid, theme, colorCount, size, order, 
       .wave svg { display: block; width: 100%; height: 100%; overflow: visible; }
       .dual svg { display: block; width: 100%; height: 100%; overflow: visible; }
       .breathe svg { display: block; width: 100%; height: 100%; overflow: visible; }
+      .star svg { display: block; width: 100%; height: 100%; overflow: visible; }
       .radial path { fill: white; stroke: ${theme.grid}; stroke-width: 0.42; }
       .radial .center { fill: ${theme.paper}; stroke: ${theme.grid}; stroke-width: 0.6; }
       .radial text {
@@ -662,6 +672,27 @@ function renderChallengeHtml({ elapsedMs, grid, theme, colorCount, size, order, 
         dominant-baseline: middle; text-anchor: middle;
         font-size: 5.15px; font-weight: 950;
       }
+      .star .panel { fill: white; stroke: ${theme.grid}; stroke-width: 0.45; }
+      .star .guide {
+        fill: none; stroke: ${theme.primary}; stroke-opacity: 0.22; stroke-width: 0.62;
+        stroke-dasharray: 2.3 2.3;
+      }
+      .star .path {
+        fill: none; stroke: ${theme.primary}; stroke-opacity: 0.2; stroke-width: 1.2;
+        stroke-linecap: round; stroke-linejoin: round;
+      }
+      .star .sweep {
+        fill: none; stroke: ${theme.accent}; stroke-opacity: 0.3; stroke-width: 0.72;
+        stroke-linecap: round;
+      }
+      .star circle {
+        fill: white; stroke: ${theme.primary}; stroke-opacity: 0.48; stroke-width: 0.5;
+        filter: drop-shadow(0 1px 1px rgba(24, 33, 47, 0.14));
+      }
+      .star text {
+        dominant-baseline: middle; text-anchor: middle;
+        font-size: 5.05px; font-weight: 950;
+      }
       .cell {
         position: absolute; width: ${cellSize}px; height: ${cellSize}px;
         display: flex; align-items: center; justify-content: center;
@@ -697,6 +728,8 @@ function renderChallengeHtml({ elapsedMs, grid, theme, colorCount, size, order, 
                           ? "双区舒尔特挑战"
                           : layout === "breathe"
                             ? "呼吸舒尔特挑战"
+                            : layout === "star"
+                              ? "星轨舒尔特挑战"
                 : "舒尔特方格挑战"
       }</div>
       <div class="title">请按顺序从 <span>${range.start}</span> 找到 <span>${range.end}</span></div>
@@ -946,6 +979,38 @@ function renderBreatheBoard({ grid, theme, colorCount, startNumber, elapsedMs })
   </div>`;
 }
 
+function renderStarBoard({ grid, theme, colorCount, startNumber }) {
+  const geometry = getStarGeometry();
+  const guides = describeStarGuides();
+  const paths = describeStarPaths();
+  const cells = grid
+    .map((number, index) => {
+      const cellGeometry = geometry[index];
+      const color = getNumberColor(theme, number, colorCount, startNumber);
+      return `<g>
+        <circle cx="${cellGeometry.x.toFixed(3)}" cy="${cellGeometry.y.toFixed(3)}" r="${cellGeometry.radius}"></circle>
+        <text x="${cellGeometry.x.toFixed(3)}" y="${(cellGeometry.y + 0.28).toFixed(3)}" fill="${color}">${number}</text>
+      </g>`;
+    })
+    .join("");
+
+  return `<div class="star">
+    <svg viewBox="0 0 100 100" aria-label="星轨舒尔特数字盘">
+      <rect class="panel" x="3" y="3" width="94" height="94" rx="5"></rect>
+      ${guides
+        .map(
+          (guide) =>
+            `<ellipse class="guide" cx="50" cy="50" rx="${guide.rx}" ry="${guide.ry}" transform="rotate(${guide.rotate} 50 50)"></ellipse>`,
+        )
+        .join("")}
+      ${paths.map((path) => `<path class="path" d="${path}"></path>`).join("")}
+      <path class="sweep" d="M 11 30 C 30 6, 73 7, 89 30"></path>
+      <path class="sweep" d="M 12 72 C 31 94, 69 94, 88 72"></path>
+      ${cells}
+    </svg>
+  </div>`;
+}
+
 function getRotationDegrees(rotation, elapsedMs) {
   if (rotation === "slow") return (elapsedMs / 1000) * 6;
   if (rotation === "fast") return (elapsedMs / 1000) * 10;
@@ -1064,6 +1129,7 @@ function createGrid(total, seed) {
 }
 
 function getChallengeTotal(size, layout) {
+  if (layout === "star") return 36;
   if (layout === "breathe") return 36;
   if (layout === "dual") return 36;
   if (layout === "wave") return 36;
@@ -1083,6 +1149,7 @@ function getProjectLabel({ layout, size, total }) {
   if (layout === "wave") return "波浪舒尔特 36";
   if (layout === "dual") return "双区舒尔特 36";
   if (layout === "breathe") return "呼吸舒尔特 36";
+  if (layout === "star") return "星轨舒尔特 36";
   return `舒尔特方格 ${size}×${size}`;
 }
 
@@ -1096,6 +1163,7 @@ function getProjectLabelHtml({ layout, size, total }) {
   if (layout === "wave") return "波浪舒尔特 <span>36</span>";
   if (layout === "dual") return "双区舒尔特 <span>36</span>";
   if (layout === "breathe") return "呼吸舒尔特 <span>36</span>";
+  if (layout === "star") return "星轨舒尔特 <span>36</span>";
   return `舒尔特方格 <span>${size}×${size}</span>`;
 }
 
@@ -1449,6 +1517,36 @@ function getBreatheGeometry(elapsedMs = 0) {
       radius: 4.35 * pulse,
     };
   });
+}
+
+function getStarGeometry() {
+  return Array.from({ length: 36 }, (_, index) => {
+    const row = Math.floor(index / 6);
+    const col = index % 6;
+    return {
+      x: 10.5 + col * 15.8 + (row % 2 === 0 ? -1.8 : 1.8),
+      y: 14 + row * 14.2 + Math.sin((col / 5) * Math.PI * 2 + row * 0.82) * 3.5,
+      radius: 4.2,
+    };
+  });
+}
+
+function describeStarPaths() {
+  return Array.from({ length: 6 }, (_, row) =>
+    Array.from({ length: 6 }, (_, col) => {
+      const x = 10.5 + col * 15.8 + (row % 2 === 0 ? -1.8 : 1.8);
+      const y = 14 + row * 14.2 + Math.sin((col / 5) * Math.PI * 2 + row * 0.82) * 3.5;
+      return `${col === 0 ? "M" : "L"} ${x.toFixed(3)} ${y.toFixed(3)}`;
+    }).join(" "),
+  );
+}
+
+function describeStarGuides() {
+  return [
+    { rx: 42, ry: 15, rotate: -18 },
+    { rx: 37, ry: 27, rotate: 18 },
+    { rx: 29, ry: 39, rotate: -43 },
+  ];
 }
 
 function polarToCartesian(center, radius, angleDegrees) {
