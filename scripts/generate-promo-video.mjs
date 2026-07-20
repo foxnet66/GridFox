@@ -678,12 +678,8 @@ function renderChallengeHtml({ elapsedMs, grid, theme, colorCount, size, order, 
         stroke-dasharray: 2.3 2.3;
       }
       .star .path {
-        fill: none; stroke: ${theme.primary}; stroke-opacity: 0.2; stroke-width: 1.2;
+        fill: none; stroke: ${theme.primary}; stroke-opacity: 0.24; stroke-width: 1.1;
         stroke-linecap: round; stroke-linejoin: round;
-      }
-      .star .sweep {
-        fill: none; stroke: ${theme.accent}; stroke-opacity: 0.3; stroke-width: 0.72;
-        stroke-linecap: round;
       }
       .star circle {
         fill: white; stroke: ${theme.primary}; stroke-opacity: 0.48; stroke-width: 0.5;
@@ -691,7 +687,7 @@ function renderChallengeHtml({ elapsedMs, grid, theme, colorCount, size, order, 
       }
       .star text {
         dominant-baseline: middle; text-anchor: middle;
-        font-size: 5.05px; font-weight: 950;
+        font-size: 4.75px; font-weight: 950;
       }
       .cell {
         position: absolute; width: ${cellSize}px; height: ${cellSize}px;
@@ -1004,8 +1000,6 @@ function renderStarBoard({ grid, theme, colorCount, startNumber }) {
         )
         .join("")}
       ${paths.map((path) => `<path class="path" d="${path}"></path>`).join("")}
-      <path class="sweep" d="M 11 30 C 30 6, 73 7, 89 30"></path>
-      <path class="sweep" d="M 12 72 C 31 94, 69 94, 88 72"></path>
       ${cells}
     </svg>
   </div>`;
@@ -1520,32 +1514,39 @@ function getBreatheGeometry(elapsedMs = 0) {
 }
 
 function getStarGeometry() {
+  const radii = [10, 17, 24, 31, 38, 42];
   return Array.from({ length: 36 }, (_, index) => {
-    const row = Math.floor(index / 6);
-    const col = index % 6;
+    const arm = Math.floor(index / 6);
+    const step = index % 6;
+    const angle = ((arm * 60 - 96 + step * 13.5 + Math.sin(arm * 1.7) * 5) * Math.PI) / 180;
+    const radius = radii[step];
     return {
-      x: 10.5 + col * 15.8 + (row % 2 === 0 ? -1.8 : 1.8),
-      y: 14 + row * 14.2 + Math.sin((col / 5) * Math.PI * 2 + row * 0.82) * 3.5,
-      radius: 4.2,
+      x: 50 + Math.cos(angle) * radius,
+      y: 50 + Math.sin(angle) * radius,
+      radius: 3.35,
     };
   });
 }
 
 function describeStarPaths() {
-  return Array.from({ length: 6 }, (_, row) =>
-    Array.from({ length: 6 }, (_, col) => {
-      const x = 10.5 + col * 15.8 + (row % 2 === 0 ? -1.8 : 1.8);
-      const y = 14 + row * 14.2 + Math.sin((col / 5) * Math.PI * 2 + row * 0.82) * 3.5;
-      return `${col === 0 ? "M" : "L"} ${x.toFixed(3)} ${y.toFixed(3)}`;
-    }).join(" "),
+  const radii = [9, 17, 24, 31, 38, 43];
+  return Array.from({ length: 6 }, (_, arm) =>
+    radii
+      .map((radius, step) => {
+        const angle = ((arm * 60 - 96 + step * 13.5 + Math.sin(arm * 1.7) * 5) * Math.PI) / 180;
+        const x = 50 + Math.cos(angle) * radius;
+        const y = 50 + Math.sin(angle) * radius;
+        return `${step === 0 ? "M" : "L"} ${x.toFixed(3)} ${y.toFixed(3)}`;
+      })
+      .join(" "),
   );
 }
 
 function describeStarGuides() {
   return [
-    { rx: 42, ry: 15, rotate: -18 },
-    { rx: 37, ry: 27, rotate: 18 },
-    { rx: 29, ry: 39, rotate: -43 },
+    { rx: 19, ry: 12, rotate: -18 },
+    { rx: 32, ry: 22, rotate: 24 },
+    { rx: 43, ry: 32, rotate: -28 },
   ];
 }
 
