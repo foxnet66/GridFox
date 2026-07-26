@@ -23,7 +23,8 @@ export type ChallengeLayout =
   | "wave"
   | "dual"
   | "breathe"
-  | "star";
+  | "star"
+  | "mixed";
 
 export type ChallengeLayoutOption = {
   id: ChallengeLayout;
@@ -82,6 +83,7 @@ export const WAVE_TOTAL = 36;
 export const DUAL_TOTAL = 36;
 export const BREATHE_TOTAL = 36;
 export const STAR_TOTAL = 36;
+export const MIXED_TOTAL = 36;
 
 export const MODES: GameMode[] = [
   { size: 4, label: "4x4", title: "按顺序从 1 找到 16" },
@@ -108,6 +110,7 @@ export const CHALLENGE_LAYOUTS: ChallengeLayoutOption[] = [
   { id: "dual", label: "双区", name: "双区舒尔特" },
   { id: "breathe", label: "呼吸", name: "呼吸舒尔特" },
   { id: "star", label: "星轨", name: "星轨舒尔特" },
+  { id: "mixed", label: "大小", name: "大小混排舒尔特" },
 ];
 
 export const ROTATION_SPEEDS: RotationSpeedOption[] = [
@@ -172,6 +175,7 @@ export function getNumberAccentClass(number: number, colorCount: ColorCount, sta
 }
 
 export function getChallengeTotal(mode: GameMode, layout: ChallengeLayout): number {
+  if (layout === "mixed") return MIXED_TOTAL;
   if (layout === "star") return STAR_TOTAL;
   if (layout === "breathe") return BREATHE_TOTAL;
   if (layout === "dual") return DUAL_TOTAL;

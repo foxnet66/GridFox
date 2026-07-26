@@ -157,7 +157,9 @@ const size = clamp(Number(args.size ?? dailyChallenge?.size ?? 6), 4, 6);
 const order = String(args.order ?? dailyChallenge?.order ?? "asc") === "desc" ? "desc" : "asc";
 const layoutArg = String(args.layout ?? dailyChallenge?.layout ?? "grid");
 const layout =
-  layoutArg === "star"
+  layoutArg === "mixed"
+    ? "mixed"
+    : layoutArg === "star"
     ? "star"
     : layoutArg === "breathe"
     ? "breathe"
@@ -476,6 +478,8 @@ function renderChallengeHtml({ elapsedMs, grid, theme, colorCount, size, order, 
                     ? renderBreatheBoard({ grid, theme, colorCount, startNumber: range.start, elapsedMs })
                     : layout === "star"
                       ? renderStarBoard({ grid, theme, colorCount, startNumber: range.start })
+                      : layout === "mixed"
+                        ? renderMixedBoard({ grid, theme, colorCount, startNumber: range.start })
           : `<div class="grid">${grid
               .map((number, index) => {
                 const row = Math.floor(index / size);
@@ -518,6 +522,11 @@ function renderChallengeHtml({ elapsedMs, grid, theme, colorCount, size, order, 
         text-align: center; color: ${theme.primary}; font-size: ${metrics.timerFont}px; font-weight: 900;
       }
       .grid {
+        position: absolute; left: ${metrics.boardLeft}px; top: ${metrics.boardTop}px;
+        width: ${metrics.boardSize}px; height: ${metrics.boardSize}px;
+        border: 3px solid ${theme.grid}; border-radius: 18px; overflow: hidden; background: white;
+      }
+      .mixed {
         position: absolute; left: ${metrics.boardLeft}px; top: ${metrics.boardTop}px;
         width: ${metrics.boardSize}px; height: ${metrics.boardSize}px;
         border: 3px solid ${theme.grid}; border-radius: 18px; overflow: hidden; background: white;
@@ -695,6 +704,11 @@ function renderChallengeHtml({ elapsedMs, grid, theme, colorCount, size, order, 
         border-right: 2px solid ${theme.grid}; border-bottom: 2px solid ${theme.grid};
         font-size: ${fontSize}px; font-weight: 900; line-height: 1;
       }
+      .mixed-cell {
+        position: absolute; display: flex; align-items: center; justify-content: center;
+        border-right: 2px solid ${theme.grid}; border-bottom: 2px solid ${theme.grid};
+        font-weight: 950; line-height: 1;
+      }
       .credit {
         position: absolute; top: ${metrics.creditTop}px; left: 0; width: 100%;
         text-align: center; color: ${theme.muted}; font-size: ${metrics.creditFont}px; font-weight: 800;
@@ -726,6 +740,8 @@ function renderChallengeHtml({ elapsedMs, grid, theme, colorCount, size, order, 
                             ? "呼吸舒尔特挑战"
                             : layout === "star"
                               ? "星轨舒尔特挑战"
+                              : layout === "mixed"
+                                ? "大小混排舒尔特挑战"
                 : "舒尔特方格挑战"
       }</div>
       <div class="title">请按顺序从 <span>${range.start}</span> 找到 <span>${range.end}</span></div>
@@ -736,6 +752,23 @@ function renderChallengeHtml({ elapsedMs, grid, theme, colorCount, size, order, 
     </main>
   </body>
 </html>`;
+}
+
+function renderMixedBoard({ grid, theme, colorCount, startNumber }) {
+  const size = 6;
+  const boardSize = canvas.challenge.boardSize;
+  const cellSize = boardSize / size;
+  const geometry = getMixedGeometry();
+
+  return `<div class="mixed">${grid
+    .map((number, index) => {
+      const row = Math.floor(index / size);
+      const col = index % size;
+      const cellGeometry = geometry[index];
+      const color = getNumberColor(theme, number, colorCount, startNumber);
+      return `<div class="mixed-cell" style="left:${col * cellSize}px;top:${row * cellSize}px;width:${cellSize}px;height:${cellSize}px;color:${color};font-size:${cellGeometry.fontSize}px;font-weight:${cellGeometry.fontWeight}">${number}</div>`;
+    })
+    .join("")}</div>`;
 }
 
 function renderRadialBoard({ grid, theme, colorCount, startNumber, rotationDeg }) {
@@ -1122,7 +1155,24 @@ function createGrid(total, seed) {
   return values;
 }
 
+function getMixedGeometry() {
+  const pattern = [
+    54, 38, 70, 46, 62, 40,
+    42, 66, 34, 56, 48, 72,
+    68, 42, 60, 38, 76, 50,
+    46, 72, 40, 66, 54, 34,
+    62, 48, 70, 42, 56, 38,
+    40, 60, 46, 76, 50, 68,
+  ];
+
+  return pattern.map((fontSize) => ({
+    fontSize,
+    fontWeight: fontSize >= 60 ? 950 : 900,
+  }));
+}
+
 function getChallengeTotal(size, layout) {
+  if (layout === "mixed") return 36;
   if (layout === "star") return 36;
   if (layout === "breathe") return 36;
   if (layout === "dual") return 36;
@@ -1144,6 +1194,7 @@ function getProjectLabel({ layout, size, total }) {
   if (layout === "dual") return "双区舒尔特 36";
   if (layout === "breathe") return "呼吸舒尔特 36";
   if (layout === "star") return "星轨舒尔特 36";
+  if (layout === "mixed") return "大小混排舒尔特 36";
   return `舒尔特方格 ${size}×${size}`;
 }
 
@@ -1158,6 +1209,7 @@ function getProjectLabelHtml({ layout, size, total }) {
   if (layout === "dual") return "双区舒尔特 <span>36</span>";
   if (layout === "breathe") return "呼吸舒尔特 <span>36</span>";
   if (layout === "star") return "星轨舒尔特 <span>36</span>";
+  if (layout === "mixed") return "大小混排舒尔特 <span>36</span>";
   return `舒尔特方格 <span>${size}×${size}</span>`;
 }
 

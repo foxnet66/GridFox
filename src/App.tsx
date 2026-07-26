@@ -46,7 +46,8 @@ type PlayStyleId =
   | "wave"
   | "dual"
   | "breathe"
-  | "star";
+  | "star"
+  | "mixed";
 type HexCellGeometry = {
   row: number;
   col: number;
@@ -77,6 +78,12 @@ type MazeCellGeometry = SpiralCellGeometry;
 type WaveCellGeometry = SpiralCellGeometry;
 type StarCellGeometry = SpiralCellGeometry & {
   orbit: number;
+};
+type MixedCellGeometry = {
+  row: number;
+  col: number;
+  fontSize: number;
+  fontWeight: number;
 };
 type BreatheCellGeometry = SpiralCellGeometry & {
   duration: number;
@@ -200,6 +207,14 @@ const PLAY_STYLES: PlayStyleOption[] = [
     layout: "star",
     rotation: "none",
   },
+  {
+    id: "mixed",
+    label: "大小",
+    name: "大小混排",
+    description: "字号干扰搜索",
+    layout: "mixed",
+    rotation: "none",
+  },
 ];
 
 const INITIAL_SETTINGS = getInitialSettings();
@@ -244,6 +259,7 @@ export default function App() {
   const dualGeometry = useMemo(() => getDualGeometry(), []);
   const breatheGeometry = useMemo(() => getBreatheGeometry(), []);
   const starGeometry = useMemo(() => getStarGeometry(), []);
+  const mixedGeometry = useMemo(() => getMixedGeometry(), []);
   const publishText = useMemo(
     () =>
       buildXiaohongshuPost({
@@ -303,7 +319,8 @@ export default function App() {
       nextLayout === "wave" ||
       nextLayout === "dual" ||
       nextLayout === "breathe" ||
-      nextLayout === "star"
+      nextLayout === "star" ||
+      nextLayout === "mixed"
     ) {
       setRotation("none");
     }
@@ -594,6 +611,28 @@ export default function App() {
                   onClick={() => handleCellClick(number, index)}
                   disabled={screen !== "playing"}
                   aria-label={`数字 ${number}`}
+                >
+                  {number}
+                </button>
+              );
+            })}
+          </div>
+        ) : layout === "mixed" ? (
+          <div className="mixed-board" ref={boardRef}>
+            {grid.map((number, index) => {
+              const geometry = mixedGeometry[index];
+              const completed = screen === "playing" && (order === "desc" ? number > target : number < target);
+              return (
+                <button
+                  className={`mixed-cell ${getNumberAccentClass(number, colorCount, range.start)} ${
+                    completed ? "completed" : ""
+                  }`}
+                  key={`${number}-${index}`}
+                  type="button"
+                  onClick={() => handleCellClick(number, index)}
+                  disabled={screen !== "playing"}
+                  aria-label={`数字 ${number}`}
+                  style={{ fontSize: `${geometry.fontSize}px`, fontWeight: geometry.fontWeight }}
                 >
                   {number}
                 </button>
@@ -1067,7 +1106,8 @@ export default function App() {
                     layout === "wave" ||
                     layout === "dual" ||
                     layout === "breathe" ||
-                    layout === "star"
+                    layout === "star" ||
+                    layout === "mixed"
                   }
                 >
                   {layout === "hex" ||
@@ -1078,7 +1118,8 @@ export default function App() {
                   layout === "wave" ||
                   layout === "dual" ||
                   layout === "breathe" ||
-                  layout === "star"
+                  layout === "star" ||
+                  layout === "mixed"
                     ? "当前玩法暂不支持"
                     : promoStatus === "recording"
                     ? "录制中..."
@@ -1132,7 +1173,9 @@ function buildXiaohongshuPost({
 }): string {
   const isRotating = layout === "radial" && rotation !== "none";
   const layoutName =
-    layout === "star"
+    layout === "mixed"
+      ? "大小混排舒尔特"
+      : layout === "star"
       ? "星轨舒尔特"
       : layout === "breathe"
       ? "呼吸舒尔特"
@@ -1167,6 +1210,8 @@ function buildXiaohongshuPost({
   const modeLine =
     isRotating
       ? `${getRotationLabel(rotation)}圆盘会增加视觉追踪难度，适合进阶挑战。`
+      : layout === "mixed"
+      ? "大小字号混排会干扰视觉优先级，更考验在不一致信息中快速定位目标。"
       : layout === "star"
       ? "多条轨道会打乱常规扫描路线，更考验弧线视觉搜索和节奏稳定性。"
       : layout === "breathe"
@@ -1198,6 +1243,8 @@ function buildXiaohongshuPost({
     "#计时挑战",
     layout === "dual"
       ? "#双区舒尔特"
+      : layout === "mixed"
+      ? "#大小混排舒尔特"
       : layout === "star"
       ? "#星轨舒尔特"
       : layout === "breathe"
@@ -1244,7 +1291,9 @@ function getInitialSettings(): {
   const mode = MODES.find((item) => item.size === Number(params.get("size"))) ?? DEFAULT_MODE;
   const layoutParam = params.get("layout");
   const layout =
-    layoutParam === "star"
+    layoutParam === "mixed"
+      ? "mixed"
+      : layoutParam === "star"
       ? "star"
       : layoutParam === "breathe"
       ? "breathe"
@@ -1294,6 +1343,7 @@ function getActivePlayStyle(layout: ChallengeLayout, rotation: RotationSpeed): P
   if (layout === "dual") return PLAY_STYLES[9];
   if (layout === "breathe") return PLAY_STYLES[10];
   if (layout === "star") return PLAY_STYLES[11];
+  if (layout === "mixed") return PLAY_STYLES[12];
   if (rotation !== "none") return PLAY_STYLES[2];
   return PLAY_STYLES[1];
 }
@@ -1303,6 +1353,7 @@ function createChallengeNumbers(mode: GameMode, layout: ChallengeLayout): number
 }
 
 function getSizeLabel(mode: GameMode, layout: ChallengeLayout): string {
+  if (layout === "mixed") return "36格";
   if (layout === "star") return "36点";
   if (layout === "breathe") return "36点";
   if (layout === "dual") return "36点";
@@ -1323,7 +1374,8 @@ function isFixedLayout(layout: ChallengeLayout): boolean {
     layout === "wave" ||
     layout === "dual" ||
     layout === "breathe" ||
-    layout === "star"
+    layout === "star" ||
+    layout === "mixed"
   );
 }
 
@@ -1339,8 +1391,27 @@ function getTapPosition(
   if (layout === "dual") return { row: Math.floor(index / 6), col: index % 6 };
   if (layout === "breathe") return { row: Math.floor(index / 6), col: index % 6 };
   if (layout === "star") return { row: Math.floor(index / 6), col: index % 6 };
+  if (layout === "mixed") return { row: Math.floor(index / 6), col: index % 6 };
   if (layout === "hex" || layout === "mosaic") return { row: Math.floor(index / 5), col: index % 5 };
   return { row: Math.floor(index / mode.size), col: index % mode.size };
+}
+
+function getMixedGeometry(): MixedCellGeometry[] {
+  const pattern = [
+    32, 24, 42, 28, 38, 26,
+    27, 40, 23, 34, 30, 43,
+    41, 27, 36, 24, 44, 31,
+    28, 43, 26, 40, 32, 23,
+    38, 30, 42, 27, 34, 24,
+    26, 36, 28, 44, 31, 41,
+  ];
+
+  return pattern.map((fontSize, index) => ({
+    row: Math.floor(index / 6),
+    col: index % 6,
+    fontSize,
+    fontWeight: fontSize >= 38 ? 950 : 900,
+  }));
 }
 
 function getFloatGeometry(): FloatBallGeometry[] {
