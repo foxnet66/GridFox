@@ -5,6 +5,7 @@ export type GameMode = {
 };
 
 export type ChallengeOrder = "asc" | "desc";
+export type RedBlackRule = "basic" | "advanced";
 
 export type ChallengeOrderOption = {
   id: ChallengeOrder;
@@ -63,6 +64,7 @@ export type FinishedRun = {
   order: ChallengeOrder;
   layout: ChallengeLayout;
   rotation: RotationSpeed;
+  redBlackRule: RedBlackRule;
   grid: number[];
   taps: TapRecord[];
   elapsedMs: number;
@@ -196,8 +198,14 @@ export function getInitialTarget(mode: GameMode, order: ChallengeOrder, layout: 
   return order === "desc" ? getChallengeTotal(mode, layout) : 1;
 }
 
-export function getNextTarget(target: number, order: ChallengeOrder, layout: ChallengeLayout = "grid"): number {
+export function getNextTarget(
+  target: number,
+  order: ChallengeOrder,
+  layout: ChallengeLayout = "grid",
+  redBlackRule: RedBlackRule = "basic",
+): number {
   if (layout === "redblack") {
+    if (redBlackRule === "advanced") return target <= 12 ? 26 - target : 27 - target;
     return target <= 12 ? target + 13 : target - 12;
   }
   return order === "desc" ? target - 1 : target + 1;
@@ -230,11 +238,15 @@ export function isChallengeNumberCompleted(
   target: number,
   order: ChallengeOrder,
   layout: ChallengeLayout,
+  redBlackRule: RedBlackRule = "basic",
 ): boolean {
   if (layout !== "redblack") return order === "desc" ? number > target : number < target;
   if (number === target) return false;
 
-  const sequence = Array.from({ length: 12 }, (_, index) => [index + 1, index + 14]).flat();
+  const sequence = Array.from({ length: 12 }, (_, index) => [
+    index + 1,
+    redBlackRule === "advanced" ? 25 - index : index + 14,
+  ]).flat();
   sequence.push(13);
   return sequence.indexOf(number) < sequence.indexOf(target);
 }
@@ -254,11 +266,13 @@ export function getBestTime(
   order: ChallengeOrder,
   layout: ChallengeLayout,
   rotation: RotationSpeed = "none",
+  redBlackRule: RedBlackRule = "basic",
 ): number | null {
   const rotationKey = layout === "radial" ? rotation : "none";
+  const ruleKey = layout === "redblack" ? `-${redBlackRule}` : "";
   const stored =
-    localStorage.getItem(`gridfox-best-${mode.size}-${order}-${layout}-${rotationKey}`) ??
-    getLegacyBestTime(mode, order, layout, rotationKey);
+    localStorage.getItem(`gridfox-best-${mode.size}-${order}-${layout}-${rotationKey}${ruleKey}`) ??
+    getLegacyBestTime(mode, order, layout, rotationKey, redBlackRule);
   if (!stored) return null;
 
   const parsed = Number(stored);
@@ -270,8 +284,15 @@ function getLegacyBestTime(
   order: ChallengeOrder,
   layout: ChallengeLayout,
   rotation: RotationSpeed,
+  redBlackRule: RedBlackRule,
 ): string | null {
   if (rotation !== "none") return null;
+  if (layout === "redblack") {
+    return redBlackRule === "basic"
+      ? localStorage.getItem(`gridfox-best-${mode.size}-${order}-${layout}-${rotation}`) ??
+          localStorage.getItem(`gridfox-best-${mode.size}-${order}-${layout}`)
+      : null;
+  }
   const layoutScoped = localStorage.getItem(`gridfox-best-${mode.size}-${order}-${layout}`);
   if (layoutScoped) return layoutScoped;
   if (order !== "asc" || layout !== "grid") return null;
@@ -284,11 +305,13 @@ export function saveBestTime(
   layout: ChallengeLayout,
   rotation: RotationSpeed,
   elapsedMs: number,
+  redBlackRule: RedBlackRule = "basic",
 ): number {
   const rotationKey = layout === "radial" ? rotation : "none";
-  const previous = getBestTime(mode, order, layout, rotationKey);
+  const ruleKey = layout === "redblack" ? `-${redBlackRule}` : "";
+  const previous = getBestTime(mode, order, layout, rotationKey, redBlackRule);
   const best = previous === null ? elapsedMs : Math.min(previous, elapsedMs);
-  localStorage.setItem(`gridfox-best-${mode.size}-${order}-${layout}-${rotationKey}`, String(best));
+  localStorage.setItem(`gridfox-best-${mode.size}-${order}-${layout}-${rotationKey}${ruleKey}`, String(best));
   return best;
 }
 

@@ -183,6 +183,8 @@ const layout =
           ? "radial"
           : "grid";
 const rotation = layout === "radial" && ["slow", "fast"].includes(String(args.rotation)) ? String(args.rotation) : "none";
+const redBlackRule =
+  layout === "redblack" && String(args["redblack-rule"] ?? "basic") === "advanced" ? "advanced" : "basic";
 const captureFps =
   rotation === "none" && layout !== "float" && layout !== "breathe"
     ? 1
@@ -226,7 +228,7 @@ try {
     const framePath = resolve(framesDir, `frame-${String(frame).padStart(4, "0")}.png`);
     const html =
       second < INTRO_SECONDS
-        ? renderIntroHtml({ countdown: Math.ceil(INTRO_SECONDS - second), theme, size, layout })
+        ? renderIntroHtml({ countdown: Math.ceil(INTRO_SECONDS - second), theme, size, layout, redBlackRule })
         : renderChallengeHtml({
             elapsedMs: (second - INTRO_SECONDS) * 1000,
             grid,
@@ -236,6 +238,7 @@ try {
             order,
             layout,
             rotation,
+            redBlackRule,
           });
     await setHtml(client, html);
     const screenshot = await client.send("Page.captureScreenshot", { format: "png", fromSurface: true });
@@ -369,7 +372,7 @@ function writeAscii(buffer, offset, value) {
   buffer.write(value, offset, value.length, "ascii");
 }
 
-function renderIntroHtml({ countdown, theme, size, layout }) {
+function renderIntroHtml({ countdown, theme, size, layout, redBlackRule }) {
   const total = getChallengeTotal(size, layout);
   const gridSize = layout === "redblack" ? 5 : size;
   const metrics = canvas.intro;
@@ -437,7 +440,7 @@ function renderIntroHtml({ countdown, theme, size, layout }) {
     <main class="stage">
       <div class="ghost-grid"></div>
       <div class="title">每日专注力训练</div>
-      <div class="project">${getProjectLabelHtml({ layout, size, total })}</div>
+      <div class="project">${getProjectLabelHtml({ layout, size, total, redBlackRule })}</div>
       <div class="ring"></div>
       <div class="count">${countdown}</div>
       <div class="ready">准备开始</div>
@@ -447,7 +450,7 @@ function renderIntroHtml({ countdown, theme, size, layout }) {
 </html>`;
 }
 
-function renderChallengeHtml({ elapsedMs, grid, theme, colorCount, size, order, layout, rotation }) {
+function renderChallengeHtml({ elapsedMs, grid, theme, colorCount, size, order, layout, rotation, redBlackRule }) {
   const total = getChallengeTotal(size, layout);
   const range = layout === "redblack" ? { start: 1, end: 13 } : getTargetRange(total, order);
   const metrics = canvas.challenge;
@@ -736,7 +739,9 @@ function renderChallengeHtml({ elapsedMs, grid, theme, colorCount, size, order, 
     <main class="stage">
       <div class="brand">${
         layout === "redblack"
-          ? "红黑交替舒尔特挑战"
+          ? redBlackRule === "advanced"
+            ? "红黑进阶舒尔特挑战"
+            : "红黑交替舒尔特挑战"
           : layout === "radial" && rotation !== "none"
           ? "旋转圆盘舒尔特挑战"
           : layout === "radial"
@@ -765,12 +770,16 @@ function renderChallengeHtml({ elapsedMs, grid, theme, colorCount, size, order, 
       }</div>
       <div class="title">${
         layout === "redblack"
-          ? "红黑交替，从 <span class=\"black-sequence\">1</span> 找到 <span class=\"black-sequence\">13</span>"
+          ? redBlackRule === "advanced"
+            ? "黑色升序，红色降序，<span>交替查找</span>"
+            : "红黑交替，从 <span class=\"black-sequence\">1</span> 找到 <span class=\"black-sequence\">13</span>"
           : `请按顺序从 <span>${range.start}</span> 找到 <span>${range.end}</span>`
       }</div>
       <div class="subtitle">${
         layout === "redblack"
-          ? "黑 1 → 红 1 → 黑 2 → 红 2…最后找到黑 13"
+          ? redBlackRule === "advanced"
+            ? "黑 1 → 红 12 → 黑 2 → 红 11…最后找到黑 13"
+            : "黑 1 → 红 1 → 黑 2 → 红 2…最后找到黑 13"
           : `从 ${range.start} 到 ${range.end}，看看你需要多久`
       }</div>
       <div class="timer">${formatTime(elapsedMs)}</div>
@@ -1227,8 +1236,10 @@ function getProjectLabel({ layout, size, total }) {
   return `舒尔特方格 ${size}×${size}`;
 }
 
-function getProjectLabelHtml({ layout, size, total }) {
-  if (layout === "redblack") return "红黑交替舒尔特 <span>5×5</span>";
+function getProjectLabelHtml({ layout, size, total, redBlackRule }) {
+  if (layout === "redblack") {
+    return `${redBlackRule === "advanced" ? "红黑进阶" : "红黑交替"}舒尔特 <span>5×5</span>`;
+  }
   if (layout === "radial") return `圆盘舒尔特 <span>${total}</span>`;
   if (layout === "hex") return "蜂巢舒尔特 <span>30</span>";
   if (layout === "mosaic") return "变形舒尔特 <span>30</span>";

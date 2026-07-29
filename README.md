@@ -12,6 +12,7 @@
 - 圆盘版支持慢速/快速旋转动态挑战。
 - 可选择数字颜色数量和页面主题。
 - 提供 5x5 红黑交替玩法：黑 1、红 1、黑 2、红 2，依次找到黑 13。
+- 红黑玩法包含入门和进阶规则；进阶版使用黑色升序、红色降序交替查找。
 - 本地离线生成 9:16 MP4 发布素材，含 3 秒倒计时前导。
 - 提供折叠式发布助手，根据当前玩法生成小红书发布文案，可一键复制。
 - 提供每日发布建议，一键应用当天玩法，并可离线导出固定种子的每日挑战视频。
@@ -73,6 +74,9 @@ npm run video:xhs:6x6
 
 # 5x5 红黑交替，3:4，无音乐
 npm run video:xhs:redblack:3x4
+
+# 5x5 红黑进阶，3:4，无音乐
+npm run video:xhs:redblack:advanced:3x4
 ```
 
 可选参数：
@@ -84,6 +88,7 @@ npm run video:promo -- --size 6 --layout radial --order asc --theme vivid --colo
 `--duration` 是正式计时段长度；输出视频会额外包含 3 秒前导倒计时。
 `--layout` 支持 `grid`、`radial`、`hex`、`mosaic`、`float`、`spiral`、`maze`、`wave`、`dual`、`breathe`、`star`、`mixed`、`redblack`；默认 `grid`。
 `redblack` 固定使用 5x5 红黑同号交替规则，`--size`、`--order` 和 `--colors` 不影响棋盘内容。
+传入 `--redblack-rule advanced` 可导出黑升红降的进阶规则。
 `--rotation` 可选 `none`、`slow` 或 `fast`，只对 `radial` 生效；默认 `none`。旋转圆盘会按外圈顺时针、中圈逆时针、内圈顺时针运动。
 旋转视频默认用 `--capture-fps 12` 截帧；如需更顺滑可传 `--capture-fps 24`，生成时间也会相应增加。
 `--order` 可选 `asc` 或 `desc`；默认 `asc`。

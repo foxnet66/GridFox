@@ -31,6 +31,7 @@ import {
   type TapRecord,
   type ColorCount,
   type RadialCellGeometry,
+  type RedBlackRule,
   type RotationSpeed,
   type ThemeOption,
 } from "./game";
@@ -113,6 +114,11 @@ type PlayStyleOption = {
   layout: ChallengeLayout;
   rotation: RotationSpeed;
 };
+
+const REDBLACK_RULES: Array<{ id: RedBlackRule; label: string; name: string }> = [
+  { id: "basic", label: "入门", name: "同号交替" },
+  { id: "advanced", label: "进阶", name: "黑升红降" },
+];
 
 const PLAY_STYLES: PlayStyleOption[] = [
   {
@@ -237,6 +243,7 @@ export default function App() {
   const [order, setOrder] = useState<ChallengeOrder>(INITIAL_SETTINGS.order);
   const [layout, setLayout] = useState<ChallengeLayout>(INITIAL_SETTINGS.layout);
   const [rotation, setRotation] = useState<RotationSpeed>(INITIAL_SETTINGS.rotation);
+  const [redBlackRule, setRedBlackRule] = useState<RedBlackRule>(INITIAL_SETTINGS.redBlackRule);
   const [screen, setScreen] = useState<Screen>("ready");
   const [grid, setGrid] = useState(() => createChallengeNumbers(INITIAL_SETTINGS.mode, INITIAL_SETTINGS.layout));
   const [target, setTarget] = useState(() =>
@@ -247,7 +254,13 @@ export default function App() {
   const [taps, setTaps] = useState<TapRecord[]>([]);
   const [finishedRun, setFinishedRun] = useState<FinishedRun | null>(null);
   const [bestMs, setBestMs] = useState<number | null>(() =>
-    getBestTime(INITIAL_SETTINGS.mode, INITIAL_SETTINGS.order, INITIAL_SETTINGS.layout, INITIAL_SETTINGS.rotation),
+    getBestTime(
+      INITIAL_SETTINGS.mode,
+      INITIAL_SETTINGS.order,
+      INITIAL_SETTINGS.layout,
+      INITIAL_SETTINGS.rotation,
+      INITIAL_SETTINGS.redBlackRule,
+    ),
   );
   const [colorCount, setColorCount] = useState<ColorCount>(INITIAL_SETTINGS.colorCount);
   const [theme, setTheme] = useState<ThemeOption["id"]>(INITIAL_SETTINGS.theme);
@@ -278,21 +291,24 @@ export default function App() {
         layout,
         range,
         rotation,
+        redBlackRule,
         dailyDay: isDailyChallengeActive(mode, order, layout, rotation, colorCount, theme) ? DAILY_CHALLENGE.day : null,
       }),
-    [colorCount, layout, mode, order, range, rotation, theme],
+    [colorCount, layout, mode, order, range, redBlackRule, rotation, theme],
   );
   const titleParts = useMemo(
     () =>
       layout === "redblack"
-        ? { before: "红黑交替", start: "黑 1", middle: "→", end: "红 1 → 黑 2…" }
+        ? redBlackRule === "advanced"
+          ? { before: "红黑进阶", start: "黑 1", middle: "→", end: "红 12 → 黑 2…" }
+          : { before: "红黑交替", start: "黑 1", middle: "→", end: "红 1 → 黑 2…" }
         : {
             before: "请按顺序从",
             start: String(range.start),
             middle: "找到",
             end: String(range.end),
           },
-    [layout, range.end, range.start],
+    [layout, range.end, range.start, redBlackRule],
   );
 
   useEffect(() => {
@@ -309,13 +325,19 @@ export default function App() {
   }, [screen, startedAt]);
 
   useEffect(() => {
-    setBestMs(getBestTime(mode, order, layout, rotation));
-  }, [layout, mode, order, rotation]);
+    setBestMs(getBestTime(mode, order, layout, rotation, redBlackRule));
+  }, [layout, mode, order, redBlackRule, rotation]);
 
-  function resetGame(nextMode = mode, nextOrder = order, nextLayout = layout) {
+  function resetGame(
+    nextMode = mode,
+    nextOrder = order,
+    nextLayout = layout,
+    nextRedBlackRule = redBlackRule,
+  ) {
     setMode(nextMode);
     setOrder(nextOrder);
     setLayout(nextLayout);
+    setRedBlackRule(nextRedBlackRule);
     if (nextLayout === "grid") setRotation("none");
     if (
       nextLayout === "hex" ||
@@ -343,7 +365,7 @@ export default function App() {
 
   function applyPlayStyle(style: PlayStyleOption) {
     const nextMode = style.layout === "redblack" ? MODES[1] : mode;
-    resetGame(nextMode, isFixedLayout(style.layout) ? "asc" : order, style.layout);
+    resetGame(nextMode, isFixedLayout(style.layout) ? "asc" : order, style.layout, "basic");
     setRotation(style.rotation);
   }
 
@@ -381,25 +403,27 @@ export default function App() {
         order,
         layout,
         rotation: layout === "radial" ? rotation : "none",
+        redBlackRule,
         grid,
         taps: nextTaps,
         elapsedMs: currentElapsed,
         completedAt: new Date().toISOString(),
       };
       setFinishedRun(run);
-      setBestMs(saveBestTime(mode, order, layout, run.rotation, currentElapsed));
+      setBestMs(saveBestTime(mode, order, layout, run.rotation, currentElapsed, redBlackRule));
       setScreen("finished");
       return;
     }
 
-    setTarget(getNextTarget(target, order, layout));
+    setTarget(getNextTarget(target, order, layout, redBlackRule));
   }
 
   function copyShareText() {
     if (!finishedRun) return;
     const finishedOrder = CHALLENGE_ORDERS.find((item) => item.id === finishedRun.order) ?? CHALLENGE_ORDERS[0];
     const finishedStyle = getActivePlayStyle(finishedRun.layout, finishedRun.rotation);
-    const text = `我完成了 GridFox ${finishedRun.mode.label} ${finishedStyle.name}${finishedOrder.name}专注力挑战，用时 ${formatTime(
+    const finishedRule = finishedRun.layout === "redblack" ? getRedBlackRuleName(finishedRun.redBlackRule) : "";
+    const text = `我完成了 GridFox ${finishedRun.mode.label} ${finishedStyle.name}${finishedRule}${finishedOrder.name}专注力挑战，用时 ${formatTime(
       finishedRun.elapsedMs,
     true,
     )}。来测测你的眼力和反应。`;
@@ -465,20 +489,36 @@ export default function App() {
 
           <div className="quick-settings-grid">
             <div className="quick-setting">
-              <span>顺序</span>
-              <div className="option-switch" aria-label="选择查找顺序">
-                {CHALLENGE_ORDERS.map((item) => (
-                  <button
-                    className={item.id === order ? "option-button active" : "option-button"}
-                    key={item.id}
-                    type="button"
-                    onClick={() => resetGame(mode, item.id, layout)}
-                    disabled={screen === "playing" || isFixedLayout(layout)}
-                  >
-                    {item.label}
-                  </button>
-                ))}
-              </div>
+              <span>{layout === "redblack" ? "规则" : "顺序"}</span>
+              {layout === "redblack" ? (
+                <div className="option-switch" aria-label="选择红黑规则">
+                  {REDBLACK_RULES.map((item) => (
+                    <button
+                      className={item.id === redBlackRule ? "option-button active" : "option-button"}
+                      key={item.id}
+                      type="button"
+                      onClick={() => resetGame(mode, "asc", layout, item.id)}
+                      disabled={screen === "playing"}
+                    >
+                      {item.label}
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <div className="option-switch" aria-label="选择查找顺序">
+                  {CHALLENGE_ORDERS.map((item) => (
+                    <button
+                      className={item.id === order ? "option-button active" : "option-button"}
+                      key={item.id}
+                      type="button"
+                      onClick={() => resetGame(mode, item.id, layout)}
+                      disabled={screen === "playing" || isFixedLayout(layout)}
+                    >
+                      {item.label}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
             <div className="quick-setting">
               <span>尺寸</span>
@@ -534,7 +574,7 @@ export default function App() {
             <strong>{activePlayStyle.name}</strong>
             <span>
               {layout === "redblack"
-                ? "同号交替 · 5x5 · 红黑双色"
+                ? `${getRedBlackRuleName(redBlackRule)} · 5x5 · 红黑双色`
                 : `${activeOrder.name} · ${getSizeLabel(mode, layout)} · ${colorCount} 色`}
             </span>
           </div>
@@ -597,7 +637,8 @@ export default function App() {
         {layout === "redblack" ? (
           <div className="redblack-board" ref={boardRef}>
             {grid.map((token, index) => {
-              const completed = screen === "playing" && isChallengeNumberCompleted(token, target, order, layout);
+              const completed =
+                screen === "playing" && isChallengeNumberCompleted(token, target, order, layout, redBlackRule);
               const displayNumber = getRedBlackDisplayNumber(token);
               const colorName = isRedBlackTokenRed(token) ? "红" : "黑";
               return (
@@ -1135,6 +1176,7 @@ function buildXiaohongshuPost({
   layout,
   range,
   rotation,
+  redBlackRule,
   dailyDay,
 }: {
   mode: GameMode;
@@ -1142,12 +1184,15 @@ function buildXiaohongshuPost({
   layout: ChallengeLayout;
   range: { start: number; end: number };
   rotation: RotationSpeed;
+  redBlackRule: RedBlackRule;
   dailyDay: number | null;
 }): string {
   const isRotating = layout === "radial" && rotation !== "none";
   const layoutName =
     layout === "redblack"
-      ? "红黑交替舒尔特"
+      ? redBlackRule === "advanced"
+        ? "红黑进阶舒尔特"
+        : "红黑交替舒尔特"
       : layout === "mixed"
       ? "大小混排舒尔特"
       : layout === "star"
@@ -1180,13 +1225,17 @@ function buildXiaohongshuPost({
     : `每日专注力训练 | ${layoutName}从 ${rangeText}`;
   const prompt =
     layout === "redblack"
-      ? "今天做一个红黑交替版：黑 1、红 1、黑 2、红 2，依次找到最后的黑 13。"
+      ? redBlackRule === "advanced"
+        ? "今天做一个红黑进阶版：黑色从 1 升到 13，红色从 12 降到 1，两条序列交替查找。"
+        : "今天做一个红黑交替版：黑 1、红 1、黑 2、红 2，依次找到最后的黑 13。"
       : order === "desc"
       ? `今天做一个倒序版：从 ${range.start} 开始，按顺序一路找到 ${range.end}。`
       : `今天做一个计时版：从 ${range.start} 开始，按顺序一路找到 ${range.end}。`;
   const modeLine =
     layout === "redblack"
-      ? "同号数字按红黑双色交替查找，规则直观，也更考验颜色切换和节奏稳定性。"
+      ? redBlackRule === "advanced"
+        ? "黑色升序与红色降序持续切换目标，更考验注意力切换和节奏稳定性。"
+        : "同号数字按红黑双色交替查找，规则直观，也更考验颜色切换和节奏稳定性。"
       : isRotating
       ? `${getRotationLabel(rotation)}圆盘会增加视觉追踪难度，适合进阶挑战。`
       : layout === "mixed"
@@ -1265,6 +1314,7 @@ function getInitialSettings(): {
   order: ChallengeOrder;
   layout: ChallengeLayout;
   rotation: RotationSpeed;
+  redBlackRule: RedBlackRule;
   colorCount: ColorCount;
   theme: ThemeOption["id"];
 } {
@@ -1309,8 +1359,13 @@ function getInitialSettings(): {
   const theme = THEMES.some((item) => item.id === themeParam) ? (themeParam as ThemeOption["id"]) : "fresh";
   const normalizedMode = layout === "redblack" ? MODES[1] : mode;
   const normalizedOrder = layout === "redblack" ? "asc" : order;
+  const redBlackRule = params.get("redblackRule") === "advanced" ? "advanced" : "basic";
 
-  return { mode: normalizedMode, order: normalizedOrder, layout, rotation, colorCount, theme };
+  return { mode: normalizedMode, order: normalizedOrder, layout, rotation, redBlackRule, colorCount, theme };
+}
+
+function getRedBlackRuleName(rule: RedBlackRule): string {
+  return REDBLACK_RULES.find((item) => item.id === rule)?.name ?? REDBLACK_RULES[0].name;
 }
 
 function getRotationLabel(rotation: RotationSpeed): string {
