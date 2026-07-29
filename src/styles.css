@@ -1122,8 +1122,6 @@ button {
 .daily-panel button:focus-visible,
 .result-panel button:focus-visible,
 .result-panel a:focus-visible,
-.promo-panel button:focus-visible,
-.promo-panel a:focus-visible,
 .publish-panel button:focus-visible {
   outline: 3px solid rgba(0, 119, 131, 0.28);
   outline-offset: 2px;
@@ -1216,9 +1214,7 @@ button {
 .secondary-action,
 .daily-panel button,
 .result-panel button,
-.result-panel a,
-.promo-panel button,
-.promo-panel a {
+.result-panel a {
   min-height: 46px;
   display: inline-flex;
   align-items: center;
@@ -1241,22 +1237,18 @@ button {
 .secondary-action,
 .daily-panel button,
 .result-panel button,
-.result-panel a,
-.promo-panel button,
-.promo-panel a {
+.result-panel a {
   background: var(--control-bg);
   color: var(--ink);
 }
 
-.secondary-action:disabled,
-.promo-panel button:disabled {
+.secondary-action:disabled {
   cursor: not-allowed;
   opacity: 0.62;
 }
 
 .result-panel,
 .daily-panel,
-.promo-panel,
 .publish-panel {
   display: grid;
   align-items: center;
@@ -1315,14 +1307,8 @@ button {
   margin-top: 0;
 }
 
-.promo-panel {
-  grid-template-columns: 1fr auto auto;
-  margin-top: 0;
-}
-
 .result-panel p,
 .daily-panel p,
-.promo-panel p,
 .publish-panel p {
   margin: 0 0 2px;
   color: var(--muted);
@@ -1332,7 +1318,6 @@ button {
 
 .result-panel strong,
 .daily-panel strong,
-.promo-panel strong,
 .publish-panel strong {
   color: var(--primary);
   font-size: 24px;
@@ -1340,14 +1325,12 @@ button {
   font-variant-numeric: tabular-nums;
 }
 
-.promo-panel strong,
 .daily-panel strong,
 .publish-panel strong {
   font-size: 16px;
 }
 
-.daily-panel span,
-.promo-panel span {
+.daily-panel span {
   display: block;
   margin-top: 4px;
   color: var(--muted);
@@ -1393,12 +1376,6 @@ button {
   font: inherit;
   font-size: 13px;
   line-height: 1.55;
-}
-
-.error-text {
-  color: var(--coral);
-  font-size: 13px;
-  font-weight: 800;
 }
 
 .share-caption {
@@ -1582,14 +1559,11 @@ button {
   .result-panel button,
   .result-panel a,
   .daily-panel button,
-  .promo-panel button,
-  .promo-panel a,
   .publish-panel button {
     width: 100%;
   }
 
   .daily-panel,
-  .promo-panel,
   .publish-panel-header {
     grid-template-columns: 1fr;
   }

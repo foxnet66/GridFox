@@ -30,7 +30,6 @@ import {
   type RotationSpeed,
   type ThemeOption,
 } from "./game";
-import { createPromoVideo } from "./promoVideo";
 import { getDailyChallenge } from "./dailyChallenge";
 
 type Screen = "ready" | "playing" | "finished";
@@ -239,8 +238,6 @@ export default function App() {
   );
   const [colorCount, setColorCount] = useState<ColorCount>(INITIAL_SETTINGS.colorCount);
   const [theme, setTheme] = useState<ThemeOption["id"]>(INITIAL_SETTINGS.theme);
-  const [promoStatus, setPromoStatus] = useState<"idle" | "recording" | "done" | "error">("idle");
-  const [promoUrl, setPromoUrl] = useState<string | null>(null);
   const [publishCopied, setPublishCopied] = useState(false);
   const [showPublishAssistant, setShowPublishAssistant] = useState(false);
   const boardRef = useRef<HTMLDivElement | null>(null);
@@ -298,12 +295,6 @@ export default function App() {
   useEffect(() => {
     setBestMs(getBestTime(mode, order, layout, rotation));
   }, [layout, mode, order, rotation]);
-
-  useEffect(() => {
-    return () => {
-      if (promoUrl) URL.revokeObjectURL(promoUrl);
-    };
-  }, [promoUrl]);
 
   function resetGame(nextMode = mode, nextOrder = order, nextLayout = layout) {
     setMode(nextMode);
@@ -428,19 +419,6 @@ export default function App() {
       currentColorCount === DAILY_CHALLENGE.colors &&
       currentTheme === DAILY_CHALLENGE.theme
     );
-  }
-
-  async function handleCreatePromoVideo() {
-    setPromoStatus("recording");
-    try {
-      const blob = await createPromoVideo({ size: mode.size, colorCount, theme, order, layout, rotation });
-      if (promoUrl) URL.revokeObjectURL(promoUrl);
-      setPromoUrl(URL.createObjectURL(blob));
-      setPromoStatus("done");
-    } catch (error) {
-      console.error(error);
-      setPromoStatus("error");
-    }
   }
 
   return (
@@ -1084,56 +1062,6 @@ export default function App() {
                 <button className="secondary-action" type="button" onClick={applyDailyChallenge}>
                   应用今日挑战
                 </button>
-              </section>
-
-              <section className="promo-panel" aria-label="发布导出">
-                <div>
-                  <p>发布导出</p>
-                  <strong>竖屏自动演示 WebM</strong>
-                  <span>MP4 建议使用离线预设命令</span>
-                </div>
-                <button
-                  className="secondary-action"
-                  type="button"
-                  onClick={handleCreatePromoVideo}
-                  disabled={
-                    promoStatus === "recording" ||
-                    layout === "hex" ||
-                    layout === "mosaic" ||
-                    layout === "float" ||
-                    layout === "spiral" ||
-                    layout === "maze" ||
-                    layout === "wave" ||
-                    layout === "dual" ||
-                    layout === "breathe" ||
-                    layout === "star" ||
-                    layout === "mixed"
-                  }
-                >
-                  {layout === "hex" ||
-                  layout === "mosaic" ||
-                  layout === "float" ||
-                  layout === "spiral" ||
-                  layout === "maze" ||
-                  layout === "wave" ||
-                  layout === "dual" ||
-                  layout === "breathe" ||
-                  layout === "star" ||
-                  layout === "mixed"
-                    ? "当前玩法暂不支持"
-                    : promoStatus === "recording"
-                    ? "录制中..."
-                    : "生成视频"}
-                </button>
-                {promoStatus === "done" && promoUrl && (
-                  <a
-                    href={promoUrl}
-                    download={`gridfox-xiaohongshu-${layout}-${order}-${rotation}-${theme}-${colorCount}color.webm`}
-                  >
-                    下载 WebM
-                  </a>
-                )}
-                {promoStatus === "error" && <span className="error-text">当前浏览器不支持录制</span>}
               </section>
 
               <section className="publish-panel" aria-label="小红书发布文案">
