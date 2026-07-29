@@ -222,8 +222,8 @@ const PLAY_STYLES: PlayStyleOption[] = [
   {
     id: "redblack",
     label: "红黑",
-    name: "红黑双序",
-    description: "黑升红降交替搜索",
+    name: "红黑交替",
+    description: "同号红黑交替搜索",
     layout: "redblack",
     rotation: "none",
   },
@@ -285,7 +285,7 @@ export default function App() {
   const titleParts = useMemo(
     () =>
       layout === "redblack"
-        ? { before: "请交替查找", start: "黑 1→25", middle: "与", end: "红 24→1" }
+        ? { before: "红黑交替", start: "黑 1", middle: "→", end: "红 1 → 黑 2…" }
         : {
             before: "请按顺序从",
             start: String(range.start),
@@ -342,7 +342,7 @@ export default function App() {
   }
 
   function applyPlayStyle(style: PlayStyleOption) {
-    const nextMode = style.layout === "redblack" ? DEFAULT_MODE : mode;
+    const nextMode = style.layout === "redblack" ? MODES[1] : mode;
     resetGame(nextMode, isFixedLayout(style.layout) ? "asc" : order, style.layout);
     setRotation(style.rotation);
   }
@@ -534,7 +534,7 @@ export default function App() {
             <strong>{activePlayStyle.name}</strong>
             <span>
               {layout === "redblack"
-                ? "黑升红降 · 7x7 · 红黑双色"
+                ? "同号交替 · 5x5 · 红黑双色"
                 : `${activeOrder.name} · ${getSizeLabel(mode, layout)} · ${colorCount} 色`}
             </span>
           </div>
@@ -1147,7 +1147,7 @@ function buildXiaohongshuPost({
   const isRotating = layout === "radial" && rotation !== "none";
   const layoutName =
     layout === "redblack"
-      ? "红黑双序舒尔特"
+      ? "红黑交替舒尔特"
       : layout === "mixed"
       ? "大小混排舒尔特"
       : layout === "star"
@@ -1180,13 +1180,13 @@ function buildXiaohongshuPost({
     : `每日专注力训练 | ${layoutName}从 ${rangeText}`;
   const prompt =
     layout === "redblack"
-      ? "今天做一个红黑双序版：黑色从 1 升到 25，红色从 24 降到 1，两条序列交替查找。"
+      ? "今天做一个红黑交替版：黑 1、红 1、黑 2、红 2，依次找到最后的黑 13。"
       : order === "desc"
       ? `今天做一个倒序版：从 ${range.start} 开始，按顺序一路找到 ${range.end}。`
       : `今天做一个计时版：从 ${range.start} 开始，按顺序一路找到 ${range.end}。`;
   const modeLine =
     layout === "redblack"
-      ? "红黑双色与相反顺序会持续切换搜索目标，更考验注意力切换和节奏稳定性。"
+      ? "同号数字按红黑双色交替查找，规则直观，也更考验颜色切换和节奏稳定性。"
       : isRotating
       ? `${getRotationLabel(rotation)}圆盘会增加视觉追踪难度，适合进阶挑战。`
       : layout === "mixed"
@@ -1307,7 +1307,7 @@ function getInitialSettings(): {
   const colorCount = COLOR_COUNTS.includes(colorCountValue as ColorCount) ? (colorCountValue as ColorCount) : 4;
   const themeParam = params.get("theme");
   const theme = THEMES.some((item) => item.id === themeParam) ? (themeParam as ThemeOption["id"]) : "fresh";
-  const normalizedMode = layout === "redblack" ? DEFAULT_MODE : mode;
+  const normalizedMode = layout === "redblack" ? MODES[1] : mode;
   const normalizedOrder = layout === "redblack" ? "asc" : order;
 
   return { mode: normalizedMode, order: normalizedOrder, layout, rotation, colorCount, theme };
@@ -1339,7 +1339,7 @@ function createChallengeNumbers(mode: GameMode, layout: ChallengeLayout): number
 }
 
 function getSizeLabel(mode: GameMode, layout: ChallengeLayout): string {
-  if (layout === "redblack") return "7x7";
+  if (layout === "redblack") return "5x5";
   if (layout === "mixed") return "36格";
   if (layout === "star") return "36点";
   if (layout === "breathe") return "36点";
@@ -1372,7 +1372,7 @@ function getTapPosition(
   mode: GameMode,
   layout: ChallengeLayout,
 ): { row: number; col: number } {
-  if (layout === "redblack") return { row: Math.floor(index / 7), col: index % 7 };
+  if (layout === "redblack") return { row: Math.floor(index / 5), col: index % 5 };
   if (layout === "float") return { row: Math.floor(index / 6), col: index % 6 };
   if (layout === "spiral") return { row: Math.floor(index / 6), col: index % 6 };
   if (layout === "maze") return { row: Math.floor(index / 6), col: index % 6 };

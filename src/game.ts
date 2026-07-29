@@ -85,7 +85,7 @@ export const DUAL_TOTAL = 36;
 export const BREATHE_TOTAL = 36;
 export const STAR_TOTAL = 36;
 export const MIXED_TOTAL = 36;
-export const REDBLACK_TOTAL = 49;
+export const REDBLACK_TOTAL = 25;
 
 export const MODES: GameMode[] = [
   { size: 4, label: "4x4", title: "按顺序从 1 找到 16" },
@@ -113,7 +113,7 @@ export const CHALLENGE_LAYOUTS: ChallengeLayoutOption[] = [
   { id: "breathe", label: "呼吸", name: "呼吸舒尔特" },
   { id: "star", label: "星轨", name: "星轨舒尔特" },
   { id: "mixed", label: "大小", name: "大小混排舒尔特" },
-  { id: "redblack", label: "红黑", name: "红黑双序舒尔特" },
+  { id: "redblack", label: "红黑", name: "红黑交替舒尔特" },
 ];
 
 export const ROTATION_SPEEDS: RotationSpeedOption[] = [
@@ -198,7 +198,7 @@ export function getInitialTarget(mode: GameMode, order: ChallengeOrder, layout: 
 
 export function getNextTarget(target: number, order: ChallengeOrder, layout: ChallengeLayout = "grid"): number {
   if (layout === "redblack") {
-    return target <= 24 ? 50 - target : 51 - target;
+    return target <= 12 ? target + 13 : target - 12;
   }
   return order === "desc" ? target - 1 : target + 1;
 }
@@ -209,16 +209,16 @@ export function isFinalTarget(
   total: number,
   layout: ChallengeLayout = "grid",
 ): boolean {
-  if (layout === "redblack") return target === 25;
+  if (layout === "redblack") return target === 13;
   return order === "desc" ? target === 1 : target === total;
 }
 
 export function getRedBlackDisplayNumber(token: number): number {
-  return token <= 25 ? token : token - 25;
+  return token <= 13 ? token : token - 13;
 }
 
 export function isRedBlackTokenRed(token: number): boolean {
-  return token > 25;
+  return token > 13;
 }
 
 export function getRedBlackTargetLabel(token: number): string {
@@ -234,8 +234,8 @@ export function isChallengeNumberCompleted(
   if (layout !== "redblack") return order === "desc" ? number > target : number < target;
   if (number === target) return false;
 
-  const sequence = Array.from({ length: 24 }, (_, index) => [index + 1, 49 - index]).flat();
-  sequence.push(25);
+  const sequence = Array.from({ length: 12 }, (_, index) => [index + 1, index + 14]).flat();
+  sequence.push(13);
   return sequence.indexOf(number) < sequence.indexOf(target);
 }
 
@@ -245,7 +245,7 @@ export function getTargetRange(
   layout: ChallengeLayout = "grid",
 ): { start: number; end: number } {
   const total = getChallengeTotal(mode, layout);
-  if (layout === "redblack") return { start: 1, end: 25 };
+  if (layout === "redblack") return { start: 1, end: 13 };
   return order === "desc" ? { start: total, end: 1 } : { start: 1, end: total };
 }
 

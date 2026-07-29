@@ -316,7 +316,7 @@ button {
 
 .redblack-board {
   display: grid;
-  grid-template-columns: repeat(7, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 1px;
   width: 100%;
   max-width: 100%;
@@ -1113,7 +1113,7 @@ button {
   padding: 0;
   border: 0;
   background: var(--panel);
-  font-size: clamp(20px, 6.2vw, 34px);
+  font-size: clamp(28px, 8.8vw, 46px);
   font-weight: 950;
   line-height: 1;
   cursor: pointer;
@@ -1619,7 +1619,7 @@ button {
   }
 
   .redblack-cell {
-    font-size: clamp(18px, 5.8vw, 28px);
+    font-size: clamp(24px, 7.8vw, 36px);
   }
 
   .result-panel {
