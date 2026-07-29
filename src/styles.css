@@ -270,6 +270,14 @@ button {
   font-size: 1.18em;
 }
 
+.title-block h1 .sequence-black {
+  color: var(--ink);
+}
+
+.title-block h1 .sequence-red {
+  color: var(--coral);
+}
+
 .timer-line {
   display: flex;
   align-items: baseline;
@@ -306,6 +314,21 @@ button {
   box-shadow: 0 14px 34px rgba(24, 33, 47, 0.1);
 }
 
+.redblack-board {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 1px;
+  width: 100%;
+  max-width: 100%;
+  aspect-ratio: 1;
+  margin-top: clamp(18px, 4vh, 30px);
+  border: 1px solid rgba(24, 33, 47, 0.22);
+  border-radius: 8px;
+  overflow: hidden;
+  background: rgba(24, 33, 47, 0.22);
+  box-shadow: 0 14px 34px rgba(24, 33, 47, 0.1);
+}
+
 .mixed-board {
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));
@@ -322,6 +345,10 @@ button {
 }
 
 .grid-board.shake {
+  animation: shake 170ms ease-out;
+}
+
+.redblack-board.shake {
   animation: shake 170ms ease-out;
 }
 
@@ -1078,6 +1105,32 @@ button {
     opacity 130ms ease;
 }
 
+.redblack-cell {
+  display: grid;
+  place-items: center;
+  min-width: 0;
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  background: var(--panel);
+  font-size: clamp(20px, 6.2vw, 34px);
+  font-weight: 950;
+  line-height: 1;
+  cursor: pointer;
+  transition:
+    background-color 130ms ease,
+    transform 130ms ease,
+    opacity 130ms ease;
+}
+
+.redblack-cell.is-black {
+  color: var(--ink);
+}
+
+.redblack-cell.is-red {
+  color: var(--coral);
+}
+
 .mixed-cell {
   display: grid;
   place-items: center;
@@ -1095,7 +1148,8 @@ button {
     opacity 130ms ease;
 }
 
-.grid-cell:hover:not(:disabled) {
+.grid-cell:hover:not(:disabled),
+.redblack-cell:hover:not(:disabled) {
   background: var(--primary-soft);
 }
 
@@ -1103,7 +1157,8 @@ button {
   background: var(--primary-soft);
 }
 
-.grid-cell:active:not(:disabled) {
+.grid-cell:active:not(:disabled),
+.redblack-cell:active:not(:disabled) {
   transform: scale(0.96);
 }
 
@@ -1112,6 +1167,7 @@ button {
 }
 
 .grid-cell:focus-visible,
+.redblack-cell:focus-visible,
 .mixed-cell:focus-visible,
 .option-button:focus-visible,
 .play-tab:focus-visible,
@@ -1133,13 +1189,19 @@ button {
   opacity: 0.72;
 }
 
+.redblack-cell.completed {
+  background: var(--primary-soft);
+  opacity: 0.5;
+}
+
 .mixed-cell.completed {
   background: var(--primary-soft);
   color: var(--primary-dark);
   opacity: 0.72;
 }
 
-.grid-cell:disabled {
+.grid-cell:disabled,
+.redblack-cell:disabled {
   cursor: default;
 }
 
@@ -1487,6 +1549,10 @@ button {
     margin-top: 14px;
   }
 
+  .redblack-board {
+    margin-top: 14px;
+  }
+
   .mixed-board {
     margin-top: 14px;
   }
@@ -1550,6 +1616,10 @@ button {
 
   .grid-cell {
     font-size: clamp(24px, 8vw, 36px);
+  }
+
+  .redblack-cell {
+    font-size: clamp(18px, 5.8vw, 28px);
   }
 
   .result-panel {

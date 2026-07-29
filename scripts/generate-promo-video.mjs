@@ -157,7 +157,9 @@ const size = clamp(Number(args.size ?? dailyChallenge?.size ?? 6), 4, 6);
 const order = String(args.order ?? dailyChallenge?.order ?? "asc") === "desc" ? "desc" : "asc";
 const layoutArg = String(args.layout ?? dailyChallenge?.layout ?? "grid");
 const layout =
-  layoutArg === "mixed"
+  layoutArg === "redblack"
+    ? "redblack"
+    : layoutArg === "mixed"
     ? "mixed"
     : layoutArg === "star"
     ? "star"
@@ -369,6 +371,7 @@ function writeAscii(buffer, offset, value) {
 
 function renderIntroHtml({ countdown, theme, size, layout }) {
   const total = getChallengeTotal(size, layout);
+  const gridSize = layout === "redblack" ? 7 : size;
   const metrics = canvas.intro;
 
   return `<!doctype html>
@@ -393,7 +396,7 @@ function renderIntroHtml({ countdown, theme, size, layout }) {
         background:
           linear-gradient(${theme.grid} 2px, transparent 2px),
           linear-gradient(90deg, ${theme.grid} 2px, transparent 2px);
-        background-size: ${metrics.ghostSize / size}px ${metrics.ghostSize / size}px;
+        background-size: ${metrics.ghostSize / gridSize}px ${metrics.ghostSize / gridSize}px;
         border: 2px solid ${theme.grid};
         border-radius: 22px;
       }
@@ -446,13 +449,25 @@ function renderIntroHtml({ countdown, theme, size, layout }) {
 
 function renderChallengeHtml({ elapsedMs, grid, theme, colorCount, size, order, layout, rotation }) {
   const total = getChallengeTotal(size, layout);
-  const range = getTargetRange(total, order);
+  const range = layout === "redblack" ? { start: 1, end: 25 } : getTargetRange(total, order);
   const metrics = canvas.challenge;
   const gridSize = metrics.boardSize;
-  const cellSize = gridSize / size;
-  const fontSize = Math.round((size >= 6 ? 66 : 82) * (gridSize / 928));
+  const boardColumns = layout === "redblack" ? 7 : size;
+  const cellSize = gridSize / boardColumns;
+  const fontSize = Math.round((layout === "redblack" ? 54 : size >= 6 ? 66 : 82) * (gridSize / 928));
   const board =
-    layout === "radial"
+    layout === "redblack"
+      ? `<div class="grid">${grid
+          .map((token, index) => {
+            const row = Math.floor(index / boardColumns);
+            const col = index % boardColumns;
+            const isRed = token > 25;
+            const displayNumber = isRed ? token - 25 : token;
+            const color = isRed ? theme.colors[2] : theme.ink;
+            return `<div class="cell" style="left:${col * cellSize}px;top:${row * cellSize}px;color:${color}">${displayNumber}</div>`;
+          })
+          .join("")}</div>`
+      : layout === "radial"
       ? renderRadialBoard({
           grid,
           theme,
@@ -513,6 +528,8 @@ function renderChallengeHtml({ elapsedMs, grid, theme, colorCount, size, order, 
         text-align: center; font-size: ${metrics.titleFont}px; line-height: 1.15; font-weight: 900;
       }
       .title span { color: ${theme.accent}; }
+      .title .black-sequence { color: ${theme.ink}; }
+      .title .red-sequence { color: ${theme.colors[2]}; }
       .subtitle {
         position: absolute; top: ${metrics.subtitleTop}px; left: 0; width: 100%;
         text-align: center; color: ${theme.muted}; font-size: ${metrics.subtitleFont}px; font-weight: 800;
@@ -718,7 +735,9 @@ function renderChallengeHtml({ elapsedMs, grid, theme, colorCount, size, order, 
   <body>
     <main class="stage">
       <div class="brand">${
-        layout === "radial" && rotation !== "none"
+        layout === "redblack"
+          ? "红黑双序舒尔特挑战"
+          : layout === "radial" && rotation !== "none"
           ? "旋转圆盘舒尔特挑战"
           : layout === "radial"
             ? "圆盘舒尔特挑战"
@@ -744,8 +763,16 @@ function renderChallengeHtml({ elapsedMs, grid, theme, colorCount, size, order, 
                                 ? "大小混排舒尔特挑战"
                 : "舒尔特方格挑战"
       }</div>
-      <div class="title">请按顺序从 <span>${range.start}</span> 找到 <span>${range.end}</span></div>
-      <div class="subtitle">从 ${range.start} 到 ${range.end}，看看你需要多久</div>
+      <div class="title">${
+        layout === "redblack"
+          ? "交替查找 <span class=\"black-sequence\">黑 1→25</span> 与 <span class=\"red-sequence\">红 24→1</span>"
+          : `请按顺序从 <span>${range.start}</span> 找到 <span>${range.end}</span>`
+      }</div>
+      <div class="subtitle">${
+        layout === "redblack"
+          ? "先黑 1，再红 24，持续交替，看看你需要多久"
+          : `从 ${range.start} 到 ${range.end}，看看你需要多久`
+      }</div>
       <div class="timer">${formatTime(elapsedMs)}</div>
       ${board}
       <div class="credit">计时挑战@新加坡大小AI玩</div>
@@ -1172,6 +1199,7 @@ function getMixedGeometry() {
 }
 
 function getChallengeTotal(size, layout) {
+  if (layout === "redblack") return 49;
   if (layout === "mixed") return 36;
   if (layout === "star") return 36;
   if (layout === "breathe") return 36;
@@ -1184,6 +1212,7 @@ function getChallengeTotal(size, layout) {
 }
 
 function getProjectLabel({ layout, size, total }) {
+  if (layout === "redblack") return "红黑双序舒尔特 7×7";
   if (layout === "radial") return `圆盘舒尔特 ${total}`;
   if (layout === "hex") return "蜂巢舒尔特 30";
   if (layout === "mosaic") return "变形舒尔特 30";
@@ -1199,6 +1228,7 @@ function getProjectLabel({ layout, size, total }) {
 }
 
 function getProjectLabelHtml({ layout, size, total }) {
+  if (layout === "redblack") return "红黑双序舒尔特 <span>7×7</span>";
   if (layout === "radial") return `圆盘舒尔特 <span>${total}</span>`;
   if (layout === "hex") return "蜂巢舒尔特 <span>30</span>";
   if (layout === "mosaic") return "变形舒尔特 <span>30</span>";

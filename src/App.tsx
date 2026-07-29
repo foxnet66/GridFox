@@ -14,11 +14,15 @@ import {
   getInitialTarget,
   getNextTarget,
   getNumberAccentClass,
+  getRedBlackDisplayNumber,
+  getRedBlackTargetLabel,
   describeRadialSegment,
   polarToCartesian,
   getRadialGeometry,
   getTargetRange,
   isFinalTarget,
+  isChallengeNumberCompleted,
+  isRedBlackTokenRed,
   saveBestTime,
   type ChallengeLayout,
   type ChallengeOrder,
@@ -46,7 +50,8 @@ type PlayStyleId =
   | "dual"
   | "breathe"
   | "star"
-  | "mixed";
+  | "mixed"
+  | "redblack";
 type HexCellGeometry = {
   row: number;
   col: number;
@@ -214,6 +219,14 @@ const PLAY_STYLES: PlayStyleOption[] = [
     layout: "mixed",
     rotation: "none",
   },
+  {
+    id: "redblack",
+    label: "红黑",
+    name: "红黑双序",
+    description: "黑升红降交替搜索",
+    layout: "redblack",
+    rotation: "none",
+  },
 ];
 
 const INITIAL_SETTINGS = getInitialSettings();
@@ -270,13 +283,16 @@ export default function App() {
     [colorCount, layout, mode, order, range, rotation, theme],
   );
   const titleParts = useMemo(
-    () => ({
-      before: "请按顺序从",
-      start: String(range.start),
-      middle: "找到",
-      end: String(range.end),
-    }),
-    [range.end, range.start],
+    () =>
+      layout === "redblack"
+        ? { before: "请交替查找", start: "黑 1→25", middle: "与", end: "红 24→1" }
+        : {
+            before: "请按顺序从",
+            start: String(range.start),
+            middle: "找到",
+            end: String(range.end),
+          },
+    [layout, range.end, range.start],
   );
 
   useEffect(() => {
@@ -311,7 +327,8 @@ export default function App() {
       nextLayout === "dual" ||
       nextLayout === "breathe" ||
       nextLayout === "star" ||
-      nextLayout === "mixed"
+      nextLayout === "mixed" ||
+      nextLayout === "redblack"
     ) {
       setRotation("none");
     }
@@ -325,7 +342,8 @@ export default function App() {
   }
 
   function applyPlayStyle(style: PlayStyleOption) {
-    resetGame(mode, isFixedLayout(style.layout) ? "asc" : order, style.layout);
+    const nextMode = style.layout === "redblack" ? DEFAULT_MODE : mode;
+    resetGame(nextMode, isFixedLayout(style.layout) ? "asc" : order, style.layout);
     setRotation(style.rotation);
   }
 
@@ -357,7 +375,7 @@ export default function App() {
       return;
     }
 
-    if (isFinalTarget(target, order, total)) {
+    if (isFinalTarget(target, order, total, layout)) {
       const run: FinishedRun = {
         mode,
         order,
@@ -374,7 +392,7 @@ export default function App() {
       return;
     }
 
-    setTarget(getNextTarget(target, order));
+    setTarget(getNextTarget(target, order, layout));
   }
 
   function copyShareText() {
@@ -455,7 +473,7 @@ export default function App() {
                     key={item.id}
                     type="button"
                     onClick={() => resetGame(mode, item.id, layout)}
-                    disabled={screen === "playing"}
+                    disabled={screen === "playing" || isFixedLayout(layout)}
                   >
                     {item.label}
                   </button>
@@ -487,7 +505,7 @@ export default function App() {
                     key={count}
                     type="button"
                     onClick={() => setColorCount(count)}
-                    disabled={screen === "playing"}
+                    disabled={screen === "playing" || layout === "redblack"}
                   >
                     {count}
                   </button>
@@ -515,14 +533,19 @@ export default function App() {
           <div className="play-summary">
             <strong>{activePlayStyle.name}</strong>
             <span>
-              {activeOrder.name} · {getSizeLabel(mode, layout)} · {colorCount} 色
+              {layout === "redblack"
+                ? "黑升红降 · 7x7 · 红黑双色"
+                : `${activeOrder.name} · ${getSizeLabel(mode, layout)} · ${colorCount} 色`}
             </span>
           </div>
         </section>
 
         <div className="title-block">
           <h1>
-            {titleParts.before} <span>{titleParts.start}</span> {titleParts.middle} <span>{titleParts.end}</span>
+            {titleParts.before}{" "}
+            <span className={layout === "redblack" ? "sequence-black" : undefined}>{titleParts.start}</span>{" "}
+            {titleParts.middle}{" "}
+            <span className={layout === "redblack" ? "sequence-red" : undefined}>{titleParts.end}</span>
           </h1>
           <div className="timer-line" aria-live="polite">
             <strong>用时</strong>
@@ -539,7 +562,7 @@ export default function App() {
           )}
           {screen === "playing" && (
             <>
-              <span>下一个数字 {target}</span>
+              <span>下一个 {layout === "redblack" ? getRedBlackTargetLabel(target) : `数字 ${target}`}</span>
               <span>保持节奏</span>
             </>
           )}
@@ -571,7 +594,29 @@ export default function App() {
           )}
         </div>
 
-        {layout === "grid" ? (
+        {layout === "redblack" ? (
+          <div className="redblack-board" ref={boardRef}>
+            {grid.map((token, index) => {
+              const completed = screen === "playing" && isChallengeNumberCompleted(token, target, order, layout);
+              const displayNumber = getRedBlackDisplayNumber(token);
+              const colorName = isRedBlackTokenRed(token) ? "红" : "黑";
+              return (
+                <button
+                  className={`redblack-cell ${isRedBlackTokenRed(token) ? "is-red" : "is-black"} ${
+                    completed ? "completed" : ""
+                  }`}
+                  key={`${token}-${index}`}
+                  type="button"
+                  onClick={() => handleCellClick(token, index)}
+                  disabled={screen !== "playing"}
+                  aria-label={`${colorName}色数字 ${displayNumber}`}
+                >
+                  {displayNumber}
+                </button>
+              );
+            })}
+          </div>
+        ) : layout === "grid" ? (
           <div
             className="grid-board"
             ref={boardRef}
@@ -1101,7 +1146,9 @@ function buildXiaohongshuPost({
 }): string {
   const isRotating = layout === "radial" && rotation !== "none";
   const layoutName =
-    layout === "mixed"
+    layout === "redblack"
+      ? "红黑双序舒尔特"
+      : layout === "mixed"
       ? "大小混排舒尔特"
       : layout === "star"
       ? "星轨舒尔特"
@@ -1132,11 +1179,15 @@ function buildXiaohongshuPost({
     ? `每日专注力训练 DAY ${dailyDay} | ${layoutName}从 ${rangeText}`
     : `每日专注力训练 | ${layoutName}从 ${rangeText}`;
   const prompt =
-    order === "desc"
+    layout === "redblack"
+      ? "今天做一个红黑双序版：黑色从 1 升到 25，红色从 24 降到 1，两条序列交替查找。"
+      : order === "desc"
       ? `今天做一个倒序版：从 ${range.start} 开始，按顺序一路找到 ${range.end}。`
       : `今天做一个计时版：从 ${range.start} 开始，按顺序一路找到 ${range.end}。`;
   const modeLine =
-    isRotating
+    layout === "redblack"
+      ? "红黑双色与相反顺序会持续切换搜索目标，更考验注意力切换和节奏稳定性。"
+      : isRotating
       ? `${getRotationLabel(rotation)}圆盘会增加视觉追踪难度，适合进阶挑战。`
       : layout === "mixed"
       ? "大小字号混排会干扰视觉优先级，更考验在不一致信息中快速定位目标。"
@@ -1169,7 +1220,9 @@ function buildXiaohongshuPost({
     "#专注力游戏",
     "#提升注意力",
     "#计时挑战",
-    layout === "dual"
+    layout === "redblack"
+      ? "#红黑舒尔特"
+      : layout === "dual"
       ? "#双区舒尔特"
       : layout === "mixed"
       ? "#大小混排舒尔特"
@@ -1219,7 +1272,9 @@ function getInitialSettings(): {
   const mode = MODES.find((item) => item.size === Number(params.get("size"))) ?? DEFAULT_MODE;
   const layoutParam = params.get("layout");
   const layout =
-    layoutParam === "mixed"
+    layoutParam === "redblack"
+      ? "redblack"
+      : layoutParam === "mixed"
       ? "mixed"
       : layoutParam === "star"
       ? "star"
@@ -1252,8 +1307,10 @@ function getInitialSettings(): {
   const colorCount = COLOR_COUNTS.includes(colorCountValue as ColorCount) ? (colorCountValue as ColorCount) : 4;
   const themeParam = params.get("theme");
   const theme = THEMES.some((item) => item.id === themeParam) ? (themeParam as ThemeOption["id"]) : "fresh";
+  const normalizedMode = layout === "redblack" ? DEFAULT_MODE : mode;
+  const normalizedOrder = layout === "redblack" ? "asc" : order;
 
-  return { mode, order, layout, rotation, colorCount, theme };
+  return { mode: normalizedMode, order: normalizedOrder, layout, rotation, colorCount, theme };
 }
 
 function getRotationLabel(rotation: RotationSpeed): string {
@@ -1272,6 +1329,7 @@ function getActivePlayStyle(layout: ChallengeLayout, rotation: RotationSpeed): P
   if (layout === "breathe") return PLAY_STYLES[10];
   if (layout === "star") return PLAY_STYLES[11];
   if (layout === "mixed") return PLAY_STYLES[12];
+  if (layout === "redblack") return PLAY_STYLES[13];
   if (rotation !== "none") return PLAY_STYLES[2];
   return PLAY_STYLES[1];
 }
@@ -1281,6 +1339,7 @@ function createChallengeNumbers(mode: GameMode, layout: ChallengeLayout): number
 }
 
 function getSizeLabel(mode: GameMode, layout: ChallengeLayout): string {
+  if (layout === "redblack") return "7x7";
   if (layout === "mixed") return "36格";
   if (layout === "star") return "36点";
   if (layout === "breathe") return "36点";
@@ -1303,7 +1362,8 @@ function isFixedLayout(layout: ChallengeLayout): boolean {
     layout === "dual" ||
     layout === "breathe" ||
     layout === "star" ||
-    layout === "mixed"
+    layout === "mixed" ||
+    layout === "redblack"
   );
 }
 
@@ -1312,6 +1372,7 @@ function getTapPosition(
   mode: GameMode,
   layout: ChallengeLayout,
 ): { row: number; col: number } {
+  if (layout === "redblack") return { row: Math.floor(index / 7), col: index % 7 };
   if (layout === "float") return { row: Math.floor(index / 6), col: index % 6 };
   if (layout === "spiral") return { row: Math.floor(index / 6), col: index % 6 };
   if (layout === "maze") return { row: Math.floor(index / 6), col: index % 6 };
