@@ -118,6 +118,7 @@ const themes = {
   fresh: {
     ink: "#18212f",
     paper: "#fffdf8",
+    checker: "#e1ebe6",
     primary: "#116b5d",
     accent: "#ef6f48",
     muted: "#6d7789",
@@ -127,6 +128,7 @@ const themes = {
   ocean: {
     ink: "#142134",
     paper: "#f8fbff",
+    checker: "#e3edf7",
     primary: "#185c8f",
     accent: "#e45f4f",
     muted: "#65758d",
@@ -136,6 +138,7 @@ const themes = {
   vivid: {
     ink: "#1d1a2e",
     paper: "#fffaf4",
+    checker: "#f1e4d6",
     primary: "#b5531f",
     accent: "#f05f38",
     muted: "#756f86",
@@ -156,6 +159,7 @@ const colorCount = clamp(Number(args.colors ?? dailyChallenge?.colors ?? 4), 1, 
 const size = clamp(Number(args.size ?? dailyChallenge?.size ?? 6), 4, 6);
 const order = String(args.order ?? dailyChallenge?.order ?? "asc") === "desc" ? "desc" : "asc";
 const layoutArg = String(args.layout ?? dailyChallenge?.layout ?? "grid");
+const cellStyle = String(args["cell-style"] ?? "plain") === "checker" ? "checker" : "plain";
 const layout =
   layoutArg === "alphabet"
     ? "alphabet"
@@ -230,7 +234,7 @@ try {
     const framePath = resolve(framesDir, `frame-${String(frame).padStart(4, "0")}.png`);
     const html =
       second < INTRO_SECONDS
-        ? renderIntroHtml({ countdown: Math.ceil(INTRO_SECONDS - second), theme, size, layout, redBlackRule })
+        ? renderIntroHtml({ countdown: Math.ceil(INTRO_SECONDS - second), theme, size, layout, cellStyle, redBlackRule })
         : renderChallengeHtml({
             elapsedMs: (second - INTRO_SECONDS) * 1000,
             grid,
@@ -239,6 +243,7 @@ try {
             size,
             order,
             layout,
+            cellStyle,
             rotation,
             redBlackRule,
           });
@@ -374,7 +379,7 @@ function writeAscii(buffer, offset, value) {
   buffer.write(value, offset, value.length, "ascii");
 }
 
-function renderIntroHtml({ countdown, theme, size, layout, redBlackRule }) {
+function renderIntroHtml({ countdown, theme, size, layout, cellStyle, redBlackRule }) {
   const total = getChallengeTotal(size, layout);
   const gridSize = layout === "redblack" || layout === "alphabet" ? 5 : size;
   const metrics = canvas.intro;
@@ -442,7 +447,7 @@ function renderIntroHtml({ countdown, theme, size, layout, redBlackRule }) {
     <main class="stage">
       <div class="ghost-grid"></div>
       <div class="title">每日专注力训练</div>
-      <div class="project">${getProjectLabelHtml({ layout, size, total, redBlackRule })}</div>
+      <div class="project">${getProjectLabelHtml({ layout, size, total, cellStyle, redBlackRule })}</div>
       <div class="ring"></div>
       <div class="count">${countdown}</div>
       <div class="ready">准备开始</div>
@@ -452,7 +457,18 @@ function renderIntroHtml({ countdown, theme, size, layout, redBlackRule }) {
 </html>`;
 }
 
-function renderChallengeHtml({ elapsedMs, grid, theme, colorCount, size, order, layout, rotation, redBlackRule }) {
+function renderChallengeHtml({
+  elapsedMs,
+  grid,
+  theme,
+  colorCount,
+  size,
+  order,
+  layout,
+  cellStyle,
+  rotation,
+  redBlackRule,
+}) {
   const total = getChallengeTotal(size, layout);
   const range = layout === "redblack" ? { start: 1, end: 13 } : getTargetRange(total, order);
   const startLabel = getTargetLabel(range.start, layout);
@@ -483,7 +499,8 @@ function renderChallengeHtml({ elapsedMs, grid, theme, colorCount, size, order, 
               const col = index % boardColumns;
               const color = getNumberColor(theme, number, colorCount, range.start);
               const letter = getTargetLabel(number, layout);
-              return `<div class="cell" style="left:${col * cellSize}px;top:${row * cellSize}px;color:${color}">${letter}</div>`;
+              const background = getCellBackground(theme, cellStyle, row, col);
+              return `<div class="cell" style="left:${col * cellSize}px;top:${row * cellSize}px;color:${color};background:${background}">${letter}</div>`;
             })
             .join("")}</div>`
       : layout === "radial"
@@ -519,7 +536,8 @@ function renderChallengeHtml({ elapsedMs, grid, theme, colorCount, size, order, 
                 const row = Math.floor(index / size);
                 const col = index % size;
                 const color = getNumberColor(theme, number, colorCount, range.start);
-                return `<div class="cell" style="left:${col * cellSize}px;top:${row * cellSize}px;color:${color}">${number}</div>`;
+                const background = getCellBackground(theme, cellStyle, row, col);
+                return `<div class="cell" style="left:${col * cellSize}px;top:${row * cellSize}px;color:${color};background:${background}">${number}</div>`;
               })
               .join("")}</div>`;
 
@@ -758,6 +776,8 @@ function renderChallengeHtml({ elapsedMs, grid, theme, colorCount, size, order, 
           ? redBlackRule === "advanced"
             ? "红黑进阶舒尔特挑战"
             : "红黑交替舒尔特挑战"
+          : layout === "grid" && cellStyle === "checker"
+            ? "棋盘舒尔特挑战"
           : layout === "alphabet"
             ? "字母舒尔特挑战"
           : layout === "radial" && rotation !== "none"
@@ -1256,7 +1276,8 @@ function getProjectLabel({ layout, size, total }) {
   return `舒尔特方格 ${size}×${size}`;
 }
 
-function getProjectLabelHtml({ layout, size, total, redBlackRule }) {
+function getProjectLabelHtml({ layout, size, total, cellStyle, redBlackRule }) {
+  if (layout === "grid" && cellStyle === "checker") return `棋盘舒尔特 <span>${size}×${size}</span>`;
   if (layout === "alphabet") return "字母舒尔特 <span>A～Y</span>";
   if (layout === "redblack") {
     return `${redBlackRule === "advanced" ? "红黑进阶" : "红黑交替"}舒尔特 <span>5×5</span>`;
@@ -1297,6 +1318,10 @@ function getTargetRange(total, order) {
 
 function getTargetLabel(value, layout) {
   return layout === "alphabet" ? String.fromCharCode(64 + value) : String(value);
+}
+
+function getCellBackground(theme, cellStyle, row, col) {
+  return cellStyle === "checker" && (row + col) % 2 === 1 ? theme.checker : "white";
 }
 
 function getNumberColor(theme, number, colorCount, startNumber) {
