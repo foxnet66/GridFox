@@ -165,7 +165,9 @@ const layoutArg = String(args.layout ?? dailyChallenge?.layout ?? "grid");
 const requestedCellStyle = String(args["cell-style"] ?? "plain");
 const cellStyle = ["checker", "checker-dark"].includes(requestedCellStyle) ? requestedCellStyle : "plain";
 const layout =
-  layoutArg === "alphabet"
+  layoutArg === "missing"
+    ? "missing"
+    : layoutArg === "alphabet"
     ? "alphabet"
     : layoutArg === "redblack"
     ? "redblack"
@@ -218,7 +220,11 @@ await mkdir(framesDir, { recursive: true });
 await mkdir(dirname(output), { recursive: true });
 
 const total = getChallengeTotal(size, layout);
-const grid = createGrid(total, seed);
+const missingNumber =
+  layout === "missing"
+    ? clamp(Number(args["missing-number"] ?? getSeededMissingNumber(seed, total)), 1, total)
+    : null;
+const grid = createGrid(total, seed).map((value) => (value === missingNumber ? 0 : value));
 const totalDurationSeconds = INTRO_SECONDS + duration;
 const totalFrames = Math.ceil(totalDurationSeconds * captureFps);
 const chrome = await launchChrome(chromeProfile);
@@ -291,6 +297,7 @@ if (completed) {
 }
 
 console.log(`Done: ${output}`);
+if (missingNumber !== null) console.log(`Missing number: ${missingNumber}`);
 
 async function prepareAudioInput({ music, musicFile, duration }) {
   if (musicFile) {
@@ -385,7 +392,7 @@ function writeAscii(buffer, offset, value) {
 
 function renderIntroHtml({ countdown, theme, size, layout, cellStyle, redBlackRule }) {
   const total = getChallengeTotal(size, layout);
-  const gridSize = layout === "redblack" || layout === "alphabet" ? 5 : size;
+  const gridSize = ["redblack", "alphabet", "missing"].includes(layout) ? 5 : size;
   const metrics = canvas.intro;
 
   return `<!doctype html>
@@ -479,10 +486,10 @@ function renderChallengeHtml({
   const endLabel = getTargetLabel(range.end, layout);
   const metrics = canvas.challenge;
   const gridSize = metrics.boardSize;
-  const boardColumns = layout === "redblack" || layout === "alphabet" ? 5 : size;
+  const boardColumns = ["redblack", "alphabet", "missing"].includes(layout) ? 5 : size;
   const cellSize = gridSize / boardColumns;
   const fontSize = Math.round(
-    (layout === "redblack" || layout === "alphabet" ? 82 : size >= 6 ? 66 : 82) * (gridSize / 928),
+    (["redblack", "alphabet", "missing"].includes(layout) ? 82 : size >= 6 ? 66 : 82) * (gridSize / 928),
   );
   const board =
     layout === "redblack"
@@ -494,8 +501,24 @@ function renderChallengeHtml({
             const displayNumber = isRed ? token - 13 : token;
             const color = isRed ? theme.colors[2] : theme.ink;
             return `<div class="cell" style="left:${col * cellSize}px;top:${row * cellSize}px;color:${color}">${displayNumber}</div>`;
-          })
-          .join("")}</div>`
+            })
+            .join("")}</div>`
+      : layout === "missing"
+        ? `<div class="grid">${grid
+            .map((number, index) => {
+              const row = Math.floor(index / boardColumns);
+              const col = index % boardColumns;
+              const background = getCellBackground(theme, cellStyle, row, col);
+              const color =
+                number === 0
+                  ? cellStyle === "checker-dark" && (row + col) % 2 === 1
+                    ? "#ff9b73"
+                    : theme.accent
+                  : getGridCellTextColor(theme, cellStyle, row, col, number, colorCount, -1);
+              const label = number === 0 ? "?" : number;
+              return `<div class="cell" style="left:${col * cellSize}px;top:${row * cellSize}px;color:${color};background:${background}">${label}</div>`;
+            })
+            .join("")}</div>`
       : layout === "alphabet"
         ? `<div class="grid">${grid
             .map((number, index) => {
@@ -780,6 +803,8 @@ function renderChallengeHtml({
           ? redBlackRule === "advanced"
             ? "红黑进阶舒尔特挑战"
             : "红黑交替舒尔特挑战"
+          : layout === "missing"
+            ? "缺失数字舒尔特挑战"
           : layout === "grid" && cellStyle === "checker-dark"
             ? "高难棋盘舒尔特挑战"
           : layout === "grid" && cellStyle === "checker"
@@ -813,14 +838,18 @@ function renderChallengeHtml({
                 : "舒尔特方格挑战"
       }</div>
       <div class="title">${
-        layout === "redblack"
+        layout === "missing"
+          ? "找出 <span>缺失的数字</span>"
+          : layout === "redblack"
           ? redBlackRule === "advanced"
             ? "黑色升序，红色降序，<span>交替查找</span>"
             : "红黑交替，从 <span class=\"black-sequence\">1</span> 找到 <span class=\"black-sequence\">13</span>"
           : `请按顺序从 <span>${startLabel}</span> 找到 <span>${endLabel}</span>`
       }</div>
       <div class="subtitle">${
-        layout === "redblack"
+        layout === "missing"
+          ? "1 到 25 中，少了哪一个？"
+          : layout === "redblack"
           ? redBlackRule === "advanced"
             ? "黑 1 → 红 12 → 黑 2 → 红 11…最后找到黑 13"
             : "黑 1 → 红 1 → 黑 2 → 红 2…最后找到黑 13"
@@ -1252,6 +1281,7 @@ function getMixedGeometry() {
 }
 
 function getChallengeTotal(size, layout) {
+  if (layout === "missing") return 25;
   if (layout === "alphabet") return 25;
   if (layout === "redblack") return 25;
   if (layout === "mixed") return 36;
@@ -1266,6 +1296,7 @@ function getChallengeTotal(size, layout) {
 }
 
 function getProjectLabel({ layout, size, total }) {
+  if (layout === "missing") return "缺失数字舒尔特 5×5";
   if (layout === "alphabet") return "字母舒尔特 A～Y";
   if (layout === "redblack") return "红黑交替舒尔特 5×5";
   if (layout === "radial") return `圆盘舒尔特 ${total}`;
@@ -1283,6 +1314,7 @@ function getProjectLabel({ layout, size, total }) {
 }
 
 function getProjectLabelHtml({ layout, size, total, cellStyle, redBlackRule }) {
+  if (layout === "missing") return "缺失数字舒尔特 <span>5×5</span>";
   if (layout === "grid" && cellStyle === "checker-dark") return `高难棋盘舒尔特 <span>${size}×${size}</span>`;
   if (layout === "grid" && cellStyle === "checker") return `棋盘舒尔特 <span>${size}×${size}</span>`;
   if (layout === "alphabet") return "字母舒尔特 <span>A～Y</span>";
@@ -1325,6 +1357,11 @@ function getTargetRange(total, order) {
 
 function getTargetLabel(value, layout) {
   return layout === "alphabet" ? String.fromCharCode(64 + value) : String(value);
+}
+
+function getSeededMissingNumber(seed, total) {
+  const random = mulberry32(Math.trunc(seed) ^ 0x4d495353);
+  return Math.floor(random() * total) + 1;
 }
 
 function getCellBackground(theme, cellStyle, row, col) {
