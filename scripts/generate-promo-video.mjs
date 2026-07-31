@@ -119,6 +119,7 @@ const themes = {
     ink: "#18212f",
     paper: "#fffdf8",
     checker: "#e1ebe6",
+    checkerDark: "#263c36",
     primary: "#116b5d",
     accent: "#ef6f48",
     muted: "#6d7789",
@@ -129,6 +130,7 @@ const themes = {
     ink: "#142134",
     paper: "#f8fbff",
     checker: "#e3edf7",
+    checkerDark: "#26394d",
     primary: "#185c8f",
     accent: "#e45f4f",
     muted: "#65758d",
@@ -139,6 +141,7 @@ const themes = {
     ink: "#1d1a2e",
     paper: "#fffaf4",
     checker: "#f1e4d6",
+    checkerDark: "#42342b",
     primary: "#b5531f",
     accent: "#f05f38",
     muted: "#756f86",
@@ -159,7 +162,8 @@ const colorCount = clamp(Number(args.colors ?? dailyChallenge?.colors ?? 4), 1, 
 const size = clamp(Number(args.size ?? dailyChallenge?.size ?? 6), 4, 6);
 const order = String(args.order ?? dailyChallenge?.order ?? "asc") === "desc" ? "desc" : "asc";
 const layoutArg = String(args.layout ?? dailyChallenge?.layout ?? "grid");
-const cellStyle = String(args["cell-style"] ?? "plain") === "checker" ? "checker" : "plain";
+const requestedCellStyle = String(args["cell-style"] ?? "plain");
+const cellStyle = ["checker", "checker-dark"].includes(requestedCellStyle) ? requestedCellStyle : "plain";
 const layout =
   layoutArg === "alphabet"
     ? "alphabet"
@@ -497,7 +501,7 @@ function renderChallengeHtml({
             .map((number, index) => {
               const row = Math.floor(index / boardColumns);
               const col = index % boardColumns;
-              const color = getNumberColor(theme, number, colorCount, range.start);
+              const color = getGridCellTextColor(theme, cellStyle, row, col, number, colorCount, range.start);
               const letter = getTargetLabel(number, layout);
               const background = getCellBackground(theme, cellStyle, row, col);
               return `<div class="cell" style="left:${col * cellSize}px;top:${row * cellSize}px;color:${color};background:${background}">${letter}</div>`;
@@ -535,7 +539,7 @@ function renderChallengeHtml({
               .map((number, index) => {
                 const row = Math.floor(index / size);
                 const col = index % size;
-                const color = getNumberColor(theme, number, colorCount, range.start);
+                const color = getGridCellTextColor(theme, cellStyle, row, col, number, colorCount, range.start);
                 const background = getCellBackground(theme, cellStyle, row, col);
                 return `<div class="cell" style="left:${col * cellSize}px;top:${row * cellSize}px;color:${color};background:${background}">${number}</div>`;
               })
@@ -776,6 +780,8 @@ function renderChallengeHtml({
           ? redBlackRule === "advanced"
             ? "红黑进阶舒尔特挑战"
             : "红黑交替舒尔特挑战"
+          : layout === "grid" && cellStyle === "checker-dark"
+            ? "高难棋盘舒尔特挑战"
           : layout === "grid" && cellStyle === "checker"
             ? "棋盘舒尔特挑战"
           : layout === "alphabet"
@@ -1277,6 +1283,7 @@ function getProjectLabel({ layout, size, total }) {
 }
 
 function getProjectLabelHtml({ layout, size, total, cellStyle, redBlackRule }) {
+  if (layout === "grid" && cellStyle === "checker-dark") return `高难棋盘舒尔特 <span>${size}×${size}</span>`;
   if (layout === "grid" && cellStyle === "checker") return `棋盘舒尔特 <span>${size}×${size}</span>`;
   if (layout === "alphabet") return "字母舒尔特 <span>A～Y</span>";
   if (layout === "redblack") {
@@ -1321,7 +1328,18 @@ function getTargetLabel(value, layout) {
 }
 
 function getCellBackground(theme, cellStyle, row, col) {
-  return cellStyle === "checker" && (row + col) % 2 === 1 ? theme.checker : "white";
+  if ((row + col) % 2 !== 1) return "white";
+  if (cellStyle === "checker-dark") return theme.checkerDark;
+  if (cellStyle === "checker") return theme.checker;
+  return "white";
+}
+
+function getGridCellTextColor(theme, cellStyle, row, col, number, colorCount, startNumber) {
+  if (number === startNumber) {
+    return cellStyle === "checker-dark" && (row + col) % 2 === 1 ? "#ff9b73" : theme.accent;
+  }
+  if (cellStyle === "checker-dark") return (row + col) % 2 === 1 ? "white" : theme.ink;
+  return getNumberColor(theme, number, colorCount, startNumber);
 }
 
 function getNumberColor(theme, number, colorCount, startNumber) {
