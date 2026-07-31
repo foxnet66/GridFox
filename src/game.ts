@@ -15,6 +15,8 @@ export type ChallengeOrderOption = {
 
 export type ChallengeLayout =
   | "grid"
+  | "checker"
+  | "checker-hard"
   | "radial"
   | "hex"
   | "mosaic"
@@ -104,6 +106,8 @@ export const CHALLENGE_ORDERS: ChallengeOrderOption[] = [
 
 export const CHALLENGE_LAYOUTS: ChallengeLayoutOption[] = [
   { id: "grid", label: "方格", name: "标准方格" },
+  { id: "checker", label: "棋盘", name: "棋盘舒尔特" },
+  { id: "checker-hard", label: "高难棋盘", name: "高难棋盘舒尔特" },
   { id: "radial", label: "圆盘", name: "圆盘舒尔特" },
   { id: "hex", label: "蜂巢", name: "蜂巢舒尔特" },
   { id: "mosaic", label: "变形", name: "变形舒尔特" },

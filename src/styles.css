@@ -19,6 +19,8 @@
   --timer-accent: #0d7a70;
   --switch-bg: rgba(255, 255, 255, 0.62);
   --control-bg: #edf2ee;
+  --checker-soft: #e1ebe6;
+  --checker-dark: #263c36;
   font-family:
     Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
     "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
@@ -81,6 +83,8 @@ button {
   --heading-accent: #e45f4f;
   --timer-accent: #12697e;
   --control-bg: #e7eef6;
+  --checker-soft: #e3edf7;
+  --checker-dark: #26394d;
 }
 
 .theme-vivid {
@@ -102,6 +106,8 @@ button {
   --heading-accent: #f05f38;
   --timer-accent: #0a7a69;
   --control-bg: #f2e6d8;
+  --checker-soft: #f1e4d6;
+  --checker-dark: #42342b;
 }
 
 .challenge-card {
@@ -1103,6 +1109,19 @@ button {
     background-color 130ms ease,
     transform 130ms ease,
     opacity 130ms ease;
+}
+
+.grid-board.checker-board .grid-cell:nth-child(even):not(.completed) {
+  background: var(--checker-soft);
+}
+
+.grid-board.checker-hard-board .grid-cell:nth-child(even):not(.completed) {
+  background: var(--checker-dark);
+  color: #ffffff;
+}
+
+.grid-board.checker-hard-board .grid-cell.number-red:nth-child(even):not(.completed) {
+  color: #ff9b73;
 }
 
 .redblack-cell {

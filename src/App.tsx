@@ -40,6 +40,8 @@ import { getDailyChallenge } from "./dailyChallenge";
 type Screen = "ready" | "playing" | "finished";
 type PlayStyleId =
   | "grid"
+  | "checker"
+  | "checker-hard"
   | "radial"
   | "radial-rotate"
   | "hex"
@@ -127,6 +129,22 @@ const PLAY_STYLES: PlayStyleOption[] = [
     name: "标准方格",
     description: "经典舒尔特训练",
     layout: "grid",
+    rotation: "none",
+  },
+  {
+    id: "checker",
+    label: "棋盘",
+    name: "棋盘舒尔特",
+    description: "浅色棋盘视觉搜索",
+    layout: "checker",
+    rotation: "none",
+  },
+  {
+    id: "checker-hard",
+    label: "高难棋盘",
+    name: "高难棋盘舒尔特",
+    description: "深浅反差进阶挑战",
+    layout: "checker-hard",
     rotation: "none",
   },
   {
@@ -367,6 +385,7 @@ export default function App() {
     const nextMode = style.layout === "redblack" ? MODES[1] : mode;
     resetGame(nextMode, isFixedLayout(style.layout) ? "asc" : order, style.layout, "basic");
     setRotation(style.rotation);
+    if (style.layout === "checker" || style.layout === "checker-hard") setColorCount(1);
   }
 
   function startGame() {
@@ -545,7 +564,12 @@ export default function App() {
                     key={count}
                     type="button"
                     onClick={() => setColorCount(count)}
-                    disabled={screen === "playing" || layout === "redblack"}
+                    disabled={
+                      screen === "playing" ||
+                      layout === "redblack" ||
+                      layout === "checker" ||
+                      layout === "checker-hard"
+                    }
                   >
                     {count}
                   </button>
@@ -657,9 +681,11 @@ export default function App() {
               );
             })}
           </div>
-        ) : layout === "grid" ? (
+        ) : layout === "grid" || layout === "checker" || layout === "checker-hard" ? (
           <div
-            className="grid-board"
+            className={`grid-board ${layout === "checker" ? "checker-board" : ""} ${
+              layout === "checker-hard" ? "checker-hard-board" : ""
+            }`}
             ref={boardRef}
             style={{ gridTemplateColumns: `repeat(${mode.size}, minmax(0, 1fr))` }}
           >
@@ -1193,6 +1219,10 @@ function buildXiaohongshuPost({
       ? redBlackRule === "advanced"
         ? "红黑进阶舒尔特"
         : "红黑交替舒尔特"
+      : layout === "checker-hard"
+      ? "高难棋盘舒尔特"
+      : layout === "checker"
+      ? "棋盘舒尔特"
       : layout === "mixed"
       ? "大小混排舒尔特"
       : layout === "star"
@@ -1238,6 +1268,10 @@ function buildXiaohongshuPost({
         : "同号数字按红黑双色交替查找，规则直观，也更考验颜色切换和节奏稳定性。"
       : isRotating
       ? `${getRotationLabel(rotation)}圆盘会增加视觉追踪难度，适合进阶挑战。`
+      : layout === "checker-hard"
+      ? "深浅棋盘会持续切换数字对比，更考验视觉适应和搜索稳定性。"
+      : layout === "checker"
+      ? "棋盘交替背景会干扰横竖扫描节奏，更考验视觉搜索稳定性。"
       : layout === "mixed"
       ? "大小字号混排会干扰视觉优先级，更考验在不一致信息中快速定位目标。"
       : layout === "star"
@@ -1271,6 +1305,8 @@ function buildXiaohongshuPost({
     "#计时挑战",
     layout === "redblack"
       ? "#红黑舒尔特"
+      : layout === "checker-hard" || layout === "checker"
+      ? "#棋盘舒尔特"
       : layout === "dual"
       ? "#双区舒尔特"
       : layout === "mixed"
@@ -1324,6 +1360,10 @@ function getInitialSettings(): {
   const layout =
     layoutParam === "redblack"
       ? "redblack"
+      : layoutParam === "checker-hard"
+      ? "checker-hard"
+      : layoutParam === "checker"
+      ? "checker"
       : layoutParam === "mixed"
       ? "mixed"
       : layoutParam === "star"
@@ -1359,9 +1399,18 @@ function getInitialSettings(): {
   const theme = THEMES.some((item) => item.id === themeParam) ? (themeParam as ThemeOption["id"]) : "fresh";
   const normalizedMode = layout === "redblack" ? MODES[1] : mode;
   const normalizedOrder = layout === "redblack" ? "asc" : order;
+  const normalizedColorCount = layout === "checker" || layout === "checker-hard" ? 1 : colorCount;
   const redBlackRule = params.get("redblackRule") === "advanced" ? "advanced" : "basic";
 
-  return { mode: normalizedMode, order: normalizedOrder, layout, rotation, redBlackRule, colorCount, theme };
+  return {
+    mode: normalizedMode,
+    order: normalizedOrder,
+    layout,
+    rotation,
+    redBlackRule,
+    colorCount: normalizedColorCount,
+    theme,
+  };
 }
 
 function getRedBlackRuleName(rule: RedBlackRule): string {
@@ -1373,20 +1422,11 @@ function getRotationLabel(rotation: RotationSpeed): string {
 }
 
 function getActivePlayStyle(layout: ChallengeLayout, rotation: RotationSpeed): PlayStyleOption {
-  if (layout === "grid") return PLAY_STYLES[0];
-  if (layout === "hex") return PLAY_STYLES[3];
-  if (layout === "mosaic") return PLAY_STYLES[4];
-  if (layout === "float") return PLAY_STYLES[5];
-  if (layout === "spiral") return PLAY_STYLES[6];
-  if (layout === "maze") return PLAY_STYLES[7];
-  if (layout === "wave") return PLAY_STYLES[8];
-  if (layout === "dual") return PLAY_STYLES[9];
-  if (layout === "breathe") return PLAY_STYLES[10];
-  if (layout === "star") return PLAY_STYLES[11];
-  if (layout === "mixed") return PLAY_STYLES[12];
-  if (layout === "redblack") return PLAY_STYLES[13];
-  if (rotation !== "none") return PLAY_STYLES[2];
-  return PLAY_STYLES[1];
+  if (layout === "radial") {
+    const radialId = rotation === "none" ? "radial" : "radial-rotate";
+    return PLAY_STYLES.find((item) => item.id === radialId) ?? PLAY_STYLES[0];
+  }
+  return PLAY_STYLES.find((item) => item.layout === layout) ?? PLAY_STYLES[0];
 }
 
 function createChallengeNumbers(mode: GameMode, layout: ChallengeLayout): number[] {
