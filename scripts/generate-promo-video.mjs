@@ -159,6 +159,7 @@ const HEIGHT = canvas.height;
 const duration = clamp(Number(args.duration ?? 120), 1, 600);
 const midpointEffect = String(args.midpoint ?? "true") !== "false";
 const urgencySeconds = Math.min(duration, clamp(Number(args.urgency ?? 10), 0, 60));
+const endScreenSeconds = clamp(Number(args["end-screen"] ?? 1), 0, 5);
 const themeName = String(args.theme ?? dailyChallenge?.theme ?? "fresh");
 const colorCount = clamp(Number(args.colors ?? dailyChallenge?.colors ?? 4), 1, 8);
 const size = clamp(Number(args.size ?? dailyChallenge?.size ?? 6), 4, 6);
@@ -227,7 +228,7 @@ const missingNumber =
     ? clamp(Number(args["missing-number"] ?? getSeededMissingNumber(seed, total)), 1, total)
     : null;
 const grid = createGrid(total, seed).map((value) => (value === missingNumber ? 0 : value));
-const totalDurationSeconds = INTRO_SECONDS + duration;
+const totalDurationSeconds = INTRO_SECONDS + duration + endScreenSeconds;
 const totalFrames = Math.ceil(totalDurationSeconds * captureFps);
 const chrome = await launchChrome(chromeProfile);
 
@@ -243,12 +244,15 @@ try {
 
   for (let frame = 0; frame < totalFrames; frame += 1) {
     const second = frame / captureFps;
+    const challengeSecond = Math.max(0, second - INTRO_SECONDS);
+    const timeUp = challengeSecond >= duration;
     const framePath = resolve(framesDir, `frame-${String(frame).padStart(4, "0")}.png`);
     const html =
       second < INTRO_SECONDS
         ? renderIntroHtml({ countdown: Math.ceil(INTRO_SECONDS - second), theme, size, layout, cellStyle, redBlackRule })
         : renderChallengeHtml({
-            elapsedMs: (second - INTRO_SECONDS) * 1000,
+            elapsedMs: Math.min(challengeSecond, duration) * 1000,
+            timeUp,
             grid,
             theme,
             colorCount,
@@ -475,6 +479,7 @@ function renderIntroHtml({ countdown, theme, size, layout, cellStyle, redBlackRu
 
 function renderChallengeHtml({
   elapsedMs,
+  timeUp,
   grid,
   theme,
   colorCount,
@@ -493,13 +498,14 @@ function renderChallengeHtml({
   const remainingSeconds = Math.max(0, duration - elapsedSeconds);
   const midpointStart = duration / 2;
   const showMidpoint =
+    !timeUp &&
     midpointEffect &&
     elapsedSeconds >= midpointStart &&
     elapsedSeconds < midpointStart + 2 &&
     remainingSeconds > urgencySeconds;
-  const showUrgency = urgencySeconds > 0 && remainingSeconds > 0 && remainingSeconds <= urgencySeconds;
-  const isCritical = showUrgency && remainingSeconds <= 5;
-  const heartbeatExpanded = isCritical && Math.ceil(remainingSeconds) % 2 === 1;
+  const showUrgency = !timeUp && urgencySeconds > 0 && remainingSeconds > 0 && remainingSeconds <= urgencySeconds;
+  const isCritical = timeUp || (showUrgency && remainingSeconds <= 5);
+  const heartbeatExpanded = timeUp || (isCritical && Math.ceil(remainingSeconds) % 2 === 1);
   const timerColor = isCritical ? theme.colors[2] : showUrgency ? theme.accent : theme.primary;
   const timerShadow = isCritical ? `0 0 18px ${theme.colors[2]}44` : showUrgency ? `0 0 12px ${theme.accent}2b` : "none";
   const pulseColor = isCritical ? theme.colors[2] : showUrgency ? theme.accent : null;
@@ -507,7 +513,13 @@ function renderChallengeHtml({
   const stageBackground = pulseColor
     ? `radial-gradient(circle at 50% 24%, ${pulseColor}${pulseAlpha} 0%, ${pulseColor}00 48%), radial-gradient(circle at 50% 82%, ${pulseColor}${pulseAlpha} 0%, ${pulseColor}00 56%), ${theme.paper}`
     : theme.paper;
-  const milestoneText = showUrgency ? `最后 ${urgencySeconds} 秒` : showMidpoint ? "时间过半" : "";
+  const milestoneText = timeUp
+    ? "时间到！"
+    : showUrgency
+      ? `还剩 ${Math.max(1, Math.ceil(remainingSeconds))} 秒`
+      : showMidpoint
+        ? "时间过半"
+        : "";
   const range = layout === "redblack" ? { start: 1, end: 13 } : getTargetRange(total, order);
   const startLabel = getTargetLabel(range.start, layout);
   const endLabel = getTargetLabel(range.end, layout);
