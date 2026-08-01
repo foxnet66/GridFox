@@ -401,7 +401,7 @@ function writeAscii(buffer, offset, value) {
 
 function renderIntroHtml({ countdown, theme, size, layout, cellStyle, redBlackRule }) {
   const total = getChallengeTotal(size, layout);
-  const gridSize = ["redblack", "alphabet", "missing"].includes(layout) ? 5 : size;
+  const gridSize = ["redblack", "alphabet"].includes(layout) ? 5 : size;
   const metrics = canvas.intro;
 
   return `<!doctype html>
@@ -525,10 +525,10 @@ function renderChallengeHtml({
   const endLabel = getTargetLabel(range.end, layout);
   const metrics = canvas.challenge;
   const gridSize = metrics.boardSize;
-  const boardColumns = ["redblack", "alphabet", "missing"].includes(layout) ? 5 : size;
+  const boardColumns = ["redblack", "alphabet"].includes(layout) ? 5 : size;
   const cellSize = gridSize / boardColumns;
   const fontSize = Math.round(
-    (["redblack", "alphabet", "missing"].includes(layout) ? 82 : size >= 6 ? 66 : 82) * (gridSize / 928),
+    (["redblack", "alphabet"].includes(layout) ? 82 : size >= 6 ? 66 : 82) * (gridSize / 928),
   );
   const board =
     layout === "redblack"
@@ -898,7 +898,7 @@ function renderChallengeHtml({
       }</div>
       <div class="subtitle">${
         layout === "missing"
-          ? "1 到 25 中，少了哪一个？"
+          ? `1 到 ${total} 中，少了哪一个？`
           : layout === "redblack"
           ? redBlackRule === "advanced"
             ? "黑 1 → 红 12 → 黑 2 → 红 11…最后找到黑 13"
@@ -1332,7 +1332,6 @@ function getMixedGeometry() {
 }
 
 function getChallengeTotal(size, layout) {
-  if (layout === "missing") return 25;
   if (layout === "alphabet") return 25;
   if (layout === "redblack") return 25;
   if (layout === "mixed") return 36;
@@ -1347,7 +1346,7 @@ function getChallengeTotal(size, layout) {
 }
 
 function getProjectLabel({ layout, size, total }) {
-  if (layout === "missing") return "缺失数字舒尔特 5×5";
+  if (layout === "missing") return `缺失数字舒尔特 ${size}×${size}`;
   if (layout === "alphabet") return "字母舒尔特 A～Y";
   if (layout === "redblack") return "红黑交替舒尔特 5×5";
   if (layout === "radial") return `圆盘舒尔特 ${total}`;
@@ -1365,7 +1364,7 @@ function getProjectLabel({ layout, size, total }) {
 }
 
 function getProjectLabelHtml({ layout, size, total, cellStyle, redBlackRule }) {
-  if (layout === "missing") return "缺失数字舒尔特 <span>5×5</span>";
+  if (layout === "missing") return `缺失数字舒尔特 <span>${size}×${size}</span>`;
   if (layout === "grid" && cellStyle === "checker-dark") return `高难棋盘舒尔特 <span>${size}×${size}</span>`;
   if (layout === "grid" && cellStyle === "checker") return `棋盘舒尔特 <span>${size}×${size}</span>`;
   if (layout === "alphabet") return "字母舒尔特 <span>A～Y</span>";
