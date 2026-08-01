@@ -35,7 +35,7 @@ try {
   chrome = await launchChrome(CHROME_PROFILE);
   const client = await createPageClient(chrome.port);
   await client.send("Page.enable");
-  await setHtml(client, renderPrintPackHtml({ puzzles, size, order, seed, brand, title }));
+  await setHtml(client, renderPrintPackHtml({ puzzles, size, order, brand, title }));
   const pdf = await client.send("Page.printToPDF", {
     printBackground: true,
     preferCSSPageSize: true,
@@ -64,7 +64,7 @@ function createPuzzles({ count, size, order, seed }) {
   }));
 }
 
-function renderPrintPackHtml({ puzzles, size, order, seed, brand, title }) {
+function renderPrintPackHtml({ puzzles, size, order, brand, title }) {
   return `<!doctype html>
 <html lang="zh-CN">
   <head>
@@ -81,69 +81,108 @@ function renderPrintPackHtml({ puzzles, size, order, seed, brand, title }) {
       .page {
         width: 210mm;
         height: 297mm;
-        padding: 18mm 18mm 14mm;
+        padding: 16mm 16mm 13mm;
         page-break-after: always;
         display: grid;
         grid-template-rows: auto 1fr auto;
       }
       .header {
         display: flex;
-        align-items: end;
+        align-items: center;
         justify-content: space-between;
-        gap: 12mm;
-        padding-bottom: 8mm;
-        border-bottom: 0.4mm solid #d7dedb;
+        gap: 10mm;
+        padding-bottom: 7mm;
+        border-bottom: 0.3mm solid #dce4e1;
       }
       .eyebrow {
-        margin: 0 0 2mm;
-        color: #116b5d;
-        font-size: 12pt;
-        font-weight: 850;
+        margin: 0 0 2.2mm;
+        color: #0f766e;
+        font-size: 10.5pt;
+        font-weight: 750;
+        letter-spacing: 0.08em;
       }
       h1 {
         margin: 0;
-        font-size: 28pt;
-        line-height: 1.05;
-        letter-spacing: 0;
+        font-size: 25pt;
+        font-weight: 800;
+        line-height: 1.1;
+        letter-spacing: -0.03em;
       }
       .meta {
+        display: grid;
+        justify-items: end;
+        gap: 2mm;
         text-align: right;
-        color: #6d7789;
-        font-size: 10pt;
-        line-height: 1.7;
+        color: #526071;
+        font-size: 9.5pt;
         white-space: nowrap;
+      }
+      .number-badge {
+        display: inline-flex;
+        align-items: center;
+        min-height: 8mm;
+        padding: 0 3.5mm;
+        border-radius: 999px;
+        color: #0f766e;
+        background: #edf7f4;
+        font-size: 10pt;
+        font-weight: 750;
+      }
+      .mode {
+        padding-right: 1mm;
+        color: #667085;
+        font-weight: 600;
       }
       .content {
         display: grid;
         align-content: center;
         justify-items: center;
-        gap: 10mm;
+        gap: 8mm;
+        padding: 6mm 0 4mm;
+      }
+      .instruction-block {
+        display: grid;
+        justify-items: center;
+        gap: 2.5mm;
+      }
+      .instruction-label {
+        margin: 0;
+        color: #7a8495;
+        font-size: 8.5pt;
+        font-weight: 700;
+        letter-spacing: 0.16em;
       }
       .instruction {
         margin: 0;
         color: #141b2a;
-        font-size: 20pt;
-        font-weight: 850;
+        font-size: 18pt;
+        font-weight: 750;
+        letter-spacing: -0.02em;
       }
       .instruction span {
-        color: #ef6f48;
+        color: #f06443;
+        font-size: 21pt;
+        font-weight: 850;
       }
       .grid {
-        width: 160mm;
-        height: 160mm;
+        width: 164mm;
+        height: 164mm;
         display: grid;
         grid-template-columns: repeat(${size}, 1fr);
         grid-template-rows: repeat(${size}, 1fr);
-        border: 0.65mm solid #111827;
+        overflow: hidden;
+        border: 0.55mm solid #1f2937;
+        border-radius: 2.5mm;
       }
       .cell {
         display: grid;
         place-items: center;
-        border-right: 0.32mm solid #111827;
-        border-bottom: 0.32mm solid #111827;
-        font-size: ${size >= 6 ? "24pt" : "31pt"};
-        font-weight: 850;
+        border-right: 0.24mm solid #9aa4b2;
+        border-bottom: 0.24mm solid #9aa4b2;
+        font-size: ${size >= 6 ? "23pt" : "30pt"};
+        font-weight: 800;
         line-height: 1;
+        font-variant-numeric: tabular-nums;
       }
       .cell:nth-child(${size}n) {
         border-right: 0;
@@ -155,41 +194,69 @@ function renderPrintPackHtml({ puzzles, size, order, seed, brand, title }) {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        color: #6d7789;
-        font-size: 9.5pt;
-        border-top: 0.3mm solid #e5ebe8;
-        padding-top: 5mm;
+        color: #717b8d;
+        font-size: 8.8pt;
+        border-top: 0.3mm solid #e1e7e5;
+        padding-top: 4.5mm;
+      }
+      .time-record {
+        display: flex;
+        align-items: baseline;
+        gap: 2.5mm;
+      }
+      .time-label {
+        color: #4b5565;
+        font-weight: 700;
+      }
+      .time-field {
+        display: inline-block;
+        width: 14mm;
+        height: 5mm;
+        border-bottom: 0.3mm solid #aeb7c2;
+      }
+      .time-unit {
+        color: #7b8494;
+      }
+      .brand {
+        color: #8993a2;
       }
     </style>
   </head>
   <body>
-    ${puzzles.map((puzzle) => renderPuzzlePage({ puzzle, size, order, seed, brand, title })).join("")}
+    ${puzzles.map((puzzle) => renderPuzzlePage({ puzzle, size, order, brand, title })).join("")}
   </body>
 </html>`;
 }
 
-function renderPuzzlePage({ puzzle, size, order, seed, brand, title }) {
-  const rangeText = order === "desc" ? `${size * size} 找到 1` : `1 找到 ${size * size}`;
+function renderPuzzlePage({ puzzle, size, order, brand, title }) {
+  const rangeText = order === "desc" ? `${size * size} → 1` : `1 → ${size * size}`;
   return `<section class="page">
     <header class="header">
       <div>
-        <p class="eyebrow">${title}</p>
-        <h1>舒尔特方格 ${size}×${size}</h1>
+        <p class="eyebrow">${escapeHtml(title)}</p>
+        <h1>${size} × ${size} 舒尔特方格</h1>
       </div>
       <div class="meta">
-        <div>训练 ${String(puzzle.index).padStart(2, "0")}</div>
-        <div>${order === "desc" ? "倒序" : "正序"} · Seed ${seed}</div>
+        <div class="number-badge">第 ${String(puzzle.index).padStart(2, "0")} 题</div>
+        <div class="mode">${order === "desc" ? "倒序挑战" : "正序挑战"}</div>
       </div>
     </header>
     <main class="content">
-      <p class="instruction">请按顺序从 <span>${rangeText}</span></p>
+      <div class="instruction-block">
+        <p class="instruction-label">训练目标</p>
+        <p class="instruction">按顺序找到 <span>${rangeText}</span></p>
+      </div>
       <div class="grid" aria-label="舒尔特方格">
         ${puzzle.grid.map((number) => `<div class="cell">${number}</div>`).join("")}
       </div>
     </main>
     <footer class="footer">
-      <span>用时：______ 分 ______ 秒</span>
-      <span>计时挑战@${escapeHtml(brand)}</span>
+      <div class="time-record">
+        <span class="time-label">完成用时</span>
+        <span class="time-field"></span><span class="time-unit">分</span>
+        <span class="time-field"></span><span class="time-unit">秒</span>
+      </div>
+      <span class="brand">每日训练 · @${escapeHtml(brand)}</span>
     </footer>
   </section>`;
 }
