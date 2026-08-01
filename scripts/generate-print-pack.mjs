@@ -248,7 +248,8 @@ function renderPrintPackHtml({ puzzles, size, order, brand, title }) {
 }
 
 function renderPuzzlePage({ puzzle, size, order, brand, title }) {
-  const rangeText = order === "desc" ? `${size * size} → 1` : `1 → ${size * size}`;
+  const startNumber = order === "desc" ? size * size : 1;
+  const endNumber = order === "desc" ? 1 : size * size;
   return `<section class="page">
     <div class="watermark" aria-hidden="true">@${escapeHtml(brand)}</div>
     <header class="header">
@@ -262,7 +263,7 @@ function renderPuzzlePage({ puzzle, size, order, brand, title }) {
       </div>
     </header>
     <main class="content">
-      <p class="instruction">按顺序找到 <span>${rangeText}</span></p>
+      <p class="instruction">请按顺序从 <span>${startNumber}</span> 找到 <span>${endNumber}</span></p>
       <div class="grid" aria-label="舒尔特方格">
         ${puzzle.grid.map((number) => `<div class="cell">${number}</div>`).join("")}
       </div>
