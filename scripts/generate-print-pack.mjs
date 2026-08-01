@@ -135,6 +135,7 @@ function renderPrintPackHtml({ puzzles, size, order, brand, title }) {
       .meta {
         display: grid;
         justify-items: end;
+        min-width: 28mm;
         gap: 2mm;
         text-align: right;
         color: #526071;
@@ -144,6 +145,7 @@ function renderPrintPackHtml({ puzzles, size, order, brand, title }) {
       .number-badge {
         display: inline-flex;
         align-items: center;
+        justify-self: end;
         min-height: 9mm;
         padding: 0 4mm;
         border-radius: 999px;
@@ -153,10 +155,11 @@ function renderPrintPackHtml({ puzzles, size, order, brand, title }) {
         font-weight: 800;
       }
       .mode {
-        padding-right: 1mm;
+        width: 100%;
         color: #667085;
         font-size: 11.5pt;
         font-weight: 700;
+        text-align: right;
       }
       .content {
         display: grid;
@@ -164,18 +167,6 @@ function renderPrintPackHtml({ puzzles, size, order, brand, title }) {
         justify-items: center;
         gap: 8mm;
         padding: 6mm 0 4mm;
-      }
-      .instruction-block {
-        display: grid;
-        justify-items: center;
-        gap: 2.5mm;
-      }
-      .instruction-label {
-        margin: 0;
-        color: #7a8495;
-        font-size: 11pt;
-        font-weight: 750;
-        letter-spacing: 0.12em;
       }
       .instruction {
         margin: 0;
@@ -271,10 +262,7 @@ function renderPuzzlePage({ puzzle, size, order, brand, title }) {
       </div>
     </header>
     <main class="content">
-      <div class="instruction-block">
-        <p class="instruction-label">训练目标</p>
-        <p class="instruction">按顺序找到 <span>${rangeText}</span></p>
-      </div>
+      <p class="instruction">按顺序找到 <span>${rangeText}</span></p>
       <div class="grid" aria-label="舒尔特方格">
         ${puzzle.grid.map((number) => `<div class="cell">${number}</div>`).join("")}
       </div>
