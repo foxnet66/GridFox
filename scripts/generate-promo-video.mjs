@@ -157,6 +157,8 @@ const canvas = canvasProfiles[aspect] ?? canvasProfiles["9:16"];
 const WIDTH = canvas.width;
 const HEIGHT = canvas.height;
 const duration = clamp(Number(args.duration ?? 120), 1, 600);
+const midpointEffect = String(args.midpoint ?? "true") !== "false";
+const urgencySeconds = Math.min(duration, clamp(Number(args.urgency ?? 10), 0, 60));
 const themeName = String(args.theme ?? dailyChallenge?.theme ?? "fresh");
 const colorCount = clamp(Number(args.colors ?? dailyChallenge?.colors ?? 4), 1, 8);
 const size = clamp(Number(args.size ?? dailyChallenge?.size ?? 6), 4, 6);
@@ -254,6 +256,9 @@ try {
             order,
             layout,
             cellStyle,
+            duration,
+            midpointEffect,
+            urgencySeconds,
             rotation,
             redBlackRule,
           });
@@ -477,10 +482,32 @@ function renderChallengeHtml({
   order,
   layout,
   cellStyle,
+  duration,
+  midpointEffect,
+  urgencySeconds,
   rotation,
   redBlackRule,
 }) {
   const total = getChallengeTotal(size, layout);
+  const elapsedSeconds = elapsedMs / 1000;
+  const remainingSeconds = Math.max(0, duration - elapsedSeconds);
+  const midpointStart = duration / 2;
+  const showMidpoint =
+    midpointEffect &&
+    elapsedSeconds >= midpointStart &&
+    elapsedSeconds < midpointStart + 2 &&
+    remainingSeconds > urgencySeconds;
+  const showUrgency = urgencySeconds > 0 && remainingSeconds > 0 && remainingSeconds <= urgencySeconds;
+  const isCritical = showUrgency && remainingSeconds <= 5;
+  const heartbeatExpanded = isCritical && Math.ceil(remainingSeconds) % 2 === 1;
+  const timerColor = isCritical ? theme.colors[2] : showUrgency ? theme.accent : theme.primary;
+  const timerScale = heartbeatExpanded ? 1.06 : 1;
+  const timerShadow = isCritical
+    ? `0 0 ${heartbeatExpanded ? 34 : 18}px ${theme.colors[2]}55`
+    : showUrgency
+      ? `0 0 18px ${theme.accent}33`
+      : "none";
+  const milestoneText = showUrgency ? `最后 ${urgencySeconds} 秒` : showMidpoint ? "时间过半" : "";
   const range = layout === "redblack" ? { start: 1, end: 13 } : getTargetRange(total, order);
   const startLabel = getTargetLabel(range.start, layout);
   const endLabel = getTargetLabel(range.end, layout);
@@ -600,7 +627,16 @@ function renderChallengeHtml({
       }
       .timer {
         position: absolute; top: ${metrics.timerTop}px; left: 0; width: 100%;
-        text-align: center; color: ${theme.primary}; font-size: ${metrics.timerFont}px; font-weight: 900;
+        text-align: center; color: ${timerColor}; font-size: ${metrics.timerFont}px; font-weight: 900;
+        transform: scale(${timerScale}); transform-origin: center center;
+        text-shadow: ${timerShadow};
+      }
+      .milestone {
+        position: absolute; top: ${Math.round(metrics.timerTop + metrics.timerFont * 1.15)}px; left: 50%;
+        transform: translateX(-50%); min-width: 180px; padding: 7px 20px 8px;
+        border-radius: 999px; text-align: center; color: ${isCritical ? theme.colors[2] : theme.primary};
+        background: ${isCritical ? `${theme.colors[2]}14` : `${theme.primary}12`};
+        font-size: ${aspect === "3:4" ? 25 : 29}px; font-weight: 900;
       }
       .grid {
         position: absolute; left: ${metrics.boardLeft}px; top: ${metrics.boardTop}px;
@@ -856,6 +892,7 @@ function renderChallengeHtml({
           : `从 ${startLabel} 到 ${endLabel}，看看你需要多久`
       }</div>
       <div class="timer">${formatTime(elapsedMs)}</div>
+      ${milestoneText ? `<div class="milestone">${milestoneText}</div>` : ""}
       ${board}
       <div class="credit">计时挑战@新加坡大小AI玩</div>
     </main>
