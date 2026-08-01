@@ -85,6 +85,30 @@ function renderPrintPackHtml({ puzzles, size, order, brand, title }) {
         page-break-after: always;
         display: grid;
         grid-template-rows: auto 1fr auto;
+        position: relative;
+        isolation: isolate;
+        overflow: hidden;
+      }
+      .watermark {
+        position: absolute;
+        top: 56%;
+        left: 50%;
+        z-index: 0;
+        color: #0f766e;
+        font-size: 30pt;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        opacity: 0.04;
+        white-space: nowrap;
+        transform: translate(-50%, -50%) rotate(-24deg);
+        pointer-events: none;
+        user-select: none;
+      }
+      .header,
+      .content,
+      .footer {
+        position: relative;
+        z-index: 1;
       }
       .header {
         display: flex;
@@ -97,9 +121,9 @@ function renderPrintPackHtml({ puzzles, size, order, brand, title }) {
       .eyebrow {
         margin: 0 0 2.2mm;
         color: #0f766e;
-        font-size: 10.5pt;
-        font-weight: 750;
-        letter-spacing: 0.08em;
+        font-size: 13pt;
+        font-weight: 800;
+        letter-spacing: 0.05em;
       }
       h1 {
         margin: 0;
@@ -114,24 +138,25 @@ function renderPrintPackHtml({ puzzles, size, order, brand, title }) {
         gap: 2mm;
         text-align: right;
         color: #526071;
-        font-size: 9.5pt;
+        font-size: 11pt;
         white-space: nowrap;
       }
       .number-badge {
         display: inline-flex;
         align-items: center;
-        min-height: 8mm;
-        padding: 0 3.5mm;
+        min-height: 9mm;
+        padding: 0 4mm;
         border-radius: 999px;
         color: #0f766e;
         background: #edf7f4;
-        font-size: 10pt;
-        font-weight: 750;
+        font-size: 12pt;
+        font-weight: 800;
       }
       .mode {
         padding-right: 1mm;
         color: #667085;
-        font-weight: 600;
+        font-size: 11.5pt;
+        font-weight: 700;
       }
       .content {
         display: grid;
@@ -148,20 +173,20 @@ function renderPrintPackHtml({ puzzles, size, order, brand, title }) {
       .instruction-label {
         margin: 0;
         color: #7a8495;
-        font-size: 8.5pt;
-        font-weight: 700;
-        letter-spacing: 0.16em;
+        font-size: 11pt;
+        font-weight: 750;
+        letter-spacing: 0.12em;
       }
       .instruction {
         margin: 0;
         color: #141b2a;
-        font-size: 18pt;
-        font-weight: 750;
+        font-size: 22pt;
+        font-weight: 800;
         letter-spacing: -0.02em;
       }
       .instruction span {
         color: #f06443;
-        font-size: 21pt;
+        font-size: 25pt;
         font-weight: 850;
       }
       .grid {
@@ -195,7 +220,7 @@ function renderPrintPackHtml({ puzzles, size, order, brand, title }) {
         justify-content: space-between;
         align-items: center;
         color: #717b8d;
-        font-size: 8.8pt;
+        font-size: 10.5pt;
         border-top: 0.3mm solid #e1e7e5;
         padding-top: 4.5mm;
       }
@@ -206,7 +231,8 @@ function renderPrintPackHtml({ puzzles, size, order, brand, title }) {
       }
       .time-label {
         color: #4b5565;
-        font-weight: 700;
+        font-size: 11pt;
+        font-weight: 750;
       }
       .time-field {
         display: inline-block;
@@ -216,9 +242,11 @@ function renderPrintPackHtml({ puzzles, size, order, brand, title }) {
       }
       .time-unit {
         color: #7b8494;
+        font-size: 10.5pt;
       }
       .brand {
         color: #8993a2;
+        font-size: 9.5pt;
       }
     </style>
   </head>
@@ -231,6 +259,7 @@ function renderPrintPackHtml({ puzzles, size, order, brand, title }) {
 function renderPuzzlePage({ puzzle, size, order, brand, title }) {
   const rangeText = order === "desc" ? `${size * size} → 1` : `1 → ${size * size}`;
   return `<section class="page">
+    <div class="watermark" aria-hidden="true">@${escapeHtml(brand)}</div>
     <header class="header">
       <div>
         <p class="eyebrow">${escapeHtml(title)}</p>
