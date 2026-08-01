@@ -15,7 +15,6 @@ const count = clamp(Number(args.count ?? 30), 1, 300);
 const size = clamp(Number(args.size ?? 6), 4, 6);
 const order = String(args.order ?? "asc") === "desc" ? "desc" : "asc";
 const seed = Number.isFinite(Number(args.seed)) ? Number(args.seed) : Date.now();
-const includeAnswers = args.answers === true || args.answers === "true";
 const brand = String(args.brand ?? "新加坡大小AI玩");
 const title = String(args.title ?? "每日专注力训练");
 const layout = String(args.layout ?? "grid");
@@ -36,7 +35,7 @@ try {
   chrome = await launchChrome(CHROME_PROFILE);
   const client = await createPageClient(chrome.port);
   await client.send("Page.enable");
-  await setHtml(client, renderPrintPackHtml({ puzzles, size, order, seed, includeAnswers, brand, title }));
+  await setHtml(client, renderPrintPackHtml({ puzzles, size, order, seed, brand, title }));
   const pdf = await client.send("Page.printToPDF", {
     printBackground: true,
     preferCSSPageSize: true,
@@ -65,8 +64,7 @@ function createPuzzles({ count, size, order, seed }) {
   }));
 }
 
-function renderPrintPackHtml({ puzzles, size, order, seed, includeAnswers, brand, title }) {
-  const answerPages = includeAnswers ? renderAnswerPages({ puzzles, size }) : "";
+function renderPrintPackHtml({ puzzles, size, order, seed, brand, title }) {
   return `<!doctype html>
 <html lang="zh-CN">
   <head>
@@ -162,34 +160,10 @@ function renderPrintPackHtml({ puzzles, size, order, seed, includeAnswers, brand
         border-top: 0.3mm solid #e5ebe8;
         padding-top: 5mm;
       }
-      .answer-grid {
-        display: grid;
-        grid-template-columns: repeat(2, 1fr);
-        gap: 7mm 10mm;
-        align-content: start;
-        padding-top: 10mm;
-      }
-      .answer-card {
-        border: 0.3mm solid #d7dedb;
-        border-radius: 2mm;
-        padding: 4mm;
-      }
-      .answer-title {
-        margin: 0 0 2mm;
-        font-size: 10pt;
-        font-weight: 850;
-      }
-      .answer-row {
-        margin: 0;
-        color: #4b5565;
-        font-size: 7.5pt;
-        line-height: 1.5;
-      }
     </style>
   </head>
   <body>
     ${puzzles.map((puzzle) => renderPuzzlePage({ puzzle, size, order, seed, brand, title })).join("")}
-    ${answerPages}
   </body>
 </html>`;
 }
@@ -218,41 +192,6 @@ function renderPuzzlePage({ puzzle, size, order, seed, brand, title }) {
       <span>计时挑战@${escapeHtml(brand)}</span>
     </footer>
   </section>`;
-}
-
-function renderAnswerPages({ puzzles, size }) {
-  const chunks = [];
-  for (let index = 0; index < puzzles.length; index += 8) {
-    chunks.push(puzzles.slice(index, index + 8));
-  }
-  return chunks
-    .map(
-      (chunk, pageIndex) => `<section class="page">
-        <header class="header">
-          <div>
-            <p class="eyebrow">答案页</p>
-            <h1>训练答案 ${pageIndex + 1}</h1>
-          </div>
-          <div class="meta">每行对应一行方格数字</div>
-        </header>
-        <main class="answer-grid">
-          ${chunk.map((puzzle) => renderAnswerCard({ puzzle, size })).join("")}
-        </main>
-        <footer class="footer">
-          <span>GridFox Print Pack</span>
-          <span>仅供训练记录参考</span>
-        </footer>
-      </section>`,
-    )
-    .join("");
-}
-
-function renderAnswerCard({ puzzle, size }) {
-  const rows = Array.from({ length: size }, (_, row) => puzzle.grid.slice(row * size, row * size + size));
-  return `<article class="answer-card">
-    <p class="answer-title">训练 ${String(puzzle.index).padStart(2, "0")}</p>
-    ${rows.map((row) => `<p class="answer-row">${row.map((number) => String(number).padStart(2, "0")).join(" ")}</p>`).join("")}
-  </article>`;
 }
 
 async function setHtml(client, html) {
