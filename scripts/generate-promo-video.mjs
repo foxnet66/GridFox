@@ -501,12 +501,12 @@ function renderChallengeHtml({
   const isCritical = showUrgency && remainingSeconds <= 5;
   const heartbeatExpanded = isCritical && Math.ceil(remainingSeconds) % 2 === 1;
   const timerColor = isCritical ? theme.colors[2] : showUrgency ? theme.accent : theme.primary;
-  const timerScale = heartbeatExpanded ? 1.06 : 1;
-  const timerShadow = isCritical
-    ? `0 0 ${heartbeatExpanded ? 34 : 18}px ${theme.colors[2]}55`
-    : showUrgency
-      ? `0 0 18px ${theme.accent}33`
-      : "none";
+  const timerShadow = isCritical ? `0 0 18px ${theme.colors[2]}44` : showUrgency ? `0 0 12px ${theme.accent}2b` : "none";
+  const pulseColor = isCritical ? theme.colors[2] : showUrgency ? theme.accent : null;
+  const pulseAlpha = isCritical ? (heartbeatExpanded ? "24" : "0d") : "0b";
+  const stageBackground = pulseColor
+    ? `radial-gradient(circle at 50% 24%, ${pulseColor}${pulseAlpha} 0%, ${pulseColor}00 48%), radial-gradient(circle at 50% 82%, ${pulseColor}${pulseAlpha} 0%, ${pulseColor}00 56%), ${theme.paper}`
+    : theme.paper;
   const milestoneText = showUrgency ? `最后 ${urgencySeconds} 秒` : showMidpoint ? "时间过半" : "";
   const range = layout === "redblack" ? { start: 1, end: 13 } : getTargetRange(total, order);
   const startLabel = getTargetLabel(range.start, layout);
@@ -609,7 +609,10 @@ function renderChallengeHtml({
         background: ${theme.paper};
         font-family: Inter, -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", Arial, sans-serif;
       }
-      .stage { position: relative; width: ${WIDTH}px; height: ${HEIGHT}px; color: ${theme.ink}; }
+      .stage {
+        position: relative; width: ${WIDTH}px; height: ${HEIGHT}px; color: ${theme.ink};
+        background: ${stageBackground};
+      }
       .brand {
         position: absolute; top: ${metrics.brandTop}px; left: 0; width: 100%;
         text-align: center; color: ${theme.primary}; font-size: ${metrics.brandFont}px; font-weight: 900;
@@ -628,7 +631,6 @@ function renderChallengeHtml({
       .timer {
         position: absolute; top: ${metrics.timerTop}px; left: 0; width: 100%;
         text-align: center; color: ${timerColor}; font-size: ${metrics.timerFont}px; font-weight: 900;
-        transform: scale(${timerScale}); transform-origin: center center;
         text-shadow: ${timerShadow};
       }
       .milestone {
