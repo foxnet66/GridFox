@@ -148,6 +148,17 @@ const themes = {
     grid: "#e2d8cc",
     colors: ["#1d1a2e", "#1668d9", "#e2473f", "#11885d", "#8053cf", "#c47a00", "#00848f", "#cf3d7d"],
   },
+  forest: {
+    ink: "#f7f2e8",
+    paper: "#031f18",
+    checker: "#dfe8df",
+    checkerDark: "#183b31",
+    primary: "#f7f2e8",
+    accent: "#f0645b",
+    muted: "#9cb4ac",
+    grid: "#7f9d96",
+    colors: ["#0b2a22", "#215f87", "#c84c45", "#19745c", "#6e4b93", "#98711b", "#16737a", "#9a3d62"],
+  },
 };
 
 const args = parseArgs(process.argv.slice(2));
@@ -168,7 +179,9 @@ const layoutArg = String(args.layout ?? dailyChallenge?.layout ?? "grid");
 const requestedCellStyle = String(args["cell-style"] ?? "plain");
 const cellStyle = ["checker", "checker-dark"].includes(requestedCellStyle) ? requestedCellStyle : "plain";
 const layout =
-  layoutArg === "missing"
+  layoutArg === "voronoi"
+    ? "voronoi"
+    : layoutArg === "missing"
     ? "missing"
     : layoutArg === "alphabet"
     ? "alphabet"
@@ -265,6 +278,7 @@ try {
             urgencySeconds,
             rotation,
             redBlackRule,
+            seed,
           });
     await setHtml(client, html);
     const screenshot = await client.send("Page.captureScreenshot", { format: "png", fromSurface: true });
@@ -453,7 +467,7 @@ function renderIntroHtml({ countdown, theme, size, layout, cellStyle, redBlackRu
       .ready {
         position: absolute; top: ${metrics.readyTop}px; left: 50%; transform: translateX(-50%);
         min-width: 300px; padding: 18px 36px 20px;
-        text-align: center; color: white; background: ${theme.ink};
+        text-align: center; color: ${theme.paper}; background: ${theme.ink};
         border-radius: 999px; font-size: ${metrics.readyFont}px; font-weight: 950;
         box-shadow: 0 20px 45px rgba(24, 33, 47, 0.12);
       }
@@ -492,6 +506,7 @@ function renderChallengeHtml({
   urgencySeconds,
   rotation,
   redBlackRule,
+  seed,
 }) {
   const total = getChallengeTotal(size, layout);
   const elapsedSeconds = elapsedMs / 1000;
@@ -579,6 +594,8 @@ function renderChallengeHtml({
         })
       : layout === "hex"
         ? renderHexBoard({ grid, theme, colorCount, startNumber: range.start })
+        : layout === "voronoi"
+          ? renderVoronoiBoard({ grid, theme, colorCount, startNumber: range.start, seed })
         : layout === "mosaic"
           ? renderMosaicBoard({ grid, theme, colorCount, startNumber: range.start })
         : layout === "float"
@@ -677,6 +694,11 @@ function renderChallengeHtml({
         width: ${metrics.boardSize}px; height: ${metrics.tallBoardHeight}px;
         filter: drop-shadow(0 14px 34px rgba(24, 33, 47, 0.1));
       }
+      .voronoi {
+        position: absolute; left: ${metrics.boardLeft}px; top: ${metrics.boardTop}px;
+        width: ${metrics.boardSize}px; height: ${metrics.boardSize}px;
+        filter: drop-shadow(0 18px 36px rgba(0, 0, 0, 0.24));
+      }
       .float {
         position: absolute; left: ${metrics.boardLeft}px; top: ${metrics.boardTop + 38}px;
         width: ${metrics.boardSize}px; height: ${Math.round(metrics.boardSize * 0.86)}px;
@@ -715,6 +737,7 @@ function renderChallengeHtml({
       .radial svg { display: block; width: 100%; height: 100%; overflow: visible; }
       .hex svg { display: block; width: 100%; height: 100%; overflow: visible; }
       .mosaic svg { display: block; width: 100%; height: 100%; overflow: visible; }
+      .voronoi svg { display: block; width: 100%; height: 100%; overflow: visible; }
       .float svg { display: block; width: 100%; height: 100%; overflow: visible; }
       .spiral svg { display: block; width: 100%; height: 100%; overflow: visible; }
       .maze svg { display: block; width: 100%; height: 100%; overflow: visible; }
@@ -737,6 +760,17 @@ function renderChallengeHtml({
       .mosaic text {
         dominant-baseline: middle; text-anchor: middle;
         font-size: 7.1px; font-weight: 950;
+      }
+      .voronoi polygon {
+        fill: #f7f3e9; stroke: ${theme.grid}; stroke-width: 0.52;
+        stroke-linejoin: round;
+      }
+      .voronoi .outline {
+        fill: none; stroke: ${theme.grid}; stroke-width: 0.75;
+      }
+      .voronoi text {
+        dominant-baseline: middle; text-anchor: middle;
+        font-size: 5.25px; font-weight: 950;
       }
       .float .panel { fill: white; stroke: ${theme.grid}; stroke-width: 0.35; }
       .float .grid-line { stroke: ${theme.grid}; stroke-opacity: 0.38; stroke-width: 0.18; }
@@ -855,6 +889,8 @@ function renderChallengeHtml({
             : "红黑交替舒尔特挑战"
           : layout === "missing"
             ? "缺失数字舒尔特挑战"
+          : layout === "voronoi"
+            ? "不规则舒尔特挑战"
           : layout === "grid" && cellStyle === "checker-dark"
             ? "高难棋盘舒尔特挑战"
           : layout === "grid" && cellStyle === "checker"
@@ -998,6 +1034,30 @@ function renderMosaicBoard({ grid, theme, colorCount, startNumber }) {
   return `<div class="mosaic">
     <svg viewBox="0 0 100 104" aria-label="变形舒尔特数字盘">
       ${cells}
+    </svg>
+  </div>`;
+}
+
+function renderVoronoiBoard({ grid, theme, colorCount, startNumber, seed }) {
+  const geometry = getVoronoiGeometry(grid.length, seed);
+  const cells = grid
+    .map((number, index) => {
+      const cellGeometry = geometry[index];
+      const color = getNumberColor(theme, number, colorCount, startNumber);
+      return `<g>
+        <polygon points="${cellGeometry.points}"></polygon>
+        <text x="${cellGeometry.labelX.toFixed(3)}" y="${(cellGeometry.labelY + 0.3).toFixed(3)}" fill="${color}">${number}</text>
+      </g>`;
+    })
+    .join("");
+
+  return `<div class="voronoi">
+    <svg viewBox="0 0 100 100" aria-label="不规则舒尔特数字盘">
+      <defs>
+        <clipPath id="voronoi-circle"><circle cx="50" cy="50" r="47"></circle></clipPath>
+      </defs>
+      <g clip-path="url(#voronoi-circle)">${cells}</g>
+      <circle class="outline" cx="50" cy="50" r="47"></circle>
     </svg>
   </div>`;
 }
@@ -1342,6 +1402,7 @@ function getChallengeTotal(size, layout) {
   if (layout === "maze") return 36;
   if (layout === "spiral") return 36;
   if (layout === "float") return 36;
+  if (layout === "voronoi") return 36;
   return layout === "hex" || layout === "mosaic" ? 30 : size * size;
 }
 
@@ -1352,6 +1413,7 @@ function getProjectLabel({ layout, size, total }) {
   if (layout === "radial") return `圆盘舒尔特 ${total}`;
   if (layout === "hex") return "蜂巢舒尔特 30";
   if (layout === "mosaic") return "变形舒尔特 30";
+  if (layout === "voronoi") return "不规则舒尔特 36";
   if (layout === "float") return "浮球舒尔特 36";
   if (layout === "spiral") return "螺旋舒尔特 36";
   if (layout === "maze") return "迷宫舒尔特 36";
@@ -1374,6 +1436,7 @@ function getProjectLabelHtml({ layout, size, total, cellStyle, redBlackRule }) {
   if (layout === "radial") return `圆盘舒尔特 <span>${total}</span>`;
   if (layout === "hex") return "蜂巢舒尔特 <span>30</span>";
   if (layout === "mosaic") return "变形舒尔特 <span>30</span>";
+  if (layout === "voronoi") return "不规则舒尔特 <span>1 → 36</span>";
   if (layout === "float") return "浮球舒尔特 <span>36</span>";
   if (layout === "spiral") return "螺旋舒尔特 <span>36</span>";
   if (layout === "maze") return "迷宫舒尔特 <span>36</span>";
@@ -1590,6 +1653,95 @@ function getMosaicGeometry() {
       labelY,
     };
   });
+}
+
+function getVoronoiGeometry(total, seed) {
+  const sites = getVoronoiSites(total, seed);
+  const boundary = [
+    { x: 0, y: 0 },
+    { x: 100, y: 0 },
+    { x: 100, y: 100 },
+    { x: 0, y: 100 },
+  ];
+
+  return sites.map((site, siteIndex) => {
+    const polygon = sites.reduce(
+      (currentPolygon, otherSite, otherIndex) =>
+        otherIndex === siteIndex || currentPolygon.length === 0
+          ? currentPolygon
+          : clipPolygonToVoronoiHalfPlane(currentPolygon, site, otherSite),
+      boundary,
+    );
+
+    return {
+      points: polygon.map((point) => `${point.x.toFixed(3)},${point.y.toFixed(3)}`).join(" "),
+      labelX: site.x,
+      labelY: site.y,
+    };
+  });
+}
+
+function getVoronoiSites(total, seed) {
+  const random = mulberry32(Math.trunc(seed) ^ 0x564f524f);
+  const ringCounts = total === 36 ? [1, 7, 11, 17] : getRadialRingCounts(total);
+  const radii = ringCounts.length === 4 ? [0, 14, 27, 40] : ringCounts.map((_, index) => 8 + index * 16);
+
+  return ringCounts
+    .flatMap((count, ringIndex) => {
+      if (ringIndex === 0 && count === 1) {
+        return [{ x: 50 + (random() - 0.5) * 3, y: 50 + (random() - 0.5) * 3 }];
+      }
+
+      const angleStep = (Math.PI * 2) / count;
+      const ringOffset = random() * angleStep;
+      const radiusJitter = ringIndex === ringCounts.length - 1 ? 2.1 : 3.2;
+      return Array.from({ length: count }, (_, index) => {
+        const angleJitter = (random() - 0.5) * angleStep * 0.42;
+        const angle = ringOffset + index * angleStep + angleJitter;
+        const radius = radii[ringIndex] + (random() - 0.5) * radiusJitter * 2;
+        return {
+          x: 50 + Math.cos(angle) * radius,
+          y: 50 + Math.sin(angle) * radius,
+        };
+      });
+    })
+    .slice(0, total);
+}
+
+function clipPolygonToVoronoiHalfPlane(polygon, site, otherSite) {
+  const normalX = otherSite.x - site.x;
+  const normalY = otherSite.y - site.y;
+  const threshold =
+    (otherSite.x * otherSite.x + otherSite.y * otherSite.y - site.x * site.x - site.y * site.y) / 2;
+  const signedDistance = (point) => normalX * point.x + normalY * point.y - threshold;
+  const clipped = [];
+
+  for (let index = 0; index < polygon.length; index += 1) {
+    const start = polygon[index];
+    const end = polygon[(index + 1) % polygon.length];
+    const startDistance = signedDistance(start);
+    const endDistance = signedDistance(end);
+    const startInside = startDistance <= 0.000001;
+    const endInside = endDistance <= 0.000001;
+
+    if (startInside && endInside) {
+      clipped.push(end);
+      continue;
+    }
+
+    if (startInside !== endInside) {
+      const denominator = startDistance - endDistance;
+      const ratio = Math.abs(denominator) < 0.000001 ? 0 : startDistance / denominator;
+      clipped.push({
+        x: start.x + (end.x - start.x) * ratio,
+        y: start.y + (end.y - start.y) * ratio,
+      });
+    }
+
+    if (!startInside && endInside) clipped.push(end);
+  }
+
+  return clipped;
 }
 
 function getFloatGeometry(elapsedMs = 0) {
