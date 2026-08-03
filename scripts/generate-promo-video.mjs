@@ -1113,7 +1113,7 @@ function renderFloatBoard({ grid, theme, colorCount, startNumber, elapsedMs }) {
 }
 
 function renderSpiralBoard({ grid, theme, colorCount, startNumber, rotationDeg }) {
-  const geometry = rotateSpiralGeometry(getSpiralGeometry(), rotationDeg);
+  const geometry = rotateSpiralGeometry(getSpiralGeometry(grid.length), rotationDeg);
   const guide = describeSpiralGuide(geometry);
   const cells = grid
     .map((number, index) => {
@@ -1269,8 +1269,9 @@ function renderStarBoard({ grid, theme, colorCount, startNumber }) {
 function getRotationDegrees(rotation, elapsedMs, layout = "radial") {
   const slowSpeed = layout === "spiral" ? 4 : 6;
   const fastSpeed = layout === "spiral" ? 7 : 10;
-  if (rotation === "slow") return (elapsedMs / 1000) * slowSpeed;
-  if (rotation === "fast") return (elapsedMs / 1000) * fastSpeed;
+  const direction = layout === "spiral" ? -1 : 1;
+  if (rotation === "slow") return (elapsedMs / 1000) * slowSpeed * direction;
+  if (rotation === "fast") return (elapsedMs / 1000) * fastSpeed * direction;
   return 0;
 }
 
@@ -1410,7 +1411,7 @@ function getChallengeTotal(size, layout) {
   if (layout === "dual") return 36;
   if (layout === "wave") return 36;
   if (layout === "maze") return 36;
-  if (layout === "spiral") return 36;
+  if (layout === "spiral") return size * size;
   if (layout === "float") return 36;
   if (layout === "voronoi") return 36;
   return layout === "hex" || layout === "mosaic" ? 30 : size * size;
@@ -1425,7 +1426,7 @@ function getProjectLabel({ layout, size, total }) {
   if (layout === "mosaic") return "变形舒尔特 30";
   if (layout === "voronoi") return "变形舒尔特 36";
   if (layout === "float") return "浮球舒尔特 36";
-  if (layout === "spiral") return "螺旋舒尔特 36";
+  if (layout === "spiral") return `螺旋舒尔特 ${total}`;
   if (layout === "maze") return "迷宫舒尔特 36";
   if (layout === "wave") return "波浪舒尔特 36";
   if (layout === "dual") return "双区舒尔特 36";
@@ -1449,7 +1450,7 @@ function getProjectLabelHtml({ layout, size, total, cellStyle, redBlackRule, rot
   if (layout === "voronoi") return "变形舒尔特 <span>1 → 36</span>";
   if (layout === "float") return "浮球舒尔特 <span>36</span>";
   if (layout === "spiral") {
-    return `${rotation === "none" ? "螺旋舒尔特" : "旋转螺旋舒尔特"} <span>36</span>`;
+    return `${rotation === "none" ? "螺旋舒尔特" : "旋转螺旋舒尔特"} <span>${total}</span>`;
   }
   if (layout === "maze") return "迷宫舒尔特 <span>36</span>";
   if (layout === "wave") return "波浪舒尔特 <span>36</span>";
@@ -1812,16 +1813,20 @@ function getFloatGeometry(elapsedMs = 0) {
   });
 }
 
-function getSpiralGeometry() {
-  const total = 36;
+function getSpiralGeometry(total = 36) {
+  const innerRadius = 8;
+  const outerRadius = 45.8;
+  const radiusStep = total > 1 ? (outerRadius - innerRadius) / (total - 1) : 0;
+  const cellRadius = total <= 25 ? 3.55 : 3.95;
+  const angleStep = total <= 25 ? 0.9 : 0.82;
   return Array.from({ length: total }, (_, index) => {
-    const angle = -Math.PI / 2 + index * 0.82;
-    const radius = 8 + index * 1.08;
+    const angle = -Math.PI / 2 + index * angleStep;
+    const radius = innerRadius + index * radiusStep;
     const wobble = Math.sin(index * 1.7) * 0.55;
     return {
       x: 50 + Math.cos(angle) * (radius + wobble),
       y: 50 + Math.sin(angle) * (radius + wobble),
-      radius: 3.95,
+      radius: cellRadius,
     };
   });
 }
