@@ -483,9 +483,11 @@ function renderIntroHtml({ countdown, theme, size, layout, cellStyle, redBlackRu
       .ready {
         position: absolute; top: ${metrics.readyTop}px; left: 50%; transform: translateX(-50%);
         min-width: 300px; padding: 18px 36px 20px;
-        text-align: center; color: white; background: ${theme.ink};
+        text-align: center;
+        color: ${theme.glow ? theme.paper : "white"};
+        background: ${theme.glow ? `linear-gradient(135deg, ${theme.primary}, ${theme.accent})` : theme.ink};
         border-radius: 999px; font-size: ${metrics.readyFont}px; font-weight: 950;
-        box-shadow: 0 20px 45px rgba(24, 33, 47, 0.12);
+        box-shadow: ${theme.glow ? `0 0 18px ${theme.primary}66, 0 0 36px ${theme.accent}33` : "0 20px 45px rgba(24, 33, 47, 0.12)"};
       }
       .credit {
         position: absolute; top: ${metrics.creditTop}px; left: 0; width: 100%;
