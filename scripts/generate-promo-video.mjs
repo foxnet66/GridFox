@@ -148,17 +148,6 @@ const themes = {
     grid: "#e2d8cc",
     colors: ["#1d1a2e", "#1668d9", "#e2473f", "#11885d", "#8053cf", "#c47a00", "#00848f", "#cf3d7d"],
   },
-  forest: {
-    ink: "#f7f2e8",
-    paper: "#031f18",
-    checker: "#dfe8df",
-    checkerDark: "#183b31",
-    primary: "#f7f2e8",
-    accent: "#f0645b",
-    muted: "#9cb4ac",
-    grid: "#7f9d96",
-    colors: ["#0b2a22", "#215f87", "#c84c45", "#19745c", "#6e4b93", "#98711b", "#16737a", "#9a3d62"],
-  },
 };
 
 const args = parseArgs(process.argv.slice(2));
@@ -467,7 +456,7 @@ function renderIntroHtml({ countdown, theme, size, layout, cellStyle, redBlackRu
       .ready {
         position: absolute; top: ${metrics.readyTop}px; left: 50%; transform: translateX(-50%);
         min-width: 300px; padding: 18px 36px 20px;
-        text-align: center; color: ${theme.paper}; background: ${theme.ink};
+        text-align: center; color: white; background: ${theme.ink};
         border-radius: 999px; font-size: ${metrics.readyFont}px; font-weight: 950;
         box-shadow: 0 20px 45px rgba(24, 33, 47, 0.12);
       }
@@ -697,7 +686,7 @@ function renderChallengeHtml({
       .voronoi {
         position: absolute; left: ${metrics.boardLeft}px; top: ${metrics.boardTop}px;
         width: ${metrics.boardSize}px; height: ${metrics.boardSize}px;
-        filter: drop-shadow(0 18px 36px rgba(0, 0, 0, 0.24));
+        filter: drop-shadow(0 14px 34px rgba(24, 33, 47, 0.1));
       }
       .float {
         position: absolute; left: ${metrics.boardLeft}px; top: ${metrics.boardTop + 38}px;
@@ -762,7 +751,7 @@ function renderChallengeHtml({
         font-size: 7.1px; font-weight: 950;
       }
       .voronoi polygon {
-        fill: #f7f3e9; stroke: ${theme.grid}; stroke-width: 0.52;
+        fill: white; stroke: ${theme.grid}; stroke-width: 0.52;
         stroke-linejoin: round;
       }
       .voronoi .outline {
@@ -890,7 +879,7 @@ function renderChallengeHtml({
           : layout === "missing"
             ? "缺失数字舒尔特挑战"
           : layout === "voronoi"
-            ? "不规则舒尔特挑战"
+            ? "变形舒尔特挑战"
           : layout === "grid" && cellStyle === "checker-dark"
             ? "高难棋盘舒尔特挑战"
           : layout === "grid" && cellStyle === "checker"
@@ -1052,7 +1041,7 @@ function renderVoronoiBoard({ grid, theme, colorCount, startNumber, seed }) {
     .join("");
 
   return `<div class="voronoi">
-    <svg viewBox="0 0 100 100" aria-label="不规则舒尔特数字盘">
+    <svg viewBox="0 0 100 100" aria-label="变形舒尔特数字盘">
       <defs>
         <clipPath id="voronoi-circle"><circle cx="50" cy="50" r="47"></circle></clipPath>
       </defs>
@@ -1413,7 +1402,7 @@ function getProjectLabel({ layout, size, total }) {
   if (layout === "radial") return `圆盘舒尔特 ${total}`;
   if (layout === "hex") return "蜂巢舒尔特 30";
   if (layout === "mosaic") return "变形舒尔特 30";
-  if (layout === "voronoi") return "不规则舒尔特 36";
+  if (layout === "voronoi") return "变形舒尔特 36";
   if (layout === "float") return "浮球舒尔特 36";
   if (layout === "spiral") return "螺旋舒尔特 36";
   if (layout === "maze") return "迷宫舒尔特 36";
@@ -1436,7 +1425,7 @@ function getProjectLabelHtml({ layout, size, total, cellStyle, redBlackRule }) {
   if (layout === "radial") return `圆盘舒尔特 <span>${total}</span>`;
   if (layout === "hex") return "蜂巢舒尔特 <span>30</span>";
   if (layout === "mosaic") return "变形舒尔特 <span>30</span>";
-  if (layout === "voronoi") return "不规则舒尔特 <span>1 → 36</span>";
+  if (layout === "voronoi") return "变形舒尔特 <span>1 → 36</span>";
   if (layout === "float") return "浮球舒尔特 <span>36</span>";
   if (layout === "spiral") return "螺旋舒尔特 <span>36</span>";
   if (layout === "maze") return "迷宫舒尔特 <span>36</span>";
