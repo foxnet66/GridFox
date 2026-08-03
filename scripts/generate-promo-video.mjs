@@ -199,7 +199,10 @@ const layout =
         : layoutArg === "radial"
           ? "radial"
           : "grid";
-const rotation = layout === "radial" && ["slow", "fast"].includes(String(args.rotation)) ? String(args.rotation) : "none";
+const rotation =
+  ["radial", "spiral"].includes(layout) && ["slow", "fast"].includes(String(args.rotation))
+    ? String(args.rotation)
+    : "none";
 const redBlackRule =
   layout === "redblack" && String(args["redblack-rule"] ?? "basic") === "advanced" ? "advanced" : "basic";
 const captureFps =
@@ -251,7 +254,15 @@ try {
     const framePath = resolve(framesDir, `frame-${String(frame).padStart(4, "0")}.png`);
     const html =
       second < INTRO_SECONDS
-        ? renderIntroHtml({ countdown: Math.ceil(INTRO_SECONDS - second), theme, size, layout, cellStyle, redBlackRule })
+        ? renderIntroHtml({
+            countdown: Math.ceil(INTRO_SECONDS - second),
+            theme,
+            size,
+            layout,
+            cellStyle,
+            redBlackRule,
+            rotation,
+          })
         : renderChallengeHtml({
             elapsedMs: Math.min(challengeSecond, duration) * 1000,
             timeUp,
@@ -402,7 +413,7 @@ function writeAscii(buffer, offset, value) {
   buffer.write(value, offset, value.length, "ascii");
 }
 
-function renderIntroHtml({ countdown, theme, size, layout, cellStyle, redBlackRule }) {
+function renderIntroHtml({ countdown, theme, size, layout, cellStyle, redBlackRule, rotation }) {
   const total = getChallengeTotal(size, layout);
   const gridSize = ["redblack", "alphabet"].includes(layout) ? 5 : size;
   const metrics = canvas.intro;
@@ -470,7 +481,7 @@ function renderIntroHtml({ countdown, theme, size, layout, cellStyle, redBlackRu
     <main class="stage">
       <div class="ghost-grid"></div>
       <div class="title">每日专注力训练</div>
-      <div class="project">${getProjectLabelHtml({ layout, size, total, cellStyle, redBlackRule })}</div>
+      <div class="project">${getProjectLabelHtml({ layout, size, total, cellStyle, redBlackRule, rotation })}</div>
       <div class="ring"></div>
       <div class="count">${countdown}</div>
       <div class="ready">准备开始</div>
@@ -590,7 +601,13 @@ function renderChallengeHtml({
         : layout === "float"
           ? renderFloatBoard({ grid, theme, colorCount, startNumber: range.start, elapsedMs })
           : layout === "spiral"
-            ? renderSpiralBoard({ grid, theme, colorCount, startNumber: range.start })
+            ? renderSpiralBoard({
+                grid,
+                theme,
+                colorCount,
+                startNumber: range.start,
+                rotationDeg: getRotationDegrees(rotation, elapsedMs, "spiral"),
+              })
             : layout === "maze"
               ? renderMazeBoard({ grid, theme, colorCount, startNumber: range.start })
               : layout === "wave"
@@ -897,7 +914,9 @@ function renderChallengeHtml({
                 : layout === "float"
                   ? "浮球舒尔特挑战"
                   : layout === "spiral"
-                    ? "螺旋舒尔特挑战"
+                    ? rotation === "none"
+                      ? "螺旋舒尔特挑战"
+                      : "旋转螺旋舒尔特挑战"
                     : layout === "maze"
                       ? "迷宫舒尔特挑战"
                       : layout === "wave"
@@ -1093,9 +1112,9 @@ function renderFloatBoard({ grid, theme, colorCount, startNumber, elapsedMs }) {
   </div>`;
 }
 
-function renderSpiralBoard({ grid, theme, colorCount, startNumber }) {
-  const geometry = getSpiralGeometry();
-  const guide = describeSpiralGuide();
+function renderSpiralBoard({ grid, theme, colorCount, startNumber, rotationDeg }) {
+  const geometry = rotateSpiralGeometry(getSpiralGeometry(), rotationDeg);
+  const guide = describeSpiralGuide(geometry);
   const cells = grid
     .map((number, index) => {
       const cellGeometry = geometry[index];
@@ -1247,9 +1266,11 @@ function renderStarBoard({ grid, theme, colorCount, startNumber }) {
   </div>`;
 }
 
-function getRotationDegrees(rotation, elapsedMs) {
-  if (rotation === "slow") return (elapsedMs / 1000) * 6;
-  if (rotation === "fast") return (elapsedMs / 1000) * 10;
+function getRotationDegrees(rotation, elapsedMs, layout = "radial") {
+  const slowSpeed = layout === "spiral" ? 4 : 6;
+  const fastSpeed = layout === "spiral" ? 7 : 10;
+  if (rotation === "slow") return (elapsedMs / 1000) * slowSpeed;
+  if (rotation === "fast") return (elapsedMs / 1000) * fastSpeed;
   return 0;
 }
 
@@ -1414,7 +1435,7 @@ function getProjectLabel({ layout, size, total }) {
   return `舒尔特方格 ${size}×${size}`;
 }
 
-function getProjectLabelHtml({ layout, size, total, cellStyle, redBlackRule }) {
+function getProjectLabelHtml({ layout, size, total, cellStyle, redBlackRule, rotation = "none" }) {
   if (layout === "missing") return `缺失数字舒尔特 <span>${size}×${size}</span>`;
   if (layout === "grid" && cellStyle === "checker-dark") return `高难棋盘舒尔特 <span>${size}×${size}</span>`;
   if (layout === "grid" && cellStyle === "checker") return `棋盘舒尔特 <span>${size}×${size}</span>`;
@@ -1427,7 +1448,9 @@ function getProjectLabelHtml({ layout, size, total, cellStyle, redBlackRule }) {
   if (layout === "mosaic") return "变形舒尔特 <span>30</span>";
   if (layout === "voronoi") return "变形舒尔特 <span>1 → 36</span>";
   if (layout === "float") return "浮球舒尔特 <span>36</span>";
-  if (layout === "spiral") return "螺旋舒尔特 <span>36</span>";
+  if (layout === "spiral") {
+    return `${rotation === "none" ? "螺旋舒尔特" : "旋转螺旋舒尔特"} <span>36</span>`;
+  }
   if (layout === "maze") return "迷宫舒尔特 <span>36</span>";
   if (layout === "wave") return "波浪舒尔特 <span>36</span>";
   if (layout === "dual") return "双区舒尔特 <span>36</span>";
@@ -1803,8 +1826,24 @@ function getSpiralGeometry() {
   });
 }
 
-function describeSpiralGuide() {
-  return getSpiralGeometry()
+function rotateSpiralGeometry(geometry, degrees) {
+  if (!degrees) return geometry;
+  const radians = (degrees * Math.PI) / 180;
+  const cosine = Math.cos(radians);
+  const sine = Math.sin(radians);
+  return geometry.map((point) => {
+    const offsetX = point.x - 50;
+    const offsetY = point.y - 50;
+    return {
+      ...point,
+      x: 50 + offsetX * cosine - offsetY * sine,
+      y: 50 + offsetX * sine + offsetY * cosine,
+    };
+  });
+}
+
+function describeSpiralGuide(geometry = getSpiralGeometry()) {
+  return geometry
     .map((point, index) => `${index === 0 ? "M" : "L"} ${point.x.toFixed(3)} ${point.y.toFixed(3)}`)
     .join(" ");
 }
