@@ -607,6 +607,7 @@ function renderChallengeHtml({
                 colorCount,
                 startNumber: range.start,
                 rotationDeg: getRotationDegrees(rotation, elapsedMs, "spiral"),
+                seed,
               })
             : layout === "maze"
               ? renderMazeBoard({ grid, theme, colorCount, startNumber: range.start })
@@ -1112,9 +1113,9 @@ function renderFloatBoard({ grid, theme, colorCount, startNumber, elapsedMs }) {
   </div>`;
 }
 
-function renderSpiralBoard({ grid, theme, colorCount, startNumber, rotationDeg }) {
-  const geometry = rotateSpiralGeometry(getSpiralGeometry(grid.length), rotationDeg);
-  const guide = describeSpiralGuide(geometry);
+function renderSpiralBoard({ grid, theme, colorCount, startNumber, rotationDeg, seed }) {
+  const geometry = rotateSpiralGeometry(getSpiralGeometry(grid.length, seed), rotationDeg);
+  const guide = describeSpiralGuide(geometry, grid.length <= 25);
   const cells = grid
     .map((number, index) => {
       const cellGeometry = geometry[index];
@@ -1813,22 +1814,48 @@ function getFloatGeometry(elapsedMs = 0) {
   });
 }
 
-function getSpiralGeometry(total = 36) {
+function getSpiralGeometry(total = 36, seed = 0) {
   const innerRadius = 8;
   const outerRadius = 45.8;
   const radiusStep = total > 1 ? (outerRadius - innerRadius) / (total - 1) : 0;
-  const cellRadius = total <= 25 ? 3.55 : 3.95;
+  const cellRadius = total <= 25 ? 3.3 : 3.95;
   const angleStep = total <= 25 ? 0.9 : 0.82;
-  return Array.from({ length: total }, (_, index) => {
-    const angle = -Math.PI / 2 + index * angleStep;
-    const radius = innerRadius + index * radiusStep;
-    const wobble = Math.sin(index * 1.7) * 0.55;
-    return {
-      x: 50 + Math.cos(angle) * (radius + wobble),
-      y: 50 + Math.sin(angle) * (radius + wobble),
-      radius: cellRadius,
-    };
-  });
+  const isOrganic = total <= 25;
+  const random = mulberry32(Math.trunc(seed) ^ 0x53504952);
+  const geometry = [];
+
+  for (let index = 0; index < total; index += 1) {
+    const angleJitter = isOrganic ? Math.sin(index * 1.37) * 0.16 + (random() - 0.5) * 0.24 : 0;
+    const radialJitter = isOrganic
+      ? Math.sin(index * 2.03) * 1.7 + (random() - 0.5) * 3.6
+      : Math.sin(index * 1.7) * 0.55;
+    const baseAngle = -Math.PI / 2 + index * angleStep + angleJitter;
+    const baseRadius = innerRadius + index * radiusStep + radialJitter;
+    let point;
+
+    for (let attempt = 0; attempt < 9; attempt += 1) {
+      const direction = attempt % 2 === 0 ? 1 : -1;
+      const angleOffset = attempt === 0 ? 0 : direction * Math.ceil(attempt / 2) * 0.075;
+      const adjustedRadius = isOrganic ? clamp(baseRadius + attempt * 0.18, 6.8, 45.5) : baseRadius;
+      const angle = baseAngle + angleOffset;
+      const candidate = {
+        x: 50 + Math.cos(angle) * adjustedRadius,
+        y: 50 + Math.sin(angle) * adjustedRadius,
+        radius: cellRadius,
+      };
+      const hasClearance =
+        !isOrganic ||
+        geometry.every(
+          (existing) => Math.hypot(existing.x - candidate.x, existing.y - candidate.y) >= cellRadius * 2 + 0.7,
+        );
+      point = candidate;
+      if (hasClearance) break;
+    }
+
+    geometry.push(point);
+  }
+
+  return geometry;
 }
 
 function rotateSpiralGeometry(geometry, degrees) {
@@ -1847,10 +1874,25 @@ function rotateSpiralGeometry(geometry, degrees) {
   });
 }
 
-function describeSpiralGuide(geometry = getSpiralGeometry()) {
-  return geometry
-    .map((point, index) => `${index === 0 ? "M" : "L"} ${point.x.toFixed(3)} ${point.y.toFixed(3)}`)
-    .join(" ");
+function describeSpiralGuide(geometry = getSpiralGeometry(), smooth = false) {
+  if (!smooth) {
+    return geometry
+      .map((point, index) => `${index === 0 ? "M" : "L"} ${point.x.toFixed(3)} ${point.y.toFixed(3)}`)
+      .join(" ");
+  }
+
+  return geometry.slice(0, -1).reduce((path, point, index) => {
+    const previous = geometry[Math.max(0, index - 1)];
+    const next = geometry[index + 1];
+    const following = geometry[Math.min(geometry.length - 1, index + 2)];
+    const control1X = point.x + (next.x - previous.x) / 6;
+    const control1Y = point.y + (next.y - previous.y) / 6;
+    const control2X = next.x - (following.x - point.x) / 6;
+    const control2Y = next.y - (following.y - point.y) / 6;
+    return `${path} C ${control1X.toFixed(3)} ${control1Y.toFixed(3)} ${control2X.toFixed(
+      3,
+    )} ${control2Y.toFixed(3)} ${next.x.toFixed(3)} ${next.y.toFixed(3)}`;
+  }, `M ${geometry[0].x.toFixed(3)} ${geometry[0].y.toFixed(3)}`);
 }
 
 function getMazeGeometry() {
