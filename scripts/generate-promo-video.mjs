@@ -118,6 +118,7 @@ const themes = {
   fresh: {
     ink: "#18212f",
     paper: "#fffdf8",
+    surface: "#ffffff",
     checker: "#e1ebe6",
     checkerDark: "#263c36",
     primary: "#116b5d",
@@ -129,6 +130,7 @@ const themes = {
   ocean: {
     ink: "#142134",
     paper: "#f8fbff",
+    surface: "#ffffff",
     checker: "#e3edf7",
     checkerDark: "#26394d",
     primary: "#185c8f",
@@ -140,6 +142,7 @@ const themes = {
   vivid: {
     ink: "#1d1a2e",
     paper: "#fffaf4",
+    surface: "#ffffff",
     checker: "#f1e4d6",
     checkerDark: "#42342b",
     primary: "#b5531f",
@@ -147,6 +150,19 @@ const themes = {
     muted: "#756f86",
     grid: "#e2d8cc",
     colors: ["#1d1a2e", "#1668d9", "#e2473f", "#11885d", "#8053cf", "#c47a00", "#00848f", "#cf3d7d"],
+  },
+  neon: {
+    ink: "#eff9ff",
+    paper: "#070b1a",
+    surface: "#0d1429",
+    checker: "#132542",
+    checkerDark: "#111c35",
+    primary: "#35e7ff",
+    accent: "#ff4fd8",
+    muted: "#91a4c9",
+    grid: "#28496d",
+    colors: ["#eff9ff", "#35e7ff", "#ff5a7a", "#75ff92", "#b18cff", "#ffd166", "#36f1cd", "#ff72cf"],
+    glow: true,
   },
 };
 
@@ -525,9 +541,12 @@ function renderChallengeHtml({
   const timerShadow = isCritical ? `0 0 18px ${theme.colors[2]}44` : showUrgency ? `0 0 12px ${theme.accent}2b` : "none";
   const pulseColor = isCritical ? theme.colors[2] : showUrgency ? theme.accent : null;
   const pulseAlpha = isCritical ? (heartbeatExpanded ? "24" : "0d") : "0b";
-  const stageBackground = pulseColor
-    ? `radial-gradient(circle at 50% 24%, ${pulseColor}${pulseAlpha} 0%, ${pulseColor}00 48%), radial-gradient(circle at 50% 82%, ${pulseColor}${pulseAlpha} 0%, ${pulseColor}00 56%), ${theme.paper}`
+  const baseBackground = theme.glow
+    ? `radial-gradient(circle at 18% 18%, ${theme.primary}18 0%, ${theme.primary}00 34%), radial-gradient(circle at 82% 76%, ${theme.accent}14 0%, ${theme.accent}00 38%), ${theme.paper}`
     : theme.paper;
+  const stageBackground = pulseColor
+    ? `radial-gradient(circle at 50% 24%, ${pulseColor}${pulseAlpha} 0%, ${pulseColor}00 48%), radial-gradient(circle at 50% 82%, ${pulseColor}${pulseAlpha} 0%, ${pulseColor}00 56%), ${baseBackground}`
+    : baseBackground;
   const milestoneText = timeUp
     ? "时间到！"
     : showUrgency
@@ -652,6 +671,7 @@ function renderChallengeHtml({
       .brand {
         position: absolute; top: ${metrics.brandTop}px; left: 0; width: 100%;
         text-align: center; color: ${theme.primary}; font-size: ${metrics.brandFont}px; font-weight: 900;
+        ${theme.glow ? `text-shadow: 0 0 14px ${theme.primary}66;` : ""}
       }
       .title {
         position: absolute; top: ${metrics.titleTop}px; left: 0; width: 100%;
@@ -679,12 +699,13 @@ function renderChallengeHtml({
       .grid {
         position: absolute; left: ${metrics.boardLeft}px; top: ${metrics.boardTop}px;
         width: ${metrics.boardSize}px; height: ${metrics.boardSize}px;
-        border: 3px solid ${theme.grid}; border-radius: 18px; overflow: hidden; background: white;
+        border: 3px solid ${theme.grid}; border-radius: 18px; overflow: hidden; background: ${theme.surface};
+        ${theme.glow ? `box-shadow: 0 0 18px ${theme.primary}28, inset 0 0 28px ${theme.primary}0c;` : ""}
       }
       .mixed {
         position: absolute; left: ${metrics.boardLeft}px; top: ${metrics.boardTop}px;
         width: ${metrics.boardSize}px; height: ${metrics.boardSize}px;
-        border: 3px solid ${theme.grid}; border-radius: 18px; overflow: hidden; background: white;
+        border: 3px solid ${theme.grid}; border-radius: 18px; overflow: hidden; background: ${theme.surface};
       }
       .radial {
         position: absolute; left: ${metrics.boardLeft}px; top: ${metrics.boardTop}px;
@@ -714,7 +735,7 @@ function renderChallengeHtml({
       .spiral {
         position: absolute; left: ${metrics.boardLeft}px; top: ${metrics.boardTop}px;
         width: ${metrics.boardSize}px; height: ${metrics.boardSize}px;
-        filter: drop-shadow(0 14px 34px rgba(24, 33, 47, 0.1));
+        filter: ${theme.glow ? `drop-shadow(0 0 7px ${theme.primary}18)` : "drop-shadow(0 14px 34px rgba(24, 33, 47, 0.1))"};
       }
       .maze {
         position: absolute; left: ${metrics.boardLeft}px; top: ${metrics.boardTop}px;
@@ -792,14 +813,16 @@ function renderChallengeHtml({
       .spiral .guide {
         fill: none; stroke: ${theme.primary}; stroke-opacity: 0.22;
         stroke-width: 0.52; stroke-linecap: round; stroke-linejoin: round;
+        ${theme.glow ? `filter: drop-shadow(0 0 0.8px ${theme.primary}); stroke-opacity: 0.38;` : ""}
       }
       .spiral circle {
-        fill: white; stroke: ${theme.primary}; stroke-opacity: 0.42; stroke-width: 0.45;
-        filter: drop-shadow(0 1px 1px rgba(24, 33, 47, 0.14));
+        fill: ${theme.surface}; stroke: ${theme.primary}; stroke-opacity: 0.42; stroke-width: 0.45;
+        filter: ${theme.glow ? `drop-shadow(0 0 0.9px ${theme.primary})` : "drop-shadow(0 1px 1px rgba(24, 33, 47, 0.14))"};
       }
       .spiral text {
         dominant-baseline: middle; text-anchor: middle;
         font-size: 5.05px; font-weight: 950;
+        ${theme.glow ? "filter: drop-shadow(0 0 0.75px currentColor);" : ""}
       }
       .maze .panel { fill: white; stroke: ${theme.grid}; stroke-width: 0.45; }
       .maze .corridor {
@@ -875,6 +898,7 @@ function renderChallengeHtml({
         display: flex; align-items: center; justify-content: center;
         border-right: 2px solid ${theme.grid}; border-bottom: 2px solid ${theme.grid};
         font-size: ${fontSize}px; font-weight: 900; line-height: 1;
+        ${theme.glow ? "text-shadow: 0 0 7px currentColor;" : ""}
       }
       .mixed-cell {
         position: absolute; display: flex; align-items: center; justify-content: center;
@@ -1492,10 +1516,10 @@ function getSeededMissingNumber(seed, total) {
 }
 
 function getCellBackground(theme, cellStyle, row, col) {
-  if ((row + col) % 2 !== 1) return "white";
+  if ((row + col) % 2 !== 1) return theme.surface;
   if (cellStyle === "checker-dark") return theme.checkerDark;
   if (cellStyle === "checker") return theme.checker;
-  return "white";
+  return theme.surface;
 }
 
 function getGridCellTextColor(theme, cellStyle, row, col, number, colorCount, startNumber) {

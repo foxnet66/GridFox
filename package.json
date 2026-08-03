@@ -22,6 +22,8 @@
     "video:xhs:float:3x4": "node scripts/generate-promo-video.mjs --aspect 3:4 --layout float --order asc --theme fresh --colors 4 --music none --duration 120 --output dist/gridfox-xhs-float-36-3x4.mp4",
     "video:xhs:spiral:3x4": "node scripts/generate-promo-video.mjs --aspect 3:4 --layout spiral --order asc --theme fresh --colors 4 --music none --duration 120 --output dist/gridfox-xhs-spiral-36-3x4.mp4",
     "video:xhs:spiral:rotate:3x4": "node scripts/generate-promo-video.mjs --aspect 3:4 --layout spiral --size 5 --rotation slow --order asc --theme fresh --colors 4 --music none --duration 60 --output dist/gridfox-xhs-spiral-rotate-25-3x4.mp4",
+    "video:xhs:neon:3x4": "node scripts/generate-promo-video.mjs --aspect 3:4 --layout grid --size 5 --order asc --theme neon --colors 4 --music none --duration 45 --output dist/gridfox-xhs-neon-5x5-3x4.mp4",
+    "video:xhs:neon:spiral:3x4": "node scripts/generate-promo-video.mjs --aspect 3:4 --layout spiral --size 5 --rotation slow --order asc --theme neon --colors 4 --music none --duration 60 --output dist/gridfox-xhs-neon-spiral-25-3x4.mp4",
     "video:xhs:maze:3x4": "node scripts/generate-promo-video.mjs --aspect 3:4 --layout maze --order asc --theme fresh --colors 4 --music none --duration 120 --output dist/gridfox-xhs-maze-36-3x4.mp4",
     "video:xhs:wave:3x4": "node scripts/generate-promo-video.mjs --aspect 3:4 --layout wave --order asc --theme fresh --colors 4 --music none --duration 120 --output dist/gridfox-xhs-wave-36-3x4.mp4",
     "video:xhs:dual:3x4": "node scripts/generate-promo-video.mjs --aspect 3:4 --layout dual --order asc --theme fresh --colors 4 --music none --duration 120 --output dist/gridfox-xhs-dual-36-3x4.mp4",
