@@ -95,7 +95,21 @@ npm run video:promo -- --size 6 --layout radial --order asc --theme vivid --colo
 `--daily` 会使用当天发布建议的玩法、主题、颜色数量和固定种子。
 默认每次生成随机方格；如需复现同一版方格，可传 `--seed 1234`。
 音乐可选 `soft`、`focus`、`energy`、`none`；默认 `soft`。
-也可以使用自己的音乐文件：
+也可以把自己的音乐文件放进 `assets/music`，然后只传文件名：
+
+```bash
+npm run video:xhs:neon:3x4 -- --music-track focus-night.mp3
+```
+
+文件名包含空格时需要加引号：
+
+```bash
+npm run video:xhs:neon:3x4 -- --music-track "focus night.mp3"
+```
+
+脚本会自动循环音乐，使其覆盖完整视频，并在开始和结尾加入淡入淡出。音乐文件不会被 Git 提交。
+
+仍然可以通过 `--music-file` 使用目录外的文件：
 
 ```bash
 npm run video:promo -- --music-file /path/to/music.mp3 --output dist/gridfox-with-music.mp4

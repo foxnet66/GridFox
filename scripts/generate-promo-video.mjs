@@ -1,6 +1,6 @@
 import { mkdir, rm, writeFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
-import { dirname, resolve } from "node:path";
+import { basename, dirname, resolve } from "node:path";
 import { spawn } from "node:child_process";
 import { getDailyChallenge } from "./daily-challenge.mjs";
 
@@ -10,6 +10,7 @@ const ROOT = resolve(new URL("..", import.meta.url).pathname);
 const CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
 const FFMPEG = "/opt/homebrew/bin/ffmpeg";
 const DEFAULT_OUTPUT = resolve(ROOT, "dist/gridfox-xiaohongshu.mp4");
+const MUSIC_DIR = resolve(ROOT, "assets/music");
 
 const canvasProfiles = {
   "9:16": {
@@ -228,7 +229,15 @@ const captureFps =
 const seed = Number.isFinite(Number(args.seed)) ? Number(args.seed) : (dailyChallenge?.seed ?? Date.now());
 const musicName = String(args.music ?? "soft");
 const music = Object.hasOwn(musicProfiles, musicName) ? musicProfiles[musicName] : musicProfiles.soft;
-const musicFile = args["music-file"] ? resolve(ROOT, String(args["music-file"])) : null;
+const musicTrack = args["music-track"] ? String(args["music-track"]) : null;
+if (musicTrack && basename(musicTrack) !== musicTrack) {
+  throw new Error("--music-track only accepts a filename from assets/music");
+}
+const musicFile = musicTrack
+  ? resolve(MUSIC_DIR, musicTrack)
+  : args["music-file"]
+    ? resolve(ROOT, String(args["music-file"]))
+    : null;
 const output = resolve(ROOT, args.output ?? DEFAULT_OUTPUT);
 const theme = themes[themeName] ?? themes.fresh;
 const tempDir = resolve(ROOT, ".tmp/promo-video");
