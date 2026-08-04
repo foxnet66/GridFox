@@ -746,7 +746,7 @@ function renderChallengeHtml({
       .spiral {
         position: absolute; left: ${metrics.boardLeft}px; top: ${metrics.boardTop}px;
         width: ${metrics.boardSize}px; height: ${metrics.boardSize}px;
-        filter: ${theme.glow ? `drop-shadow(0 0 7px ${theme.primary}18)` : "drop-shadow(0 14px 34px rgba(24, 33, 47, 0.1))"};
+        filter: ${theme.glow ? "none" : "drop-shadow(0 14px 34px rgba(24, 33, 47, 0.1))"};
       }
       .maze {
         position: absolute; left: ${metrics.boardLeft}px; top: ${metrics.boardTop}px;
@@ -824,16 +824,16 @@ function renderChallengeHtml({
       .spiral .guide {
         fill: none; stroke: ${theme.primary}; stroke-opacity: 0.22;
         stroke-width: 0.52; stroke-linecap: round; stroke-linejoin: round;
-        ${theme.glow ? `filter: drop-shadow(0 0 0.8px ${theme.primary}); stroke-opacity: 0.38;` : ""}
+        ${theme.glow ? `filter: drop-shadow(0 0 0.22px ${theme.primary}); stroke-opacity: 0.42;` : ""}
       }
       .spiral circle {
         fill: ${theme.surface}; stroke: ${theme.primary}; stroke-opacity: 0.42; stroke-width: 0.45;
-        filter: ${theme.glow ? `drop-shadow(0 0 0.9px ${theme.primary})` : "drop-shadow(0 1px 1px rgba(24, 33, 47, 0.14))"};
+        filter: ${theme.glow ? `drop-shadow(0 0 0.3px ${theme.primary})` : "drop-shadow(0 1px 1px rgba(24, 33, 47, 0.14))"};
       }
       .spiral text {
         dominant-baseline: middle; text-anchor: middle;
         font-size: 5.05px; font-weight: 950;
-        ${theme.glow ? "filter: drop-shadow(0 0 0.75px currentColor);" : ""}
+        ${theme.glow ? "filter: none;" : ""}
       }
       .maze .panel { fill: white; stroke: ${theme.grid}; stroke-width: 0.45; }
       .maze .corridor {
