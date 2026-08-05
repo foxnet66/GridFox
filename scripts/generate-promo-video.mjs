@@ -761,7 +761,7 @@ function renderChallengeHtml({
       .hex {
         position: absolute; left: ${metrics.boardLeft}px; top: ${metrics.tallBoardTop}px;
         width: ${metrics.boardSize}px; height: ${metrics.tallBoardHeight}px;
-        filter: drop-shadow(0 14px 34px rgba(24, 33, 47, 0.1));
+        filter: ${theme.glow ? "none" : "drop-shadow(0 14px 34px rgba(24, 33, 47, 0.1))"};
       }
       .mosaic {
         position: absolute; left: ${metrics.boardLeft}px; top: ${metrics.tallBoardTop}px;
@@ -825,10 +825,15 @@ function renderChallengeHtml({
         dominant-baseline: middle; text-anchor: middle;
         font-size: 5.4px; font-weight: 950;
       }
-      .hex polygon { fill: white; stroke: ${theme.ink}; stroke-width: 0.5; }
+      .hex polygon {
+        stroke: ${theme.glow ? theme.primary : theme.ink}; stroke-width: ${theme.glow ? 0.42 : 0.5};
+        stroke-opacity: ${theme.glow ? 0.62 : 1}; stroke-linejoin: round;
+        ${theme.glow ? `filter: drop-shadow(0 0 0.18px ${theme.primary});` : ""}
+      }
       .hex text {
         dominant-baseline: middle; text-anchor: middle;
         font-size: 7.8px; font-weight: 950;
+        ${theme.glow ? "filter: none;" : ""}
       }
       .mosaic polygon {
         stroke: ${theme.glow ? theme.primary : theme.grid}; stroke-width: ${theme.glow ? 0.42 : 0.55};
@@ -1092,8 +1097,11 @@ function renderHexBoard({ grid, theme, colorCount, startNumber }) {
     .map((number, index) => {
       const cellGeometry = geometry[index];
       const color = getNumberColor(theme, number, colorCount, startNumber);
+      const fill = theme.glow
+        ? [theme.surface, theme.checkerDark, theme.checker][index % 3]
+        : theme.surface;
       return `<g>
-        <polygon points="${cellGeometry.points}"></polygon>
+        <polygon points="${cellGeometry.points}" fill="${fill}"></polygon>
         <text x="${cellGeometry.labelX.toFixed(3)}" y="${cellGeometry.labelY.toFixed(3)}" fill="${color}">${number}</text>
       </g>`;
     })
