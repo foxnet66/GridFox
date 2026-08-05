@@ -69,6 +69,9 @@ npm run video:xhs:radial:music
 # 5x5，内置轻音乐
 npm run video:xhs:music
 
+# 5x5，每 10 秒刷新，60 秒共 6 轮，霓虹主题
+npm run video:xhs:shuffle:3x4
+
 # 6x6，无音乐，难度更高
 npm run video:xhs:6x6
 
@@ -94,6 +97,7 @@ npm run video:promo -- --size 6 --layout radial --order asc --theme vivid --colo
 `--order` 可选 `asc` 或 `desc`；默认 `asc`。
 `--daily` 会使用当天发布建议的玩法、主题、颜色数量和固定种子。
 默认每次生成随机方格；如需复现同一版方格，可传 `--seed 1234`。
+传入 `--shuffle-interval 10` 可让普通方格每 10 秒重新排列；每轮会提示轮次，刷新后从 1 重新开始。默认关闭。
 音乐可选 `soft`、`focus`、`energy`、`none`；默认 `soft`。
 也可以把自己的音乐文件放进 `assets/music`，然后只传文件名：
 

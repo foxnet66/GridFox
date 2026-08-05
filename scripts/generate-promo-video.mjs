@@ -174,6 +174,7 @@ const canvas = canvasProfiles[aspect] ?? canvasProfiles["9:16"];
 const WIDTH = canvas.width;
 const HEIGHT = canvas.height;
 const duration = clamp(Number(args.duration ?? 120), 1, 600);
+const requestedShuffleInterval = clamp(Number(args["shuffle-interval"] ?? 0), 0, 120);
 const midpointEffect = String(args.midpoint ?? "true") !== "false";
 const urgencySeconds = Math.min(duration, clamp(Number(args.urgency ?? 10), 0, 60));
 const endScreenSeconds = clamp(Number(args["end-screen"] ?? 1), 0, 5);
@@ -216,6 +217,10 @@ const layout =
         : layoutArg === "radial"
           ? "radial"
           : "grid";
+if (requestedShuffleInterval > 0 && layout !== "grid") {
+  throw new Error("--shuffle-interval currently supports --layout grid only");
+}
+const shuffleInterval = layout === "grid" ? requestedShuffleInterval : 0;
 const rotation =
   ["radial", "spiral"].includes(layout) && ["slow", "fast"].includes(String(args.rotation))
     ? String(args.rotation)
@@ -258,6 +263,10 @@ const missingNumber =
     ? clamp(Number(args["missing-number"] ?? getSeededMissingNumber(seed, total)), 1, total)
     : null;
 const grid = createGrid(total, seed).map((value) => (value === missingNumber ? 0 : value));
+const shuffleRoundCount = shuffleInterval > 0 ? Math.ceil(duration / shuffleInterval) : 1;
+const challengeGrids = Array.from({ length: shuffleRoundCount }, (_, roundIndex) =>
+  roundIndex === 0 ? grid : createGrid(total, seed + roundIndex * 0x9e3779b1),
+);
 const totalDurationSeconds = INTRO_SECONDS + duration + endScreenSeconds;
 const totalFrames = Math.ceil(totalDurationSeconds * captureFps);
 const chrome = await launchChrome(chromeProfile);
@@ -276,6 +285,10 @@ try {
     const second = frame / captureFps;
     const challengeSecond = Math.max(0, second - INTRO_SECONDS);
     const timeUp = challengeSecond >= duration;
+    const shuffleRound =
+      shuffleInterval > 0
+        ? Math.min(Math.floor(challengeSecond / shuffleInterval), shuffleRoundCount - 1)
+        : 0;
     const framePath = resolve(framesDir, `frame-${String(frame).padStart(4, "0")}.png`);
     const html =
       second < INTRO_SECONDS
@@ -287,11 +300,12 @@ try {
             cellStyle,
             redBlackRule,
             rotation,
+            shuffleInterval,
           })
         : renderChallengeHtml({
             elapsedMs: Math.min(challengeSecond, duration) * 1000,
             timeUp,
-            grid,
+            grid: challengeGrids[shuffleRound],
             theme,
             colorCount,
             size,
@@ -304,6 +318,9 @@ try {
             rotation,
             redBlackRule,
             seed,
+            shuffleInterval,
+            shuffleRound,
+            shuffleRoundCount,
           });
     await setHtml(client, html);
     const screenshot = await client.send("Page.captureScreenshot", { format: "png", fromSurface: true });
@@ -438,7 +455,7 @@ function writeAscii(buffer, offset, value) {
   buffer.write(value, offset, value.length, "ascii");
 }
 
-function renderIntroHtml({ countdown, theme, size, layout, cellStyle, redBlackRule, rotation }) {
+function renderIntroHtml({ countdown, theme, size, layout, cellStyle, redBlackRule, rotation, shuffleInterval }) {
   const total = getChallengeTotal(size, layout);
   const gridSize = ["redblack", "alphabet"].includes(layout) ? 5 : size;
   const metrics = canvas.intro;
@@ -508,7 +525,15 @@ function renderIntroHtml({ countdown, theme, size, layout, cellStyle, redBlackRu
     <main class="stage">
       <div class="ghost-grid"></div>
       <div class="title">每日专注力训练</div>
-      <div class="project">${getProjectLabelHtml({ layout, size, total, cellStyle, redBlackRule, rotation })}</div>
+      <div class="project">${getProjectLabelHtml({
+        layout,
+        size,
+        total,
+        cellStyle,
+        redBlackRule,
+        rotation,
+        shuffleInterval,
+      })}</div>
       <div class="ring"></div>
       <div class="count">${countdown}</div>
       <div class="ready">准备开始</div>
@@ -534,6 +559,9 @@ function renderChallengeHtml({
   rotation,
   redBlackRule,
   seed,
+  shuffleInterval,
+  shuffleRound,
+  shuffleRoundCount,
 }) {
   const total = getChallengeTotal(size, layout);
   const elapsedSeconds = elapsedMs / 1000;
@@ -541,6 +569,7 @@ function renderChallengeHtml({
   const midpointStart = duration / 2;
   const showMidpoint =
     !timeUp &&
+    shuffleInterval === 0 &&
     midpointEffect &&
     elapsedSeconds >= midpointStart &&
     elapsedSeconds < midpointStart + 2 &&
@@ -558,10 +587,16 @@ function renderChallengeHtml({
   const stageBackground = pulseColor
     ? `radial-gradient(circle at 50% 24%, ${pulseColor}${pulseAlpha} 0%, ${pulseColor}00 48%), radial-gradient(circle at 50% 82%, ${pulseColor}${pulseAlpha} 0%, ${pulseColor}00 56%), ${baseBackground}`
     : baseBackground;
+  const secondsUntilShuffle =
+    shuffleInterval > 0 ? shuffleInterval - (elapsedSeconds % shuffleInterval) : Number.POSITIVE_INFINITY;
+  const showShuffleWarning =
+    !timeUp && shuffleRound < shuffleRoundCount - 1 && secondsUntilShuffle > 0 && secondsUntilShuffle <= 1;
   const milestoneText = timeUp
     ? "时间到！"
     : showUrgency
       ? `还剩 ${Math.max(1, Math.ceil(remainingSeconds))} 秒`
+      : showShuffleWarning
+        ? "即将刷新"
       : showMidpoint
         ? "时间过半"
         : "";
@@ -731,7 +766,7 @@ function renderChallengeHtml({
       .mosaic {
         position: absolute; left: ${metrics.boardLeft}px; top: ${metrics.tallBoardTop}px;
         width: ${metrics.boardSize}px; height: ${metrics.tallBoardHeight}px;
-        filter: drop-shadow(0 14px 34px rgba(24, 33, 47, 0.1));
+        filter: ${theme.glow ? "none" : "drop-shadow(0 14px 34px rgba(24, 33, 47, 0.1))"};
       }
       .voronoi {
         position: absolute; left: ${metrics.boardLeft}px; top: ${metrics.boardTop}px;
@@ -795,10 +830,15 @@ function renderChallengeHtml({
         dominant-baseline: middle; text-anchor: middle;
         font-size: 7.8px; font-weight: 950;
       }
-      .mosaic polygon { fill: white; stroke: ${theme.grid}; stroke-width: 0.55; }
+      .mosaic polygon {
+        stroke: ${theme.glow ? theme.primary : theme.grid}; stroke-width: ${theme.glow ? 0.42 : 0.55};
+        stroke-opacity: ${theme.glow ? 0.62 : 1}; stroke-linejoin: round;
+        ${theme.glow ? `filter: drop-shadow(0 0 0.18px ${theme.primary});` : ""}
+      }
       .mosaic text {
         dominant-baseline: middle; text-anchor: middle;
         font-size: 7.1px; font-weight: 950;
+        ${theme.glow ? "filter: none;" : ""}
       }
       .voronoi polygon {
         fill: white; stroke: ${theme.grid}; stroke-width: 0.52;
@@ -925,7 +965,9 @@ function renderChallengeHtml({
   <body>
     <main class="stage">
       <div class="brand">${
-        layout === "redblack"
+        shuffleInterval > 0
+          ? "动态刷新舒尔特挑战"
+          : layout === "redblack"
           ? redBlackRule === "advanced"
             ? "红黑进阶舒尔特挑战"
             : "红黑交替舒尔特挑战"
@@ -983,7 +1025,9 @@ function renderChallengeHtml({
           ? redBlackRule === "advanced"
             ? "黑 1 → 红 12 → 黑 2 → 红 11…最后找到黑 13"
             : "黑 1 → 红 1 → 黑 2 → 红 2…最后找到黑 13"
-          : `从 ${startLabel} 到 ${endLabel}，看看你需要多久`
+          : shuffleInterval > 0
+            ? `第 ${shuffleRound + 1}/${shuffleRoundCount} 轮 · 每 ${formatCompactNumber(shuffleInterval)} 秒刷新后从 ${startLabel} 重新开始`
+            : `从 ${startLabel} 到 ${endLabel}，看看你需要多久`
       }</div>
       <div class="timer">${formatTime(elapsedMs)}</div>
       ${milestoneText ? `<div class="milestone">${milestoneText}</div>` : ""}
@@ -1068,8 +1112,11 @@ function renderMosaicBoard({ grid, theme, colorCount, startNumber }) {
     .map((number, index) => {
       const cellGeometry = geometry[index];
       const color = getNumberColor(theme, number, colorCount, startNumber);
+      const fill = theme.glow
+        ? [theme.surface, theme.checkerDark, theme.checker][index % 3]
+        : theme.surface;
       return `<g>
-        <polygon points="${cellGeometry.points}"></polygon>
+        <polygon points="${cellGeometry.points}" fill="${fill}"></polygon>
         <text x="${cellGeometry.labelX.toFixed(3)}" y="${cellGeometry.labelY.toFixed(3)}" fill="${color}">${number}</text>
       </g>`;
     })
@@ -1472,7 +1519,16 @@ function getProjectLabel({ layout, size, total }) {
   return `舒尔特方格 ${size}×${size}`;
 }
 
-function getProjectLabelHtml({ layout, size, total, cellStyle, redBlackRule, rotation = "none" }) {
+function getProjectLabelHtml({
+  layout,
+  size,
+  total,
+  cellStyle,
+  redBlackRule,
+  rotation = "none",
+  shuffleInterval = 0,
+}) {
+  if (shuffleInterval > 0) return `动态刷新舒尔特 <span>${size}×${size}</span>`;
   if (layout === "missing") return `缺失数字舒尔特 <span>${size}×${size}</span>`;
   if (layout === "grid" && cellStyle === "checker-dark") return `高难棋盘舒尔特 <span>${size}×${size}</span>`;
   if (layout === "grid" && cellStyle === "checker") return `棋盘舒尔特 <span>${size}×${size}</span>`;
@@ -1511,6 +1567,10 @@ function formatTime(ms) {
   const seconds = Math.floor(ms / 1000);
   const minutes = Math.floor(seconds / 60);
   return `${String(minutes).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
+}
+
+function formatCompactNumber(value) {
+  return Number.isInteger(value) ? String(value) : String(Number(value.toFixed(1)));
 }
 
 function getTargetRange(total, order) {
