@@ -776,7 +776,7 @@ function renderChallengeHtml({
       .float {
         position: absolute; left: ${metrics.boardLeft}px; top: ${metrics.boardTop + 38}px;
         width: ${metrics.boardSize}px; height: ${Math.round(metrics.boardSize * 0.86)}px;
-        filter: drop-shadow(0 14px 34px rgba(24, 33, 47, 0.1));
+        filter: ${theme.glow ? "none" : "drop-shadow(0 14px 34px rgba(24, 33, 47, 0.1))"};
       }
       .spiral {
         position: absolute; left: ${metrics.boardLeft}px; top: ${metrics.boardTop}px;
@@ -856,15 +856,23 @@ function renderChallengeHtml({
         dominant-baseline: middle; text-anchor: middle;
         font-size: 5.25px; font-weight: 950;
       }
-      .float .panel { fill: white; stroke: ${theme.grid}; stroke-width: 0.35; }
-      .float .grid-line { stroke: ${theme.grid}; stroke-opacity: 0.38; stroke-width: 0.18; }
+      .float .panel {
+        fill: ${theme.surface}; stroke: ${theme.glow ? theme.primary : theme.grid}; stroke-width: 0.35;
+        stroke-opacity: ${theme.glow ? 0.46 : 1};
+        ${theme.glow ? `filter: drop-shadow(0 0 0.16px ${theme.primary});` : ""}
+      }
+      .float .grid-line {
+        stroke: ${theme.glow ? theme.primary : theme.grid};
+        stroke-opacity: ${theme.glow ? 0.1 : 0.38}; stroke-width: 0.18;
+      }
       .float circle {
-        fill: white; stroke: ${theme.primary}; stroke-opacity: 0.42; stroke-width: 0.45;
-        filter: drop-shadow(0 1px 1px rgba(24, 33, 47, 0.15));
+        stroke: ${theme.primary}; stroke-opacity: 0.42; stroke-width: 0.45;
+        filter: ${theme.glow ? `drop-shadow(0 0 0.28px ${theme.primary})` : "drop-shadow(0 1px 1px rgba(24, 33, 47, 0.15))"};
       }
       .float text {
         dominant-baseline: middle; text-anchor: middle;
         font-size: 5.15px; font-weight: 950;
+        ${theme.glow ? "filter: none;" : ""}
       }
       .spiral .guide {
         fill: none; stroke: ${theme.primary}; stroke-opacity: 0.22;
@@ -1183,7 +1191,9 @@ function renderFloatBoard({ grid, theme, colorCount, startNumber, elapsedMs }) {
     .map((number, index) => {
       const cellGeometry = geometry[index];
       const color = getNumberColor(theme, number, colorCount, startNumber);
-      const fill = "white";
+      const fill = theme.glow
+        ? [theme.surface, theme.checkerDark, theme.checker][index % 3]
+        : theme.surface;
       const isHighlightedStart = colorCount === 1 && number === startNumber;
       const stroke = isHighlightedStart ? theme.accent : theme.primary;
       const strokeOpacity = isHighlightedStart ? 0.78 : 0.42;
