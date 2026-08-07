@@ -685,7 +685,40 @@ function renderIntroHtml({
         font-size: ${Math.round(metrics.readyFont * 0.72)}px; font-weight: 850;
         letter-spacing: 0.12em;
       }
-      .voice-status { top: ${Math.round(metrics.ringTop + metrics.ringSize * 0.43)}px; }
+      .voice-cue {
+        position: absolute; top: ${Math.round(metrics.ringTop + metrics.ringSize * 0.27)}px;
+        left: 0; width: 100%; text-align: center;
+      }
+      .sound-wave {
+        height: 42px; display: flex; align-items: center; justify-content: center;
+        gap: 10px; margin-bottom: 24px;
+      }
+      .sound-wave i {
+        display: block; width: 7px; border-radius: 999px;
+        background: ${theme.glow ? `linear-gradient(180deg, ${theme.primary}, ${theme.accent})` : theme.primary};
+        ${theme.glow ? `box-shadow: 0 0 10px ${theme.primary}88;` : ""}
+      }
+      .sound-wave i:nth-child(1), .sound-wave i:nth-child(5) { height: 16px; opacity: 0.55; }
+      .sound-wave i:nth-child(2), .sound-wave i:nth-child(4) { height: 29px; opacity: 0.78; }
+      .sound-wave i:nth-child(3) { height: 42px; }
+      .voice-status {
+        position: relative; display: inline-flex; align-items: center; justify-content: center;
+        width: auto; color: ${theme.primary};
+        font-size: ${Math.round(metrics.readyFont * 1.12)}px; font-weight: 950;
+        letter-spacing: 0.2em; line-height: 1;
+        ${
+          theme.glow
+            ? `background: linear-gradient(90deg, ${theme.primary}, ${theme.accent});
+               -webkit-background-clip: text; background-clip: text; color: transparent;
+               filter: drop-shadow(0 0 10px ${theme.primary}55);`
+            : ""
+        }
+      }
+      .voice-status::before, .voice-status::after {
+        content: ""; width: 74px; height: 2px; margin: 0 24px;
+        background: linear-gradient(90deg, transparent, ${theme.primary}); opacity: 0.6;
+      }
+      .voice-status::after { transform: rotate(180deg); }
       .countdown-status { top: ${metrics.readyTop}px; }
       .credit {
         position: absolute; top: ${metrics.creditTop}px; left: 0; width: 100%;
@@ -707,9 +740,11 @@ function renderIntroHtml({
         shuffleInterval,
       })}</div>
       ${voiceoverText ? "" : `<div class="ring"></div><div class="count">${countdown}</div>`}
-      <div class="status ${voiceoverText ? "voice-status" : "countdown-status"}">${
-        voiceoverText ? "请听规则" : "准备开始"
-      }</div>
+      ${
+        voiceoverText
+          ? '<div class="voice-cue"><div class="sound-wave"><i></i><i></i><i></i><i></i><i></i></div><div class="voice-status">请听规则</div></div>'
+          : '<div class="status countdown-status">准备开始</div>'
+      }
       <div class="credit">计时挑战@新加坡大小AI玩</div>
     </main>
   </body>
