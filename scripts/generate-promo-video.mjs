@@ -679,23 +679,14 @@ function renderIntroHtml({
         position: absolute; top: ${metrics.countTop}px; left: 0; width: 100%;
         text-align: center; color: ${theme.accent}; font-size: ${metrics.countFont}px; font-weight: 950;
       }
-      .voice-copy {
-        position: absolute; top: ${Math.round(metrics.ringTop + metrics.ringSize * 0.18)}px;
-        left: 10%; width: 80%; min-height: ${Math.round(metrics.ringSize * 0.62)}px;
-        display: flex; align-items: center; justify-content: center;
-        padding: 30px 38px; text-align: center;
-        color: ${theme.ink}; font-size: ${aspect === "3:4" ? 43 : 50}px;
-        line-height: 1.55; font-weight: 850;
+      .status {
+        position: absolute; left: 0; width: 100%;
+        text-align: center; color: ${theme.muted};
+        font-size: ${Math.round(metrics.readyFont * 0.72)}px; font-weight: 850;
+        letter-spacing: 0.12em;
       }
-      .ready {
-        position: absolute; top: ${metrics.readyTop}px; left: 50%; transform: translateX(-50%);
-        min-width: 300px; padding: 18px 36px 20px;
-        text-align: center;
-        color: ${theme.glow ? theme.paper : "white"};
-        background: ${theme.glow ? `linear-gradient(135deg, ${theme.primary}, ${theme.accent})` : theme.ink};
-        border-radius: 999px; font-size: ${metrics.readyFont}px; font-weight: 950;
-        box-shadow: ${theme.glow ? `0 0 18px ${theme.primary}66, 0 0 36px ${theme.accent}33` : "0 20px 45px rgba(24, 33, 47, 0.12)"};
-      }
+      .voice-status { top: ${Math.round(metrics.ringTop + metrics.ringSize * 0.43)}px; }
+      .countdown-status { top: ${metrics.readyTop}px; }
       .credit {
         position: absolute; top: ${metrics.creditTop}px; left: 0; width: 100%;
         text-align: center; color: ${theme.muted}; font-size: ${metrics.creditFont}px; font-weight: 800;
@@ -715,12 +706,10 @@ function renderIntroHtml({
         rotation,
         shuffleInterval,
       })}</div>
-      ${
-        voiceoverText
-          ? `<div class="voice-copy">${escapeHtml(voiceoverText)}</div>`
-          : `<div class="ring"></div><div class="count">${countdown}</div>`
-      }
-      <div class="ready">${voiceoverText ? "请听规则" : "准备开始"}</div>
+      ${voiceoverText ? "" : `<div class="ring"></div><div class="count">${countdown}</div>`}
+      <div class="status ${voiceoverText ? "voice-status" : "countdown-status"}">${
+        voiceoverText ? "请听规则" : "准备开始"
+      }</div>
       <div class="credit">计时挑战@新加坡大小AI玩</div>
     </main>
   </body>
@@ -1161,6 +1150,12 @@ function renderChallengeHtml({
         position: absolute; top: ${metrics.creditTop}px; left: 0; width: 100%;
         text-align: center; color: ${theme.muted}; font-size: ${metrics.creditFont}px; font-weight: 800;
       }
+      .finish-note {
+        position: absolute; left: 0; top: ${metrics.creditTop}px;
+        width: 100%; text-align: center; color: ${theme.primary};
+        font-size: ${aspect === "3:4" ? 32 : 38}px; font-weight: 900; letter-spacing: 0.04em;
+        ${theme.glow ? `text-shadow: 0 0 12px ${theme.primary}55;` : ""}
+      }
     </style>
   </head>
   <body>
@@ -1233,7 +1228,11 @@ function renderChallengeHtml({
       <div class="timer">${formatTime(elapsedMs)}</div>
       ${milestoneText ? `<div class="milestone">${milestoneText}</div>` : ""}
       ${board}
-      <div class="credit">计时挑战@新加坡大小AI玩</div>
+      ${
+        timeUp
+          ? '<div class="finish-note">记下自己的进度，明天继续</div>'
+          : '<div class="credit">计时挑战@新加坡大小AI玩</div>'
+      }
     </main>
   </body>
 </html>`;
@@ -1831,15 +1830,6 @@ function formatTime(ms) {
   const seconds = Math.floor(ms / 1000);
   const minutes = Math.floor(seconds / 60);
   return `${String(minutes).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
-}
-
-function escapeHtml(value) {
-  return String(value)
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#39;");
 }
 
 function formatCompactNumber(value) {
