@@ -9,6 +9,8 @@ const INTRO_SECONDS = 3;
 const ROOT = resolve(new URL("..", import.meta.url).pathname);
 const CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
 const FFMPEG = "/opt/homebrew/bin/ffmpeg";
+const FFPROBE = "/opt/homebrew/bin/ffprobe";
+const SAY = "/usr/bin/say";
 const DEFAULT_OUTPUT = resolve(ROOT, "dist/gridfox-xiaohongshu.mp4");
 const MUSIC_DIR = resolve(ROOT, "assets/music");
 
@@ -243,6 +245,14 @@ const musicFile = musicTrack
   : args["music-file"]
     ? resolve(ROOT, String(args["music-file"]))
     : null;
+const voiceoverEnabled = args["voice-over"] === true || String(args["voice-over"] ?? "false") === "true";
+const voiceName = String(args["voice-name"] ?? "Tingting");
+const voiceRate = clamp(Number(args["voice-rate"] ?? 170), 120, 260);
+const challengeDay = clamp(
+  Number(args.day ?? dailyChallenge?.day ?? getDailyChallenge().day),
+  1,
+  9999,
+);
 const output = resolve(ROOT, args.output ?? DEFAULT_OUTPUT);
 const theme = themes[themeName] ?? themes.fresh;
 const tempDir = resolve(ROOT, ".tmp/promo-video");
@@ -252,6 +262,7 @@ let completed = false;
 
 if (!existsSync(CHROME)) throw new Error(`Chrome not found at ${CHROME}`);
 if (!existsSync(FFMPEG)) throw new Error(`ffmpeg not found at ${FFMPEG}`);
+if (voiceoverEnabled && !existsSync(SAY)) throw new Error(`say not found at ${SAY}`);
 
 await cleanupTempDir(tempDir);
 await mkdir(framesDir, { recursive: true });
@@ -262,12 +273,33 @@ const missingNumber =
   layout === "missing"
     ? clamp(Number(args["missing-number"] ?? getSeededMissingNumber(seed, total)), 1, total)
     : null;
+const narrationText = voiceoverEnabled
+  ? String(
+      args["voice-text"] ??
+        getNarrationText({
+          day: challengeDay,
+          layout,
+          size,
+          total,
+          order,
+          cellStyle,
+          redBlackRule,
+          rotation,
+          shuffleInterval,
+        }),
+    )
+  : null;
+const narration = narrationText
+  ? await prepareNarration({ text: narrationText, voiceName, voiceRate })
+  : null;
+const voiceoverSeconds = narration ? Math.ceil(narration.duration + 0.35) : 0;
 const grid = createGrid(total, seed).map((value) => (value === missingNumber ? 0 : value));
 const shuffleRoundCount = shuffleInterval > 0 ? Math.ceil(duration / shuffleInterval) : 1;
 const challengeGrids = Array.from({ length: shuffleRoundCount }, (_, roundIndex) =>
   roundIndex === 0 ? grid : createGrid(total, seed + roundIndex * 0x9e3779b1),
 );
-const totalDurationSeconds = INTRO_SECONDS + duration + endScreenSeconds;
+const challengeStartSeconds = voiceoverSeconds + INTRO_SECONDS;
+const totalDurationSeconds = challengeStartSeconds + duration + endScreenSeconds;
 const totalFrames = Math.ceil(totalDurationSeconds * captureFps);
 const chrome = await launchChrome(chromeProfile);
 
@@ -283,7 +315,7 @@ try {
 
   for (let frame = 0; frame < totalFrames; frame += 1) {
     const second = frame / captureFps;
-    const challengeSecond = Math.max(0, second - INTRO_SECONDS);
+    const challengeSecond = Math.max(0, second - challengeStartSeconds);
     const timeUp = challengeSecond >= duration;
     const shuffleRound =
       shuffleInterval > 0
@@ -291,9 +323,22 @@ try {
         : 0;
     const framePath = resolve(framesDir, `frame-${String(frame).padStart(4, "0")}.png`);
     const html =
-      second < INTRO_SECONDS
+      second < voiceoverSeconds
         ? renderIntroHtml({
-            countdown: Math.ceil(INTRO_SECONDS - second),
+            countdown: null,
+            voiceoverText: narrationText,
+            day: challengeDay,
+            theme,
+            size,
+            layout,
+            cellStyle,
+            redBlackRule,
+            rotation,
+            shuffleInterval,
+          })
+        : second < challengeStartSeconds
+        ? renderIntroHtml({
+            countdown: Math.ceil(challengeStartSeconds - second),
             theme,
             size,
             layout,
@@ -329,7 +374,13 @@ try {
   }
 
   process.stdout.write("\nEncoding MP4...\n");
-  const audio = await prepareAudioInput({ music, musicFile, duration: totalDurationSeconds });
+  const audio = await prepareAudioInput({
+    music,
+    musicFile,
+    duration: totalDurationSeconds,
+    narrationFile: narration?.path ?? null,
+    narrationDelay: voiceoverSeconds,
+  });
   await run(FFMPEG, [
     "-y",
     "-framerate",
@@ -363,8 +414,31 @@ if (completed) {
 
 console.log(`Done: ${output}`);
 if (missingNumber !== null) console.log(`Missing number: ${missingNumber}`);
+if (narrationText) console.log(`Voice-over: ${narrationText}`);
 
-async function prepareAudioInput({ music, musicFile, duration }) {
+async function prepareNarration({ text, voiceName, voiceRate }) {
+  const narrationPath = resolve(tempDir, "narration.aiff");
+  await run(SAY, ["-v", voiceName, "-r", String(voiceRate), "-o", narrationPath, text]);
+  const duration = Number(
+    await runCapture(FFPROBE, [
+      "-v",
+      "error",
+      "-show_entries",
+      "format=duration",
+      "-of",
+      "default=noprint_wrappers=1:nokey=1",
+      narrationPath,
+    ]),
+  );
+  if (!Number.isFinite(duration) || duration <= 0) throw new Error("Unable to determine voice-over duration");
+  return { path: narrationPath, duration };
+}
+
+async function prepareAudioInput({ music, musicFile, duration, narrationFile = null, narrationDelay = 0 }) {
+  if (narrationFile) {
+    return prepareNarratedAudio({ music, musicFile, duration, narrationFile, narrationDelay });
+  }
+
   if (musicFile) {
     if (!existsSync(musicFile)) throw new Error(`Music file not found: ${musicFile}`);
     return {
@@ -387,6 +461,60 @@ async function prepareAudioInput({ music, musicFile, duration }) {
   return {
     inputArgs: ["-i", audioPath],
     filterArgs: getAudioMapArgs(duration, 1),
+    codecArgs: ["-c:a", "aac", "-b:a", "128k", "-shortest"],
+  };
+}
+
+async function prepareNarratedAudio({ music, musicFile, duration, narrationFile, narrationDelay }) {
+  if (!existsSync(narrationFile)) throw new Error(`Voice-over file not found: ${narrationFile}`);
+  if (musicFile && !existsSync(musicFile)) throw new Error(`Music file not found: ${musicFile}`);
+
+  const combinedPath = resolve(tempDir, "narrated-audio.wav");
+  const musicDuration = Math.max(0, duration - narrationDelay);
+  let resolvedMusicFile = musicFile;
+  let musicVolume = 0.72;
+
+  if (!resolvedMusicFile && music) {
+    resolvedMusicFile = resolve(tempDir, "music.wav");
+    musicVolume = 1;
+    await writeGeneratedMusicWav(resolvedMusicFile, Math.max(1, musicDuration), music);
+  }
+
+  if (!resolvedMusicFile || musicDuration <= 0) {
+    await run(FFMPEG, [
+      "-y",
+      "-i",
+      narrationFile,
+      "-af",
+      `volume=1,apad=pad_dur=${duration},atrim=0:${duration},aresample=44100`,
+      "-c:a",
+      "pcm_s16le",
+      combinedPath,
+    ]);
+  } else {
+    const fadeOutStart = Math.max(0, musicDuration - 2);
+    const delayMs = Math.round(narrationDelay * 1000);
+    await run(FFMPEG, [
+      "-y",
+      "-stream_loop",
+      "-1",
+      "-i",
+      resolvedMusicFile,
+      "-i",
+      narrationFile,
+      "-filter_complex",
+      `[0:a]atrim=0:${musicDuration},asetpts=PTS-STARTPTS,volume=${musicVolume},afade=t=in:st=0:d=1,afade=t=out:st=${fadeOutStart}:d=2,adelay=${delayMs}:all=1[music];[1:a]volume=1[voice];[voice][music]amix=inputs=2:duration=longest:normalize=0,atrim=0:${duration},aresample=44100[mix]`,
+      "-map",
+      "[mix]",
+      "-c:a",
+      "pcm_s16le",
+      combinedPath,
+    ]);
+  }
+
+  return {
+    inputArgs: ["-i", combinedPath],
+    filterArgs: ["-map", "0:v", "-map", "1:a"],
     codecArgs: ["-c:a", "aac", "-b:a", "128k", "-shortest"],
   };
 }
@@ -455,7 +583,18 @@ function writeAscii(buffer, offset, value) {
   buffer.write(value, offset, value.length, "ascii");
 }
 
-function renderIntroHtml({ countdown, theme, size, layout, cellStyle, redBlackRule, rotation, shuffleInterval }) {
+function renderIntroHtml({
+  countdown,
+  voiceoverText = null,
+  day = null,
+  theme,
+  size,
+  layout,
+  cellStyle,
+  redBlackRule,
+  rotation,
+  shuffleInterval,
+}) {
   const total = getChallengeTotal(size, layout);
   const gridSize = ["redblack", "alphabet"].includes(layout) ? 5 : size;
   const metrics = canvas.intro;
@@ -506,6 +645,14 @@ function renderIntroHtml({ countdown, theme, size, layout, cellStyle, redBlackRu
         position: absolute; top: ${metrics.countTop}px; left: 0; width: 100%;
         text-align: center; color: ${theme.accent}; font-size: ${metrics.countFont}px; font-weight: 950;
       }
+      .voice-copy {
+        position: absolute; top: ${Math.round(metrics.ringTop + metrics.ringSize * 0.18)}px;
+        left: 10%; width: 80%; min-height: ${Math.round(metrics.ringSize * 0.62)}px;
+        display: flex; align-items: center; justify-content: center;
+        padding: 30px 38px; text-align: center;
+        color: ${theme.ink}; font-size: ${aspect === "3:4" ? 43 : 50}px;
+        line-height: 1.55; font-weight: 850;
+      }
       .ready {
         position: absolute; top: ${metrics.readyTop}px; left: 50%; transform: translateX(-50%);
         min-width: 300px; padding: 18px 36px 20px;
@@ -524,7 +671,7 @@ function renderIntroHtml({ countdown, theme, size, layout, cellStyle, redBlackRu
   <body>
     <main class="stage">
       <div class="ghost-grid"></div>
-      <div class="title">每日专注力训练</div>
+      <div class="title">每日专注力训练${voiceoverText && day ? ` · 第${day}天` : ""}</div>
       <div class="project">${getProjectLabelHtml({
         layout,
         size,
@@ -534,9 +681,12 @@ function renderIntroHtml({ countdown, theme, size, layout, cellStyle, redBlackRu
         rotation,
         shuffleInterval,
       })}</div>
-      <div class="ring"></div>
-      <div class="count">${countdown}</div>
-      <div class="ready">准备开始</div>
+      ${
+        voiceoverText
+          ? `<div class="voice-copy">${escapeHtml(voiceoverText)}</div>`
+          : `<div class="ring"></div><div class="count">${countdown}</div>`
+      }
+      <div class="ready">${voiceoverText ? "请听规则" : "准备开始"}</div>
       <div class="credit">计时挑战@新加坡大小AI玩</div>
     </main>
   </body>
@@ -1578,6 +1728,61 @@ function getProjectLabelHtml({
   return `舒尔特方格 <span>${size}×${size}</span>`;
 }
 
+function getNarrationText({
+  day,
+  layout,
+  size,
+  total,
+  order,
+  cellStyle,
+  redBlackRule,
+  rotation,
+  shuffleInterval,
+}) {
+  const name = getNarrationChallengeName({ layout, size, cellStyle, redBlackRule, rotation, shuffleInterval });
+  const range = getTargetRange(total, order);
+  let rule;
+
+  if (layout === "missing") {
+    rule = `找出1到${total}中缺失的数字`;
+  } else if (layout === "alphabet") {
+    rule = `从${getTargetLabel(range.start, layout)}找到${getTargetLabel(range.end, layout)}`;
+  } else if (layout === "redblack") {
+    rule =
+      redBlackRule === "advanced"
+        ? "黑色升序、红色降序，交替查找"
+        : "按照黑1、红1、黑2、红2的顺序交替查找";
+  } else if (shuffleInterval > 0) {
+    rule = `每${formatCompactNumber(shuffleInterval)}秒刷新一次，每轮从${range.start}重新开始`;
+  } else {
+    rule = `从${range.start}找到${range.end}`;
+  }
+
+  return `每日专注力训练，第${day}天。今天做${name}，${rule}。开始！`;
+}
+
+function getNarrationChallengeName({ layout, size, cellStyle, redBlackRule, rotation, shuffleInterval }) {
+  if (shuffleInterval > 0) return "动态刷新舒尔特";
+  if (layout === "missing") return "缺失数字舒尔特";
+  if (layout === "alphabet") return "字母舒尔特";
+  if (layout === "redblack") return redBlackRule === "advanced" ? "红黑进阶舒尔特" : "红黑交替舒尔特";
+  if (layout === "voronoi") return "变形舒尔特";
+  if (layout === "mosaic") return "变形舒尔特";
+  if (layout === "hex") return "蜂巢舒尔特";
+  if (layout === "float") return "浮球舒尔特";
+  if (layout === "spiral") return rotation === "none" ? "螺旋舒尔特" : "旋转螺旋舒尔特";
+  if (layout === "radial") return rotation === "none" ? "圆盘舒尔特" : "旋转圆盘舒尔特";
+  if (layout === "maze") return "迷宫舒尔特";
+  if (layout === "wave") return "波浪舒尔特";
+  if (layout === "dual") return "双区舒尔特";
+  if (layout === "breathe") return "呼吸舒尔特";
+  if (layout === "star") return "星轨舒尔特";
+  if (layout === "mixed") return "大小混排舒尔特";
+  if (cellStyle === "checker-dark") return "高难棋盘舒尔特";
+  if (cellStyle === "checker") return "棋盘舒尔特";
+  return `${size}乘${size}舒尔特方格`;
+}
+
 function mulberry32(seed) {
   return () => {
     seed |= 0;
@@ -1592,6 +1797,15 @@ function formatTime(ms) {
   const seconds = Math.floor(ms / 1000);
   const minutes = Math.floor(seconds / 60);
   return `${String(minutes).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
+}
+
+function escapeHtml(value) {
+  return String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
 }
 
 function formatCompactNumber(value) {
@@ -2227,6 +2441,21 @@ function run(command, args) {
     const child = spawn(command, args, { stdio: "inherit" });
     child.on("exit", (code) => {
       if (code === 0) resolve();
+      else reject(new Error(`${command} exited with code ${code}`));
+    });
+  });
+}
+
+function runCapture(command, args) {
+  return new Promise((resolve, reject) => {
+    const child = spawn(command, args, { stdio: ["ignore", "pipe", "inherit"] });
+    let output = "";
+    child.stdout.setEncoding("utf8");
+    child.stdout.on("data", (chunk) => {
+      output += chunk;
+    });
+    child.on("exit", (code) => {
+      if (code === 0) resolve(output.trim());
       else reject(new Error(`${command} exited with code ${code}`));
     });
   });

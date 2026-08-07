@@ -113,6 +113,14 @@ npm run video:xhs:neon:3x4 -- --music-track "focus night.mp3"
 
 脚本会自动循环音乐，使其覆盖完整视频，并在开始和结尾加入淡入淡出。音乐文件不会被 Git 提交。
 
+在倒计时前加入自动生成的中文规则语音：
+
+```bash
+npm run video:promo -- --layout voronoi --size 6 --voice-over true --day 33 --music-track foundation.mp3 --duration 90 --output dist/gridfox-voice.mp4
+```
+
+语音内容会根据玩法、数字范围、正序/倒序、旋转和刷新间隔自动生成。默认使用 macOS 的 `Tingting` 中文语音和 170 语速，可通过 `--voice-name` 和 `--voice-rate` 调整；传入 `--voice-text` 可以完全覆盖自动文案。语音结束后才会开始 3 秒倒计时，背景音乐从倒计时开始播放。
+
 仍然可以通过 `--music-file` 使用目录外的文件：
 
 ```bash

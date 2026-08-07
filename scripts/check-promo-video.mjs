@@ -58,6 +58,8 @@ try {
     await run(NODE, [
       resolve(ROOT, "scripts/generate-promo-video.mjs"),
       ...testCase.args,
+      "--end-screen",
+      "0",
       "--output",
       testCase.output,
     ]);
