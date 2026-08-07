@@ -1146,13 +1146,13 @@ function renderChallengeHtml({
         border-right: 2px solid ${theme.grid}; border-bottom: 2px solid ${theme.grid};
         font-weight: 950; line-height: 1;
       }
-      .credit {
+      .footer {
         position: absolute; top: ${metrics.creditTop}px; left: 0; width: 100%;
-        text-align: center; color: ${theme.muted}; font-size: ${metrics.creditFont}px; font-weight: 800;
+        text-align: center; color: ${theme.muted}; font-size: ${metrics.creditFont}px;
+        font-weight: 800; line-height: 1.25; white-space: nowrap;
       }
-      .finish-note {
-        position: absolute; left: 0; top: ${metrics.creditTop}px;
-        width: 100%; text-align: center; color: ${theme.primary};
+      .footer.finish {
+        color: ${theme.primary};
         font-size: ${aspect === "3:4" ? 32 : 38}px; font-weight: 900; letter-spacing: 0.04em;
         ${theme.glow ? `text-shadow: 0 0 12px ${theme.primary}55;` : ""}
       }
@@ -1228,11 +1228,9 @@ function renderChallengeHtml({
       <div class="timer">${formatTime(elapsedMs)}</div>
       ${milestoneText ? `<div class="milestone">${milestoneText}</div>` : ""}
       ${board}
-      ${
-        timeUp
-          ? '<div class="finish-note">记下自己的进度，明天继续</div>'
-          : '<div class="credit">计时挑战@新加坡大小AI玩</div>'
-      }
+      <div class="footer${timeUp ? " finish" : ""}">${
+        timeUp ? "请记下自己的进度，明天继续哦" : "计时挑战@新加坡大小AI玩"
+      }</div>
     </main>
   </body>
 </html>`;
