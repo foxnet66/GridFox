@@ -298,14 +298,15 @@ const narration = narrationText
   ? await prepareNarration({ text: narrationText, voiceName, voiceRate })
   : null;
 const voiceoverSeconds = narration ? Math.ceil(narration.duration + 0.35) : 0;
-const countdownStartSeconds = narration ? voiceoverSeconds * voiceCountdownRatio : 0;
+const countdownStartSeconds = narration
+  ? Math.min(voiceoverSeconds * voiceCountdownRatio, Math.max(0, voiceoverSeconds - INTRO_SECONDS))
+  : 0;
 const grid = createGrid(total, seed).map((value) => (value === missingNumber ? 0 : value));
 const shuffleRoundCount = shuffleInterval > 0 ? Math.ceil(duration / shuffleInterval) : 1;
 const challengeGrids = Array.from({ length: shuffleRoundCount }, (_, roundIndex) =>
   roundIndex === 0 ? grid : createGrid(total, seed + roundIndex * 0x9e3779b1),
 );
 const challengeStartSeconds = narration ? voiceoverSeconds : INTRO_SECONDS;
-const countdownDurationSeconds = challengeStartSeconds - countdownStartSeconds;
 const totalDurationSeconds = challengeStartSeconds + duration + endScreenSeconds;
 const totalFrames = Math.ceil(totalDurationSeconds * captureFps);
 const chrome = await launchChrome(chromeProfile);
@@ -345,11 +346,12 @@ try {
           })
         : second < challengeStartSeconds
         ? renderIntroHtml({
-            countdown: clamp(
-              Math.ceil(((challengeStartSeconds - second) / countdownDurationSeconds) * INTRO_SECONDS),
-              1,
-              INTRO_SECONDS,
-            ),
+            countdown:
+              second - countdownStartSeconds < 1
+                ? 3
+                : second - countdownStartSeconds < 2
+                  ? 2
+                  : 1,
             day: narration ? challengeDay : null,
             theme,
             size,
