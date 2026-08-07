@@ -10,7 +10,8 @@ const ROOT = resolve(new URL("..", import.meta.url).pathname);
 const CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
 const FFMPEG = "/opt/homebrew/bin/ffmpeg";
 const FFPROBE = "/opt/homebrew/bin/ffprobe";
-const SAY = "/usr/bin/say";
+const XCRUN = "/usr/bin/xcrun";
+const SPEECH_SYNTHESIZER = resolve(ROOT, "scripts/synthesize-speech.swift");
 const DEFAULT_OUTPUT = resolve(ROOT, "dist/gridfox-xiaohongshu.mp4");
 const MUSIC_DIR = resolve(ROOT, "assets/music");
 
@@ -246,7 +247,7 @@ const musicFile = musicTrack
     ? resolve(ROOT, String(args["music-file"]))
     : null;
 const voiceoverEnabled = args["voice-over"] === true || String(args["voice-over"] ?? "false") === "true";
-const voiceName = String(args["voice-name"] ?? "Tingting");
+const voiceName = String(args["voice-name"] ?? "Li-Mu");
 const voiceRate = clamp(Number(args["voice-rate"] ?? 170), 120, 260);
 const challengeDay = clamp(
   Number(args.day ?? dailyChallenge?.day ?? getDailyChallenge().day),
@@ -262,7 +263,10 @@ let completed = false;
 
 if (!existsSync(CHROME)) throw new Error(`Chrome not found at ${CHROME}`);
 if (!existsSync(FFMPEG)) throw new Error(`ffmpeg not found at ${FFMPEG}`);
-if (voiceoverEnabled && !existsSync(SAY)) throw new Error(`say not found at ${SAY}`);
+if (voiceoverEnabled && !existsSync(XCRUN)) throw new Error(`xcrun not found at ${XCRUN}`);
+if (voiceoverEnabled && !existsSync(SPEECH_SYNTHESIZER)) {
+  throw new Error(`Speech synthesizer not found at ${SPEECH_SYNTHESIZER}`);
+}
 
 await cleanupTempDir(tempDir);
 await mkdir(framesDir, { recursive: true });
@@ -417,8 +421,23 @@ if (missingNumber !== null) console.log(`Missing number: ${missingNumber}`);
 if (narrationText) console.log(`Voice-over: ${narrationText}`);
 
 async function prepareNarration({ text, voiceName, voiceRate }) {
-  const narrationPath = resolve(tempDir, "narration.aiff");
-  await run(SAY, ["-v", voiceName, "-r", String(voiceRate), "-o", narrationPath, text]);
+  const narrationPath = resolve(tempDir, "narration.caf");
+  const moduleCache = resolve(tempDir, "swift-module-cache");
+  await mkdir(moduleCache, { recursive: true });
+  await run(XCRUN, [
+    "swift",
+    "-module-cache-path",
+    moduleCache,
+    SPEECH_SYNTHESIZER,
+    "--voice",
+    getVoiceIdentifier(voiceName),
+    "--rate",
+    String(getSpeechRate(voiceRate)),
+    "--output",
+    narrationPath,
+    "--text",
+    text,
+  ]);
   const duration = Number(
     await runCapture(FFPROBE, [
       "-v",
@@ -432,6 +451,21 @@ async function prepareNarration({ text, voiceName, voiceRate }) {
   );
   if (!Number.isFinite(duration) || duration <= 0) throw new Error("Unable to determine voice-over duration");
   return { path: narrationPath, duration };
+}
+
+function getVoiceIdentifier(voiceName) {
+  const voices = {
+    "li-mu": "com.apple.ttsbundle.siri_limu_zh-CN_compact",
+    limu: "com.apple.ttsbundle.siri_limu_zh-CN_compact",
+    "yu-shu": "com.apple.ttsbundle.siri_yushu_zh-CN_compact",
+    yushu: "com.apple.ttsbundle.siri_yushu_zh-CN_compact",
+    tingting: "com.apple.voice.compact.zh-CN.Tingting",
+  };
+  return voices[voiceName.toLowerCase()] ?? voiceName;
+}
+
+function getSpeechRate(wordsPerMinute) {
+  return clamp(0.46 + (wordsPerMinute - 165) * 0.002, 0.35, 0.65).toFixed(3);
 }
 
 async function prepareAudioInput({ music, musicFile, duration, narrationFile = null, narrationDelay = 0 }) {
@@ -486,7 +520,7 @@ async function prepareNarratedAudio({ music, musicFile, duration, narrationFile,
       "-i",
       narrationFile,
       "-af",
-      `volume=1,apad=pad_dur=${duration},atrim=0:${duration},aresample=44100`,
+      `highpass=f=80,lowpass=f=10000,acompressor=threshold=-18dB:ratio=2:attack=20:release=180,apad=pad_dur=${duration},atrim=0:${duration},aresample=44100`,
       "-c:a",
       "pcm_s16le",
       combinedPath,
@@ -503,7 +537,7 @@ async function prepareNarratedAudio({ music, musicFile, duration, narrationFile,
       "-i",
       narrationFile,
       "-filter_complex",
-      `[0:a]atrim=0:${musicDuration},asetpts=PTS-STARTPTS,volume=${musicVolume},afade=t=in:st=0:d=1,afade=t=out:st=${fadeOutStart}:d=2,adelay=${delayMs}:all=1[music];[1:a]volume=1[voice];[voice][music]amix=inputs=2:duration=longest:normalize=0,atrim=0:${duration},aresample=44100[mix]`,
+      `[0:a]atrim=0:${musicDuration},asetpts=PTS-STARTPTS,volume=${musicVolume},afade=t=in:st=0:d=1,afade=t=out:st=${fadeOutStart}:d=2,adelay=${delayMs}:all=1[music];[1:a]highpass=f=80,lowpass=f=10000,acompressor=threshold=-18dB:ratio=2:attack=20:release=180[voice];[voice][music]amix=inputs=2:duration=longest:normalize=0,atrim=0:${duration},aresample=44100[mix]`,
       "-map",
       "[mix]",
       "-c:a",
