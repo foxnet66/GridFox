@@ -248,7 +248,8 @@ const musicFile = musicTrack
     : null;
 const voiceoverEnabled = args["voice-over"] === true || String(args["voice-over"] ?? "false") === "true";
 const voiceName = String(args["voice-name"] ?? "Li-Mu");
-const voiceRate = clamp(Number(args["voice-rate"] ?? 170), 120, 260);
+const voiceRate = clamp(Number(args["voice-rate"] ?? 175), 120, 260);
+const voiceCountdownRatio = clamp(Number(args["voice-countdown-at"] ?? 0.5), 0.3, 0.8);
 const challengeDay = clamp(
   Number(args.day ?? dailyChallenge?.day ?? getDailyChallenge().day),
   1,
@@ -297,12 +298,14 @@ const narration = narrationText
   ? await prepareNarration({ text: narrationText, voiceName, voiceRate })
   : null;
 const voiceoverSeconds = narration ? Math.ceil(narration.duration + 0.35) : 0;
+const countdownStartSeconds = narration ? voiceoverSeconds * voiceCountdownRatio : 0;
 const grid = createGrid(total, seed).map((value) => (value === missingNumber ? 0 : value));
 const shuffleRoundCount = shuffleInterval > 0 ? Math.ceil(duration / shuffleInterval) : 1;
 const challengeGrids = Array.from({ length: shuffleRoundCount }, (_, roundIndex) =>
   roundIndex === 0 ? grid : createGrid(total, seed + roundIndex * 0x9e3779b1),
 );
-const challengeStartSeconds = voiceoverSeconds + INTRO_SECONDS;
+const challengeStartSeconds = narration ? voiceoverSeconds : INTRO_SECONDS;
+const countdownDurationSeconds = challengeStartSeconds - countdownStartSeconds;
 const totalDurationSeconds = challengeStartSeconds + duration + endScreenSeconds;
 const totalFrames = Math.ceil(totalDurationSeconds * captureFps);
 const chrome = await launchChrome(chromeProfile);
@@ -327,7 +330,7 @@ try {
         : 0;
     const framePath = resolve(framesDir, `frame-${String(frame).padStart(4, "0")}.png`);
     const html =
-      second < voiceoverSeconds
+      second < countdownStartSeconds
         ? renderIntroHtml({
             countdown: null,
             voiceoverText: narrationText,
@@ -342,7 +345,12 @@ try {
           })
         : second < challengeStartSeconds
         ? renderIntroHtml({
-            countdown: Math.ceil(challengeStartSeconds - second),
+            countdown: clamp(
+              Math.ceil(((challengeStartSeconds - second) / countdownDurationSeconds) * INTRO_SECONDS),
+              1,
+              INTRO_SECONDS,
+            ),
+            day: narration ? challengeDay : null,
             theme,
             size,
             layout,
@@ -383,7 +391,8 @@ try {
     musicFile,
     duration: totalDurationSeconds,
     narrationFile: narration?.path ?? null,
-    narrationDelay: voiceoverSeconds,
+    narrationDuration: narration?.duration ?? 0,
+    musicDelay: countdownStartSeconds,
   });
   await run(FFMPEG, [
     "-y",
@@ -468,9 +477,16 @@ function getSpeechRate(wordsPerMinute) {
   return clamp(0.46 + (wordsPerMinute - 165) * 0.002, 0.35, 0.65).toFixed(3);
 }
 
-async function prepareAudioInput({ music, musicFile, duration, narrationFile = null, narrationDelay = 0 }) {
+async function prepareAudioInput({
+  music,
+  musicFile,
+  duration,
+  narrationFile = null,
+  narrationDuration = 0,
+  musicDelay = 0,
+}) {
   if (narrationFile) {
-    return prepareNarratedAudio({ music, musicFile, duration, narrationFile, narrationDelay });
+    return prepareNarratedAudio({ music, musicFile, duration, narrationFile, narrationDuration, musicDelay });
   }
 
   if (musicFile) {
@@ -499,12 +515,12 @@ async function prepareAudioInput({ music, musicFile, duration, narrationFile = n
   };
 }
 
-async function prepareNarratedAudio({ music, musicFile, duration, narrationFile, narrationDelay }) {
+async function prepareNarratedAudio({ music, musicFile, duration, narrationFile, narrationDuration, musicDelay }) {
   if (!existsSync(narrationFile)) throw new Error(`Voice-over file not found: ${narrationFile}`);
   if (musicFile && !existsSync(musicFile)) throw new Error(`Music file not found: ${musicFile}`);
 
   const combinedPath = resolve(tempDir, "narrated-audio.wav");
-  const musicDuration = Math.max(0, duration - narrationDelay);
+  const musicDuration = Math.max(0, duration - musicDelay);
   let resolvedMusicFile = musicFile;
   let musicVolume = 0.72;
 
@@ -527,7 +543,9 @@ async function prepareNarratedAudio({ music, musicFile, duration, narrationFile,
     ]);
   } else {
     const fadeOutStart = Math.max(0, musicDuration - 2);
-    const delayMs = Math.round(narrationDelay * 1000);
+    const delayMs = Math.round(musicDelay * 1000);
+    const voiceOverlapDuration = Math.max(0, narrationDuration - musicDelay);
+    const duckedMusicVolume = Number((musicVolume * 0.38).toFixed(3));
     await run(FFMPEG, [
       "-y",
       "-stream_loop",
@@ -537,7 +555,7 @@ async function prepareNarratedAudio({ music, musicFile, duration, narrationFile,
       "-i",
       narrationFile,
       "-filter_complex",
-      `[0:a]atrim=0:${musicDuration},asetpts=PTS-STARTPTS,volume=${musicVolume},afade=t=in:st=0:d=1,afade=t=out:st=${fadeOutStart}:d=2,adelay=${delayMs}:all=1[music];[1:a]highpass=f=80,lowpass=f=10000,acompressor=threshold=-18dB:ratio=2:attack=20:release=180[voice];[voice][music]amix=inputs=2:duration=longest:normalize=0,atrim=0:${duration},aresample=44100[mix]`,
+      `[0:a]atrim=0:${musicDuration},asetpts=PTS-STARTPTS,volume='if(lt(t,${voiceOverlapDuration}),${duckedMusicVolume},${musicVolume})':eval=frame,afade=t=in:st=0:d=1,afade=t=out:st=${fadeOutStart}:d=2,adelay=${delayMs}:all=1[music];[1:a]highpass=f=80,lowpass=f=10000,acompressor=threshold=-18dB:ratio=2:attack=20:release=180[voice];[voice][music]amix=inputs=2:duration=longest:normalize=0,atrim=0:${duration},aresample=44100[mix]`,
       "-map",
       "[mix]",
       "-c:a",
@@ -729,7 +747,7 @@ function renderIntroHtml({
   <body>
     <main class="stage">
       <div class="ghost-grid"></div>
-      <div class="title">每日专注力训练${voiceoverText && day ? ` · 第${day}天` : ""}</div>
+      <div class="title">每日专注力训练${day ? ` · 第${day}天` : ""}</div>
       <div class="project">${getProjectLabelHtml({
         layout,
         size,
