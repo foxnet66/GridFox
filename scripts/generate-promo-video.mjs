@@ -771,7 +771,7 @@ function renderChallengeHtml({
       .voronoi {
         position: absolute; left: ${metrics.boardLeft}px; top: ${metrics.boardTop}px;
         width: ${metrics.boardSize}px; height: ${metrics.boardSize}px;
-        filter: drop-shadow(0 14px 34px rgba(24, 33, 47, 0.1));
+        filter: ${theme.glow ? "none" : "drop-shadow(0 14px 34px rgba(24, 33, 47, 0.1))"};
       }
       .float {
         position: absolute; left: ${metrics.boardLeft}px; top: ${metrics.boardTop + 38}px;
@@ -846,15 +846,19 @@ function renderChallengeHtml({
         ${theme.glow ? "filter: none;" : ""}
       }
       .voronoi polygon {
-        fill: white; stroke: ${theme.grid}; stroke-width: 0.52;
-        stroke-linejoin: round;
+        stroke: ${theme.glow ? theme.primary : theme.grid}; stroke-width: ${theme.glow ? 0.38 : 0.52};
+        stroke-opacity: ${theme.glow ? 0.58 : 1}; stroke-linejoin: round;
+        ${theme.glow ? `filter: drop-shadow(0 0 0.14px ${theme.primary});` : ""}
       }
       .voronoi .outline {
-        fill: none; stroke: ${theme.grid}; stroke-width: 0.75;
+        fill: none; stroke: ${theme.glow ? theme.primary : theme.grid}; stroke-width: ${theme.glow ? 0.62 : 0.75};
+        stroke-opacity: ${theme.glow ? 0.84 : 1};
+        ${theme.glow ? `filter: drop-shadow(0 0 0.24px ${theme.primary});` : ""}
       }
       .voronoi text {
         dominant-baseline: middle; text-anchor: middle;
         font-size: 5.25px; font-weight: 950;
+        ${theme.glow ? "filter: none;" : ""}
       }
       .float .panel {
         fill: ${theme.surface}; stroke: ${theme.glow ? theme.primary : theme.grid}; stroke-width: 0.35;
@@ -1151,8 +1155,11 @@ function renderVoronoiBoard({ grid, theme, colorCount, startNumber, seed }) {
     .map((number, index) => {
       const cellGeometry = geometry[index];
       const color = getNumberColor(theme, number, colorCount, startNumber);
+      const fill = theme.glow
+        ? [theme.surface, theme.checkerDark, theme.checker][index % 3]
+        : theme.surface;
       return `<g>
-        <polygon points="${cellGeometry.points}"></polygon>
+        <polygon points="${cellGeometry.points}" fill="${fill}"></polygon>
         <text x="${cellGeometry.labelX.toFixed(3)}" y="${(cellGeometry.labelY + 0.3).toFixed(3)}" fill="${color}">${number}</text>
       </g>`;
     })
