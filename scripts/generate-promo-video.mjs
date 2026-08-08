@@ -343,6 +343,7 @@ try {
             redBlackRule,
             rotation,
             shuffleInterval,
+            seed,
           })
         : second < challengeStartSeconds
         ? renderIntroHtml({
@@ -360,6 +361,7 @@ try {
             redBlackRule,
             rotation,
             shuffleInterval,
+            seed,
           })
         : renderChallengeHtml({
             elapsedMs: Math.min(challengeSecond, duration) * 1000,
@@ -648,6 +650,7 @@ function renderIntroHtml({
   redBlackRule,
   rotation,
   shuffleInterval,
+  seed,
 }) {
   const total = getChallengeTotal(size, layout);
   const gridSize = ["redblack", "alphabet"].includes(layout) ? 5 : size;
@@ -668,16 +671,46 @@ function renderIntroHtml({
         font-family: Inter, -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", Arial, sans-serif;
       }
       .stage { position: relative; width: ${WIDTH}px; height: ${HEIGHT}px; color: ${theme.ink}; }
-      .ghost-grid {
+      .intro-motif {
         position: absolute; left: ${metrics.ghostLeft}px; top: ${metrics.ghostTop}px;
         width: ${metrics.ghostSize}px; height: ${metrics.ghostSize}px;
-        opacity: 0.1;
+        opacity: ${theme.glow ? 0.3 : 0.15};
+        border: 2px solid ${theme.grid}; border-radius: 22px; overflow: hidden;
+        ${theme.glow ? `filter: drop-shadow(0 0 12px ${theme.primary}33);` : ""}
+      }
+      .intro-motif::after {
+        content: ""; position: absolute; inset: 0; pointer-events: none;
+        background: radial-gradient(
+          ellipse 39% 29% at 50% 39%,
+          ${theme.paper} 0%,
+          ${theme.paper} 44%,
+          transparent 100%
+        );
+      }
+      .intro-motif svg { display: block; width: 100%; height: 100%; overflow: visible; }
+      .intro-motif .motif-cell {
+        fill: ${theme.surface}; stroke: ${theme.primary}; stroke-width: 0.7;
+      }
+      .intro-motif .motif-line {
+        fill: none; stroke: ${theme.primary}; stroke-width: 0.78;
+        stroke-linecap: round; stroke-linejoin: round;
+      }
+      .intro-motif .motif-soft { opacity: 0.58; }
+      .motif-grid {
+        width: 100%; height: 100%;
         background:
           linear-gradient(${theme.grid} 2px, transparent 2px),
           linear-gradient(90deg, ${theme.grid} 2px, transparent 2px);
         background-size: ${metrics.ghostSize / gridSize}px ${metrics.ghostSize / gridSize}px;
-        border: 2px solid ${theme.grid};
-        border-radius: 22px;
+      }
+      .motif-grid.checker {
+        background: repeating-conic-gradient(${theme.primary} 0 25%, transparent 0 50%) 0 0 / ${
+          (metrics.ghostSize / gridSize) * 2
+        }px ${(metrics.ghostSize / gridSize) * 2}px;
+      }
+      .motif-symbol {
+        position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+        color: ${theme.primary}; font-size: ${Math.round(metrics.ghostSize * 0.31)}px; font-weight: 950;
       }
       .title {
         position: absolute; top: ${metrics.titleTop}px; left: 0; width: 100%;
@@ -748,7 +781,7 @@ function renderIntroHtml({
   </head>
   <body>
     <main class="stage">
-      <div class="ghost-grid"></div>
+      ${renderIntroMotif({ layout, size, total, cellStyle, rotation, seed })}
       <div class="title">每日专注力训练${day ? ` · 第${day}天` : ""}</div>
       <div class="project">${getProjectLabelHtml({
         layout,
@@ -769,6 +802,98 @@ function renderIntroHtml({
     </main>
   </body>
 </html>`;
+}
+
+function renderIntroMotif({ layout, size, total, cellStyle, seed }) {
+  if (["grid", "alphabet", "redblack", "missing", "mixed"].includes(layout)) {
+    const checker = cellStyle === "checker" || cellStyle === "checker-dark";
+    const symbol =
+      layout === "missing"
+        ? '<div class="motif-symbol">?</div>'
+        : layout === "alphabet"
+          ? '<div class="motif-symbol" style="font-size:118px;letter-spacing:.22em">A·Y</div>'
+          : layout === "redblack"
+            ? '<div class="motif-symbol" style="font-size:96px">●&nbsp;●</div>'
+            : "";
+    return `<div class="intro-motif"><div class="motif-grid${checker ? " checker" : ""}"></div>${symbol}</div>`;
+  }
+
+  let viewBox = "0 0 100 100";
+  let content = "";
+
+  if (layout === "voronoi") {
+    const geometry = getVoronoiGeometry(total, seed);
+    content = `<defs><clipPath id="intro-voronoi"><circle cx="50" cy="50" r="47"></circle></clipPath></defs>
+      <g clip-path="url(#intro-voronoi)">${geometry
+        .map((cell) => `<polygon class="motif-cell" points="${cell.points}"></polygon>`)
+        .join("")}</g>
+      <circle class="motif-line" cx="50" cy="50" r="47"></circle>`;
+  } else if (layout === "mosaic") {
+    viewBox = "0 0 100 104";
+    content = getMosaicGeometry()
+      .map((cell) => `<polygon class="motif-cell" points="${cell.points}"></polygon>`)
+      .join("");
+  } else if (layout === "hex") {
+    viewBox = "0 0 100 104";
+    content = getHexGeometry()
+      .map((cell) => `<polygon class="motif-cell" points="${cell.points}"></polygon>`)
+      .join("");
+  } else if (layout === "radial") {
+    content = `${getRadialGeometry(total)
+      .map((cell) => `<path class="motif-cell" d="${describeRadialSegment(cell)}"></path>`)
+      .join("")}<circle class="motif-cell" cx="50" cy="50" r="8"></circle>`;
+  } else if (layout === "float") {
+    viewBox = "0 0 100 86";
+    content = `<rect class="motif-line motif-soft" x="2" y="2" width="96" height="82" rx="4"></rect>${getFloatGeometry(0)
+      .map(
+        (cell) =>
+          `<circle class="motif-cell" cx="${cell.x.toFixed(3)}" cy="${cell.y.toFixed(3)}" r="${cell.radius}"></circle>`,
+      )
+      .join("")}`;
+  } else if (layout === "spiral") {
+    const geometry = getSpiralGeometry(total, seed);
+    content = `<path class="motif-line" d="${describeSpiralGuide(geometry, total <= 25)}"></path>${geometry
+      .map(
+        (cell) =>
+          `<circle class="motif-cell" cx="${cell.x.toFixed(3)}" cy="${cell.y.toFixed(3)}" r="${cell.radius}"></circle>`,
+      )
+      .join("")}`;
+  } else if (layout === "maze") {
+    content = `<rect class="motif-line motif-soft" x="3" y="3" width="94" height="94" rx="5"></rect><path class="motif-line" style="stroke-width:7;opacity:.35" d="${describeMazeGuide()}"></path><path class="motif-line" d="${describeMazeGuide()}"></path>`;
+  } else if (layout === "wave") {
+    content = `<rect class="motif-line motif-soft" x="3" y="3" width="94" height="94" rx="5"></rect>${describeWaveGuides()
+      .map((guide) => `<path class="motif-line" style="stroke-width:2" d="${guide}"></path>`)
+      .join("")}`;
+  } else if (layout === "dual") {
+    content = `<rect class="motif-line" x="4" y="6" width="42" height="88" rx="4"></rect><rect class="motif-line" x="54" y="6" width="42" height="88" rx="4"></rect><line class="motif-line motif-soft" x1="50" x2="50" y1="8" y2="92"></line>${getDualGeometry()
+      .filter((_, index) => index % 3 === 0)
+      .map(
+        (cell) =>
+          `<rect class="motif-cell" x="${cell.x.toFixed(3)}" y="${cell.y.toFixed(3)}" width="${cell.width}" height="${cell.height}"></rect>`,
+      )
+      .join("")}`;
+  } else if (layout === "breathe") {
+    content = `<rect class="motif-line motif-soft" x="4" y="6" width="92" height="88" rx="5"></rect>${getBreatheGeometry(0)
+      .filter((_, index) => index % 2 === 0)
+      .map(
+        (cell) =>
+          `<circle class="motif-cell" cx="${cell.x.toFixed(3)}" cy="${cell.y.toFixed(3)}" r="${cell.radius.toFixed(3)}"></circle>`,
+      )
+      .join("")}`;
+  } else if (layout === "star") {
+    content = `${describeStarGuides()
+      .map(
+        (guide) =>
+          `<ellipse class="motif-line motif-soft" cx="50" cy="50" rx="${guide.rx}" ry="${guide.ry}" transform="rotate(${guide.rotate} 50 50)"></ellipse>`,
+      )
+      .join("")}${describeStarPaths()
+      .map((path) => `<path class="motif-line" d="${path}"></path>`)
+      .join("")}`;
+  } else {
+    return '<div class="intro-motif"><div class="motif-grid"></div></div>';
+  }
+
+  return `<div class="intro-motif"><svg viewBox="${viewBox}" aria-hidden="true">${content}</svg></div>`;
 }
 
 function renderChallengeHtml({
