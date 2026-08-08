@@ -20,19 +20,19 @@ const canvasProfiles = {
     width: 1080,
     height: 1920,
     intro: {
-      ghostLeft: 126,
+      ghostLeft: 290,
       ghostTop: 512,
-      ghostSize: 828,
+      ghostSize: 500,
       titleTop: 214,
       titleFont: 90,
       projectTop: 350,
       projectFont: 58,
-      ringLeft: 330,
-      ringTop: 674,
-      ringSize: 400,
-      countTop: 728,
-      countFont: 228,
-      readyTop: 1118,
+      ringLeft: 360,
+      ringTop: 1050,
+      ringSize: 360,
+      countTop: 1098,
+      countFont: 202,
+      readyTop: 1450,
       readyFont: 54,
       creditTop: 1668,
       creditFont: 34,
@@ -59,19 +59,19 @@ const canvasProfiles = {
     width: 1080,
     height: 1440,
     intro: {
-      ghostLeft: 160,
+      ghostLeft: 330,
       ghostTop: 352,
-      ghostSize: 760,
+      ghostSize: 420,
       titleTop: 104,
       titleFont: 84,
       projectTop: 226,
       projectFont: 56,
-      ringLeft: 360,
-      ringTop: 474,
-      ringSize: 340,
-      countTop: 520,
-      countFont: 190,
-      readyTop: 850,
+      ringLeft: 390,
+      ringTop: 805,
+      ringSize: 300,
+      countTop: 845,
+      countFont: 168,
+      readyTop: 1140,
       readyFont: 52,
       creditTop: 1272,
       creditFont: 32,
@@ -678,15 +678,6 @@ function renderIntroHtml({
         border: 2px solid ${theme.grid}; border-radius: 22px; overflow: hidden;
         ${theme.glow ? `filter: drop-shadow(0 0 12px ${theme.primary}33);` : ""}
       }
-      .intro-motif::after {
-        content: ""; position: absolute; inset: 0; pointer-events: none;
-        background: radial-gradient(
-          ellipse 39% 29% at 50% 39%,
-          ${theme.paper} 0%,
-          ${theme.paper} 44%,
-          transparent 100%
-        );
-      }
       .intro-motif svg { display: block; width: 100%; height: 100%; overflow: visible; }
       .intro-motif .motif-cell {
         fill: ${theme.surface}; stroke: ${theme.primary}; stroke-width: 0.7;
@@ -710,7 +701,7 @@ function renderIntroHtml({
       }
       .motif-symbol {
         position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
-        color: ${theme.primary}; font-size: ${Math.round(metrics.ghostSize * 0.31)}px; font-weight: 950;
+        color: ${theme.primary}; font-size: ${Math.round(metrics.ghostSize * 0.28)}px; font-weight: 950;
       }
       .title {
         position: absolute; top: ${metrics.titleTop}px; left: 0; width: 100%;
@@ -739,7 +730,7 @@ function renderIntroHtml({
         letter-spacing: 0.12em;
       }
       .voice-cue {
-        position: absolute; top: ${Math.round(metrics.ringTop + metrics.ringSize * 0.27)}px;
+        position: absolute; top: ${Math.round(metrics.ghostTop + metrics.ghostSize + (aspect === "3:4" ? 44 : 54))}px;
         left: 0; width: 100%; text-align: center;
       }
       .sound-wave {
