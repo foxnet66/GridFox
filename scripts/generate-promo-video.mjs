@@ -248,7 +248,7 @@ const musicFile = musicTrack
     : null;
 const voiceoverEnabled = args["voice-over"] === true || String(args["voice-over"] ?? "false") === "true";
 const voiceName = String(args["voice-name"] ?? "Li-Mu");
-const voiceRate = clamp(Number(args["voice-rate"] ?? 175), 120, 260);
+const voiceRate = clamp(Number(args["voice-rate"] ?? 185), 120, 260);
 const voiceCountdownRatio = clamp(Number(args["voice-countdown-at"] ?? 0.5), 0.3, 0.8);
 const challengeDay = clamp(
   Number(args.day ?? dailyChallenge?.day ?? getDailyChallenge().day),
