@@ -856,13 +856,12 @@ function renderIntroMotif({ layout, size, total, cellStyle, seed }) {
       .map((guide) => `<path class="motif-line" style="stroke-width:2" d="${guide}"></path>`)
       .join("")}`;
   } else if (layout === "dual") {
-    content = `<rect class="motif-line" x="4" y="6" width="42" height="88" rx="4"></rect><rect class="motif-line" x="54" y="6" width="42" height="88" rx="4"></rect><line class="motif-line motif-soft" x1="50" x2="50" y1="8" y2="92"></line>${getDualGeometry()
-      .filter((_, index) => index % 3 === 0)
+    content = `<rect class="motif-line" x="4" y="6" width="42" height="88" rx="4"></rect><rect class="motif-line" x="54" y="6" width="42" height="88" rx="4"></rect>${getDualGeometry()
       .map(
         (cell) =>
-          `<rect class="motif-cell" x="${cell.x.toFixed(3)}" y="${cell.y.toFixed(3)}" width="${cell.width}" height="${cell.height}"></rect>`,
+          `<rect class="motif-line motif-soft" style="stroke-width:.42" x="${cell.x.toFixed(3)}" y="${cell.y.toFixed(3)}" width="${cell.width}" height="${cell.height}"></rect>`,
       )
-      .join("")}`;
+      .join("")}<line class="motif-line" style="stroke-width:1.15;stroke-dasharray:3 3" x1="50" x2="50" y1="8" y2="92"></line>`;
   } else if (layout === "breathe") {
     content = `<rect class="motif-line motif-soft" x="4" y="6" width="92" height="88" rx="5"></rect>${getBreatheGeometry(0)
       .filter((_, index) => index % 2 === 0)
