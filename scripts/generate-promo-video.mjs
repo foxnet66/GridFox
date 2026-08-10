@@ -1140,7 +1140,7 @@ function renderChallengeHtml({
       .dual {
         position: absolute; left: ${metrics.boardLeft}px; top: ${metrics.boardTop}px;
         width: ${metrics.boardSize}px; height: ${metrics.boardSize}px;
-        filter: drop-shadow(0 14px 34px rgba(24, 33, 47, 0.1));
+        filter: ${theme.glow ? "none" : "drop-shadow(0 14px 34px rgba(24, 33, 47, 0.1))"};
       }
       .breathe {
         position: absolute; left: ${metrics.boardLeft}px; top: ${metrics.boardTop}px;
@@ -1266,17 +1266,29 @@ function renderChallengeHtml({
         dominant-baseline: middle; text-anchor: middle;
         font-size: 5.05px; font-weight: 950;
       }
-      .dual .panel { fill: white; stroke: ${theme.grid}; stroke-width: 0.45; }
+      .dual .panel {
+        fill: ${theme.surface};
+        stroke: ${theme.glow ? theme.primary : theme.grid};
+        stroke-width: ${theme.glow ? 0.52 : 0.45};
+        stroke-opacity: ${theme.glow ? 0.68 : 1};
+        ${theme.glow ? `filter: drop-shadow(0 0 0.2px ${theme.primary});` : ""}
+      }
       .dual .divider {
-        stroke: ${theme.primary}; stroke-opacity: 0.18; stroke-width: 0.8;
+        stroke: ${theme.primary}; stroke-opacity: ${theme.glow ? 0.62 : 0.18};
+        stroke-width: ${theme.glow ? 0.62 : 0.8};
         stroke-dasharray: 2.6 2.6;
+        ${theme.glow ? `filter: drop-shadow(0 0 0.16px ${theme.primary});` : ""}
       }
       .dual .dual-grid-cell {
-        fill: white; stroke: ${theme.primary}; stroke-opacity: 0.28; stroke-width: 0.38;
+        fill: ${theme.surface}; fill-opacity: ${theme.glow ? 0.82 : 1};
+        stroke: ${theme.primary};
+        stroke-opacity: ${theme.glow ? 0.36 : 0.28};
+        stroke-width: ${theme.glow ? 0.34 : 0.38};
       }
       .dual text {
         dominant-baseline: middle; text-anchor: middle;
         font-size: 5.75px; font-weight: 950;
+        ${theme.glow ? "filter: none;" : ""}
       }
       .breathe .panel { fill: white; stroke: ${theme.grid}; stroke-width: 0.45; }
       .breathe .grid-line { stroke: ${theme.primary}; stroke-opacity: 0.13; stroke-width: 0.2; }
