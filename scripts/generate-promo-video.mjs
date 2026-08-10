@@ -23,10 +23,10 @@ const canvasProfiles = {
       ghostLeft: 290,
       ghostTop: 512,
       ghostSize: 500,
-      titleTop: 214,
-      titleFont: 90,
-      projectTop: 350,
-      projectFont: 58,
+      titleTop: 190,
+      titleFont: 42,
+      projectTop: 282,
+      projectFont: 82,
       ringLeft: 360,
       ringTop: 1050,
       ringSize: 360,
@@ -62,10 +62,10 @@ const canvasProfiles = {
       ghostLeft: 330,
       ghostTop: 352,
       ghostSize: 420,
-      titleTop: 104,
-      titleFont: 84,
-      projectTop: 226,
-      projectFont: 56,
+      titleTop: 72,
+      titleFont: 40,
+      projectTop: 158,
+      projectFont: 78,
       ringLeft: 390,
       ringTop: 805,
       ringSize: 300,
@@ -655,6 +655,19 @@ function renderIntroHtml({
   const total = getChallengeTotal(size, layout);
   const gridSize = ["redblack", "alphabet"].includes(layout) ? 5 : size;
   const metrics = canvas.intro;
+  const projectLabel = getProjectLabelHtml({
+    layout,
+    size,
+    total,
+    cellStyle,
+    redBlackRule,
+    rotation,
+    shuffleInterval,
+  });
+  const projectLabelLength = projectLabel.replace(/<[^>]+>/g, "").replace(/\s/g, "").length;
+  const projectFont = Math.round(
+    metrics.projectFont * (projectLabelLength >= 11 ? 0.78 : projectLabelLength >= 9 ? 0.88 : 1),
+  );
 
   return `<!doctype html>
 <html lang="zh-CN">
@@ -704,15 +717,23 @@ function renderIntroHtml({
         color: ${theme.primary}; font-size: ${Math.round(metrics.ghostSize * 0.28)}px; font-weight: 950;
       }
       .title {
-        position: absolute; top: ${metrics.titleTop}px; left: 0; width: 100%;
-        text-align: center; color: ${theme.ink}; font-size: ${metrics.titleFont}px; font-weight: 950;
+        position: absolute; top: ${metrics.titleTop}px; left: 12%; width: 76%;
+        display: flex; align-items: center; justify-content: space-between;
+        color: ${theme.muted}; font-size: ${metrics.titleFont}px; font-weight: 800;
+        letter-spacing: 0.08em;
+      }
+      .title-centered { justify-content: center; }
+      .day-badge {
+        flex: 0 0 auto; padding: 10px 22px; border: 2px solid ${theme.primary}55;
+        border-radius: 999px; color: ${theme.primary}; background: ${theme.primary}14;
+        font-size: 0.78em; font-weight: 900; letter-spacing: 0.06em;
       }
       .project {
         position: absolute; top: ${metrics.projectTop}px; left: 0; width: 100%;
-        text-align: center; color: ${theme.primary}; font-size: ${metrics.projectFont}px; font-weight: 950;
-        letter-spacing: 1px;
+        text-align: center; color: ${theme.primary}; font-size: ${projectFont}px; font-weight: 950;
+        letter-spacing: 0.01em; line-height: 1.08;
       }
-      .project span { color: ${theme.accent}; font-size: 1.12em; }
+      .project span { color: ${theme.accent}; font-size: 0.9em; }
       .ring {
         position: absolute; left: ${metrics.ringLeft}px; top: ${metrics.ringTop}px;
         width: ${metrics.ringSize}px; height: ${metrics.ringSize}px;
@@ -773,16 +794,8 @@ function renderIntroHtml({
   <body>
     <main class="stage">
       ${renderIntroMotif({ layout, size, total, cellStyle, rotation, seed })}
-      <div class="title">每日专注力训练${day ? ` · 第${day}天` : ""}</div>
-      <div class="project">${getProjectLabelHtml({
-        layout,
-        size,
-        total,
-        cellStyle,
-        redBlackRule,
-        rotation,
-        shuffleInterval,
-      })}</div>
+      <div class="title${day ? "" : " title-centered"}"><span>每日舒尔特训练</span>${day ? `<span class="day-badge">DAY ${day}</span>` : ""}</div>
+      <div class="project">${projectLabel}</div>
       ${voiceoverText ? "" : `<div class="ring"></div><div class="count">${countdown}</div>`}
       ${
         voiceoverText
