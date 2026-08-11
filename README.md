@@ -121,7 +121,7 @@ npm run video:xhs:neon:3x4 -- --music-track "focus night.mp3"
 npm run video:promo -- --layout voronoi --size 6 --voice-over true --day 33 --music-track foundation.mp3 --duration 90 --output dist/gridfox-voice.mp4
 ```
 
-语音内容会根据玩法、数字范围、正序/倒序、旋转和刷新间隔自动生成。默认通过 macOS 语音框架使用较自然的 `Li-Mu` 普通话男声和 182 语速；也可通过 `--voice-name Yu-shu` 切换为女声，或使用 `--voice-name Tingting` 保留旧音色。`--voice-rate` 可调整语速，传入 `--voice-text` 可以完全覆盖自动文案。默认在语音进行到 50% 时切换到倒计时画面，可用 `--voice-countdown-at 0.5` 调整切换比例。数字 3 和 2 各至少显示 1 秒，数字 1 会保持到语音结束，确保完整显示后再进入挑战。语音会经过轻量 EQ 和动态压缩；背景音乐从倒计时开始播放，并在人声结束前自动降低音量。
+语音内容会根据时限、数字范围、正序/倒序和特殊玩法规则自动生成，并默认采用约 4～6 秒的精简文案，不再重复画面上已有的系列名、天数和玩法名称。默认通过 macOS 语音框架使用较自然的 `Li-Mu` 普通话男声和 182 语速；也可通过 `--voice-name Yu-shu` 切换为女声，或使用 `--voice-name Tingting` 保留旧音色。`--voice-rate` 可调整语速，传入 `--voice-text` 可以完全覆盖自动文案。默认在语音进行到 50% 时切换到倒计时画面，可用 `--voice-countdown-at 0.5` 调整切换比例。数字 3 和 2 各至少显示 1 秒，数字 1 会保持到语音结束，确保完整显示后再进入挑战。语音会经过轻量 EQ 和动态压缩；背景音乐从倒计时开始播放，并在人声结束前自动降低音量。
 
 仍然可以通过 `--music-file` 使用目录外的文件：
 

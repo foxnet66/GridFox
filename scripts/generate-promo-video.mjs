@@ -283,10 +283,10 @@ const narrationText = voiceoverEnabled
   ? String(
       args["voice-text"] ??
         getNarrationText({
-          day: challengeDay,
           layout,
           size,
           total,
+          duration,
           order,
           cellStyle,
           redBlackRule,
@@ -2121,58 +2121,32 @@ function getProjectLabelHtml({
 }
 
 function getNarrationText({
-  day,
   layout,
-  size,
   total,
+  duration,
   order,
-  cellStyle,
   redBlackRule,
-  rotation,
   shuffleInterval,
 }) {
-  const name = getNarrationChallengeName({ layout, size, cellStyle, redBlackRule, rotation, shuffleInterval });
   const range = getTargetRange(total, order);
-  let rule;
+  const timeLimit = `${formatCompactNumber(duration)}秒内`;
 
   if (layout === "missing") {
-    rule = `找出1到${total}中缺失的数字`;
-  } else if (layout === "alphabet") {
-    rule = `从${getTargetLabel(range.start, layout)}找到${getTargetLabel(range.end, layout)}`;
-  } else if (layout === "redblack") {
-    rule =
-      redBlackRule === "advanced"
-        ? "黑色升序、红色降序，交替查找"
-        : "按照黑1、红1、黑2、红2的顺序交替查找";
-  } else if (shuffleInterval > 0) {
-    rule = `每${formatCompactNumber(shuffleInterval)}秒刷新一次，每轮从${range.start}重新开始`;
-  } else {
-    rule = `从${range.start}找到${range.end}`;
+    return `${timeLimit}，找出缺失的数字。准备，开始！`;
+  }
+  if (layout === "alphabet") {
+    return `${timeLimit}，从${getTargetLabel(range.start, layout)}找到${getTargetLabel(range.end, layout)}。准备，开始！`;
+  }
+  if (layout === "redblack") {
+    return redBlackRule === "advanced"
+      ? "黑色升序、红色降序，交替查找。准备，开始！"
+      : "黑1、红1，交替找到13。准备，开始！";
+  }
+  if (shuffleInterval > 0) {
+    return `每${formatCompactNumber(shuffleInterval)}秒重新洗牌，从${range.start}重新开始。准备，开始！`;
   }
 
-  return `每日专注力训练，第${day}天。今天做${name}，${rule}。开始！`;
-}
-
-function getNarrationChallengeName({ layout, size, cellStyle, redBlackRule, rotation, shuffleInterval }) {
-  if (shuffleInterval > 0) return "动态刷新舒尔特";
-  if (layout === "missing") return "缺失数字舒尔特";
-  if (layout === "alphabet") return "字母舒尔特";
-  if (layout === "redblack") return redBlackRule === "advanced" ? "红黑进阶舒尔特" : "红黑交替舒尔特";
-  if (layout === "voronoi") return "变形舒尔特";
-  if (layout === "mosaic") return "变形舒尔特";
-  if (layout === "hex") return "蜂巢舒尔特";
-  if (layout === "float") return "浮球舒尔特";
-  if (layout === "spiral") return rotation === "none" ? "螺旋舒尔特" : "旋转螺旋舒尔特";
-  if (layout === "radial") return rotation === "none" ? "圆盘舒尔特" : "旋转圆盘舒尔特";
-  if (layout === "maze") return "迷宫舒尔特";
-  if (layout === "wave") return "波浪舒尔特";
-  if (layout === "dual") return "双区舒尔特";
-  if (layout === "breathe") return "呼吸舒尔特";
-  if (layout === "star") return "星轨舒尔特";
-  if (layout === "mixed") return "大小混排舒尔特";
-  if (cellStyle === "checker-dark") return "高难棋盘舒尔特";
-  if (cellStyle === "checker") return "棋盘舒尔特";
-  return `${size}乘${size}舒尔特方格`;
+  return `${timeLimit}，从${range.start}找到${range.end}。准备，开始！`;
 }
 
 function mulberry32(seed) {
