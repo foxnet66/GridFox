@@ -185,6 +185,7 @@ const themeName = String(args.theme ?? dailyChallenge?.theme ?? "fresh");
 const colorCount = clamp(Number(args.colors ?? dailyChallenge?.colors ?? 4), 1, 8);
 const size = clamp(Number(args.size ?? dailyChallenge?.size ?? 6), 4, 6);
 const order = String(args.order ?? dailyChallenge?.order ?? "asc") === "desc" ? "desc" : "asc";
+const introStyle = String(args["intro-style"] ?? "fast") === "showcase" ? "showcase" : "fast";
 const layoutArg = String(args.layout ?? dailyChallenge?.layout ?? "grid");
 const requestedCellStyle = String(args["cell-style"] ?? "plain");
 const cellStyle = ["checker", "checker-dark"].includes(requestedCellStyle) ? requestedCellStyle : "plain";
@@ -332,21 +333,27 @@ try {
     const framePath = resolve(framesDir, `frame-${String(frame).padStart(4, "0")}.png`);
     const html =
       second < countdownStartSeconds
-        ? renderIntroHtml({
+        ? renderVideoIntroHtml({
+            introStyle,
             countdown: null,
             voiceoverText: narrationText,
             day: challengeDay,
+            grid,
             theme,
+            colorCount,
             size,
+            order,
             layout,
             cellStyle,
             redBlackRule,
             rotation,
             shuffleInterval,
             seed,
+            duration,
           })
         : second < challengeStartSeconds
-        ? renderIntroHtml({
+        ? renderVideoIntroHtml({
+            introStyle,
             countdown:
               second - countdownStartSeconds < 1
                 ? 3
@@ -354,14 +361,18 @@ try {
                   ? 2
                   : 1,
             day: narration ? challengeDay : null,
+            grid,
             theme,
+            colorCount,
             size,
+            order,
             layout,
             cellStyle,
             redBlackRule,
             rotation,
             shuffleInterval,
             seed,
+            duration,
           })
         : renderChallengeHtml({
             elapsedMs: Math.min(challengeSecond, duration) * 1000,
@@ -637,6 +648,63 @@ async function writeGeneratedMusicWav(path, duration, profile) {
 
 function writeAscii(buffer, offset, value) {
   buffer.write(value, offset, value.length, "ascii");
+}
+
+function renderVideoIntroHtml({
+  introStyle,
+  countdown,
+  voiceoverText = null,
+  day = null,
+  grid,
+  theme,
+  colorCount,
+  size,
+  order,
+  layout,
+  cellStyle,
+  redBlackRule,
+  rotation,
+  shuffleInterval,
+  seed,
+  duration,
+}) {
+  if (introStyle === "showcase") {
+    return renderIntroHtml({
+      countdown,
+      voiceoverText,
+      day,
+      theme,
+      size,
+      layout,
+      cellStyle,
+      redBlackRule,
+      rotation,
+      shuffleInterval,
+      seed,
+    });
+  }
+
+  return renderChallengeHtml({
+    elapsedMs: 0,
+    timeUp: false,
+    grid,
+    theme,
+    colorCount,
+    size,
+    order,
+    layout,
+    cellStyle,
+    duration,
+    midpointEffect: false,
+    urgencySeconds: 0,
+    rotation,
+    redBlackRule,
+    seed,
+    shuffleInterval,
+    shuffleRound: 0,
+    shuffleRoundCount: 1,
+    introOverlay: { countdown, voiceoverText, day },
+  });
 }
 
 function renderIntroHtml({
@@ -918,6 +986,7 @@ function renderChallengeHtml({
   shuffleInterval,
   shuffleRound,
   shuffleRoundCount,
+  introOverlay = null,
 }) {
   const total = getChallengeTotal(size, layout);
   const elapsedSeconds = elapsedMs / 1000;
@@ -966,6 +1035,30 @@ function renderChallengeHtml({
   const fontSize = Math.round(
     (["redblack", "alphabet"].includes(layout) ? 82 : size >= 6 ? 66 : 82) * (gridSize / 928),
   );
+  const introProjectLabel = introOverlay
+    ? getProjectLabelHtml({
+        layout,
+        size,
+        total,
+        cellStyle,
+        redBlackRule,
+        rotation,
+        shuffleInterval,
+      })
+    : "";
+  const introProjectLength = introProjectLabel.replace(/<[^>]+>/g, "").replace(/\s/g, "").length;
+  const introProjectFont = Math.round(
+    (aspect === "3:4" ? 76 : 84) * (introProjectLength >= 11 ? 0.78 : introProjectLength >= 9 ? 0.88 : 1),
+  );
+  const introHook = introOverlay
+    ? layout === "missing"
+      ? `${formatCompactNumber(duration)}秒挑战 · 找出缺失数字`
+      : layout === "redblack"
+        ? redBlackRule === "advanced"
+          ? `${formatCompactNumber(duration)}秒挑战 · 黑升红降交替`
+          : `${formatCompactNumber(duration)}秒挑战 · 红黑交替找到13`
+        : `${formatCompactNumber(duration)}秒挑战 · 从 ${startLabel} 找到 ${endLabel}`
+    : "";
   const board =
     layout === "redblack"
       ? `<div class="grid">${grid
@@ -1351,11 +1444,82 @@ function renderChallengeHtml({
         font-size: ${aspect === "3:4" ? 32 : 38}px; font-weight: 900; letter-spacing: 0.04em;
         ${theme.glow ? `text-shadow: 0 0 12px ${theme.primary}55;` : ""}
       }
+      .fast-intro .grid, .fast-intro .mixed, .fast-intro .radial, .fast-intro .hex,
+      .fast-intro .mosaic, .fast-intro .voronoi, .fast-intro .float, .fast-intro .spiral,
+      .fast-intro .maze, .fast-intro .wave, .fast-intro .dual, .fast-intro .breathe,
+      .fast-intro .star {
+        opacity: ${introOverlay?.voiceoverText ? 0.48 : 0.62};
+        filter: saturate(0.82) brightness(${theme.glow ? 0.78 : 0.94});
+      }
+      .intro-series {
+        position: absolute; z-index: 10; top: ${aspect === "3:4" ? 58 : 92}px;
+        left: 12%; width: 76%; display: flex; align-items: center; justify-content: space-between;
+        color: ${theme.muted}; font-size: ${aspect === "3:4" ? 38 : 42}px;
+        font-weight: 800; letter-spacing: 0.08em;
+      }
+      .intro-series.centered { justify-content: center; }
+      .intro-day {
+        padding: ${aspect === "3:4" ? "9px 20px" : "11px 24px"};
+        border: 2px solid ${theme.primary}55; border-radius: 999px;
+        color: ${theme.primary}; background: ${theme.paper}e8;
+        font-size: 0.78em; font-weight: 950; letter-spacing: 0.06em;
+      }
+      .intro-project {
+        position: absolute; z-index: 10; top: ${aspect === "3:4" ? 140 : 202}px;
+        left: 0; width: 100%; text-align: center; color: ${theme.primary};
+        font-size: ${introProjectFont}px; line-height: 1.08; font-weight: 950;
+      }
+      .intro-project span { color: ${theme.accent}; font-size: 0.9em; }
+      .intro-hook {
+        position: absolute; z-index: 10; top: ${aspect === "3:4" ? 234 : 318}px;
+        left: 0; width: 100%; text-align: center; color: ${theme.muted};
+        font-size: ${aspect === "3:4" ? 34 : 40}px; font-weight: 850; letter-spacing: 0.04em;
+      }
+      .intro-focus-card {
+        position: absolute; z-index: 12; left: 50%;
+        top: ${metrics.boardTop - (aspect === "3:4" ? 76 : 102)}px;
+        transform: translate(-50%, -50%); min-width: ${aspect === "3:4" ? 430 : 500}px;
+        padding: ${aspect === "3:4" ? "20px 38px" : "24px 46px"};
+        border: 2px solid ${theme.primary}55; border-radius: 999px;
+        color: ${theme.primary}; background: ${theme.paper}e8;
+        text-align: center; font-size: ${aspect === "3:4" ? 42 : 48}px;
+        font-weight: 950; letter-spacing: 0.16em;
+        box-shadow: 0 18px 50px ${theme.paper}99${theme.glow ? `, 0 0 22px ${theme.primary}33` : ""};
+      }
+      .intro-focus-card::before {
+        content: ""; display: inline-block; width: 34px; height: 24px; margin-right: 22px;
+        vertical-align: 4px;
+        background: linear-gradient(90deg, ${theme.primary} 0 16%, transparent 16% 28%, ${theme.accent} 28% 48%, transparent 48% 60%, ${theme.primary} 60% 100%);
+        border-radius: 8px;
+      }
+      .intro-count-ring {
+        position: absolute; z-index: 12;
+        right: 12%; top: ${metrics.boardTop - (aspect === "3:4" ? 154 : 194)}px;
+        width: ${aspect === "3:4" ? 126 : 156}px; height: ${aspect === "3:4" ? 126 : 156}px;
+        border: ${aspect === "3:4" ? 7 : 8}px solid ${theme.grid};
+        border-top-color: ${theme.accent}; border-radius: 50%;
+        background: ${theme.paper}dd;
+        ${theme.glow ? `box-shadow: 0 0 24px ${theme.primary}2e;` : ""}
+      }
+      .intro-count {
+        position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+        color: ${theme.accent}; font-size: ${aspect === "3:4" ? 82 : 102}px; font-weight: 950;
+      }
+      .intro-ready {
+        position: absolute; z-index: 12; left: 12%; width: 62%;
+        top: ${metrics.boardTop - (aspect === "3:4" ? 86 : 110)}px;
+        text-align: center; color: ${theme.muted}; font-size: ${aspect === "3:4" ? 28 : 34}px;
+        font-weight: 900; letter-spacing: 0.12em;
+      }
+      .intro-credit {
+        position: absolute; z-index: 10; top: ${metrics.creditTop}px; left: 0; width: 100%;
+        text-align: center; color: ${theme.muted}; font-size: ${metrics.creditFont}px; font-weight: 800;
+      }
     </style>
   </head>
   <body>
-    <main class="stage">
-      <div class="brand">${
+    <main class="stage${introOverlay ? " fast-intro" : ""}">
+      ${introOverlay ? `<div class="intro-series${introOverlay.day ? "" : " centered"}"><span>每日舒尔特训练</span>${introOverlay.day ? `<span class="intro-day">DAY ${introOverlay.day}</span>` : ""}</div><div class="intro-project">${introProjectLabel}</div><div class="intro-hook">${introHook}</div>` : `<div class="brand">${
         shuffleInterval > 0
           ? "动态刷新舒尔特挑战"
           : layout === "redblack"
@@ -1399,8 +1563,7 @@ function renderChallengeHtml({
                               : layout === "mixed"
                                 ? "大小混排舒尔特挑战"
                 : "舒尔特方格挑战"
-      }</div>
-      <div class="title">${
+      }</div><div class="title">${
         layout === "missing"
           ? "找出 <span>缺失的数字</span>"
           : layout === "redblack"
@@ -1408,8 +1571,7 @@ function renderChallengeHtml({
             ? "黑色升序，红色降序，<span>交替查找</span>"
             : "红黑交替，从 <span class=\"black-sequence\">1</span> 找到 <span class=\"black-sequence\">13</span>"
           : `请按顺序从 <span>${startLabel}</span> 找到 <span>${endLabel}</span>`
-      }</div>
-      <div class="subtitle">${
+      }</div><div class="subtitle">${
         layout === "missing"
           ? `1 到 ${total} 中，少了哪一个？`
           : layout === "redblack"
@@ -1419,13 +1581,17 @@ function renderChallengeHtml({
           : shuffleInterval > 0
             ? `第 ${shuffleRound + 1}/${shuffleRoundCount} 轮 · 每 ${formatCompactNumber(shuffleInterval)} 秒刷新后从 ${startLabel} 重新开始`
             : `从 ${startLabel} 到 ${endLabel}，看看你需要多久`
-      }</div>
-      <div class="timer">${formatTime(elapsedMs)}</div>
-      ${milestoneText ? `<div class="milestone">${milestoneText}</div>` : ""}
+      }</div><div class="timer">${formatTime(elapsedMs)}</div>${milestoneText ? `<div class="milestone">${milestoneText}</div>` : ""}`}
       ${board}
-      <div class="footer${timeUp ? " finish" : ""}">${
-        timeUp ? "请记下自己的进度，明天继续哦" : "计时挑战@新加坡大小AI玩"
-      }</div>
+      ${
+        introOverlay
+          ? introOverlay.voiceoverText
+            ? '<div class="intro-focus-card">请听规则</div><div class="intro-credit">计时挑战@新加坡大小AI玩</div>'
+            : `<div class="intro-count-ring"><div class="intro-count">${introOverlay.countdown}</div></div><div class="intro-ready">马上开始</div><div class="intro-credit">计时挑战@新加坡大小AI玩</div>`
+          : `<div class="footer${timeUp ? " finish" : ""}">${
+              timeUp ? "请记下自己的进度，明天继续哦" : "计时挑战@新加坡大小AI玩"
+            }</div>`
+      }
     </main>
   </body>
 </html>`;

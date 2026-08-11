@@ -90,6 +90,8 @@ npm run video:promo -- --size 6 --layout radial --order asc --theme vivid --colo
 
 `--duration` 是正式计时段长度；输出视频会额外包含 3 秒前导倒计时。
 `--layout` 支持 `grid`、`radial`、`hex`、`mosaic`、`float`、`spiral`、`maze`、`wave`、`dual`、`breathe`、`star`、`mixed`、`redblack`；默认 `grid`。
+
+视频默认使用信息流快速开场：第 0 秒直接展示真实题盘，规则提示和 3、2、1 倒计时覆盖在题盘上。需要恢复独立玩法剪影开场时，添加 `--intro-style showcase`；也可以显式使用 `--intro-style fast`。
 `redblack` 固定使用 5x5 红黑同号交替规则，`--size`、`--order` 和 `--colors` 不影响棋盘内容。
 传入 `--redblack-rule advanced` 可导出黑升红降的进阶规则。
 `--rotation` 可选 `none`、`slow` 或 `fast`，只对 `radial` 生效；默认 `none`。旋转圆盘会按外圈顺时针、中圈逆时针、内圈顺时针运动。
