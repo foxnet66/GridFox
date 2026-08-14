@@ -12,6 +12,7 @@
     "video:promo": "node scripts/generate-promo-video.mjs",
     "video:xhs:daily": "node scripts/generate-promo-video.mjs --daily --music none --duration 120 --output dist/gridfox-xhs-daily.mp4",
     "video:xhs": "node scripts/generate-promo-video.mjs --size 5 --theme fresh --colors 4 --music none --duration 120 --output dist/gridfox-xhs-5x5.mp4",
+    "video:xhs:family:3x4": "node scripts/generate-promo-video.mjs --aspect 3:4 --layout grid --family true --size 5 --order asc --theme fresh --colors 4 --music none --voice-over true --duration 30 --output dist/gridfox-xhs-family-5x5-3x4.mp4",
     "video:xhs:desc": "node scripts/generate-promo-video.mjs --size 5 --order desc --theme fresh --colors 4 --music none --duration 120 --output dist/gridfox-xhs-5x5-desc.mp4",
     "video:xhs:radial": "node scripts/generate-promo-video.mjs --size 6 --layout radial --order asc --theme fresh --colors 4 --music none --duration 120 --output dist/gridfox-xhs-radial-6x6.mp4",
     "video:xhs:rotate": "node scripts/generate-promo-video.mjs --size 6 --layout radial --rotation slow --order asc --theme fresh --colors 4 --music none --duration 120 --output dist/gridfox-xhs-rotate-6x6.mp4",

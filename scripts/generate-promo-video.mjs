@@ -186,6 +186,7 @@ const colorCount = clamp(Number(args.colors ?? dailyChallenge?.colors ?? 4), 1, 
 const size = clamp(Number(args.size ?? dailyChallenge?.size ?? 6), 4, 6);
 const order = String(args.order ?? dailyChallenge?.order ?? "asc") === "desc" ? "desc" : "asc";
 const introStyle = String(args["intro-style"] ?? "fast") === "showcase" ? "showcase" : "fast";
+const familyMode = args.family === true || String(args.family ?? "false") === "true";
 const layoutArg = String(args.layout ?? dailyChallenge?.layout ?? "grid");
 const requestedCellStyle = String(args["cell-style"] ?? "plain");
 const cellStyle = ["checker", "checker-dark"].includes(requestedCellStyle) ? requestedCellStyle : "plain";
@@ -223,6 +224,12 @@ const layout =
           : "grid";
 if (requestedShuffleInterval > 0 && layout !== "grid") {
   throw new Error("--shuffle-interval currently supports --layout grid only");
+}
+if (familyMode && layout !== "grid") {
+  throw new Error("--family currently supports --layout grid only");
+}
+if (familyMode && requestedShuffleInterval > 0) {
+  throw new Error("--family does not support --shuffle-interval");
 }
 const shuffleInterval = layout === "grid" ? requestedShuffleInterval : 0;
 const rotation =
@@ -292,6 +299,7 @@ const narrationText = voiceoverEnabled
           redBlackRule,
           rotation,
           shuffleInterval,
+          familyMode,
         }),
     )
   : null;
@@ -350,6 +358,7 @@ try {
             shuffleInterval,
             seed,
             duration,
+            familyMode,
           })
         : second < challengeStartSeconds
         ? renderVideoIntroHtml({
@@ -373,6 +382,7 @@ try {
             shuffleInterval,
             seed,
             duration,
+            familyMode,
           })
         : renderChallengeHtml({
             elapsedMs: Math.min(challengeSecond, duration) * 1000,
@@ -393,6 +403,7 @@ try {
             shuffleInterval,
             shuffleRound,
             shuffleRoundCount,
+            familyMode,
           });
     await setHtml(client, html);
     const screenshot = await client.send("Page.captureScreenshot", { format: "png", fromSurface: true });
@@ -667,6 +678,7 @@ function renderVideoIntroHtml({
   shuffleInterval,
   seed,
   duration,
+  familyMode,
 }) {
   if (introStyle === "showcase") {
     return renderIntroHtml({
@@ -681,6 +693,7 @@ function renderVideoIntroHtml({
       rotation,
       shuffleInterval,
       seed,
+      familyMode,
     });
   }
 
@@ -704,6 +717,7 @@ function renderVideoIntroHtml({
     shuffleRound: 0,
     shuffleRoundCount: 1,
     introOverlay: { countdown, voiceoverText, day },
+    familyMode,
   });
 }
 
@@ -719,6 +733,7 @@ function renderIntroHtml({
   rotation,
   shuffleInterval,
   seed,
+  familyMode,
 }) {
   const total = getChallengeTotal(size, layout);
   const gridSize = ["redblack", "alphabet"].includes(layout) ? 5 : size;
@@ -731,6 +746,7 @@ function renderIntroHtml({
     redBlackRule,
     rotation,
     shuffleInterval,
+    familyMode,
   });
   const projectLabelLength = projectLabel.replace(/<[^>]+>/g, "").replace(/\s/g, "").length;
   const projectFont = Math.round(
@@ -862,7 +878,7 @@ function renderIntroHtml({
   <body>
     <main class="stage">
       ${renderIntroMotif({ layout, size, total, cellStyle, rotation, seed })}
-      <div class="title${day ? "" : " title-centered"}"><span>每日舒尔特训练</span>${day ? `<span class="day-badge">DAY ${day}</span>` : ""}</div>
+      <div class="title${day ? "" : " title-centered"}"><span>${familyMode ? "亲子专注力训练" : "每日舒尔特训练"}</span>${day ? `<span class="day-badge">DAY ${day}</span>` : ""}</div>
       <div class="project">${projectLabel}</div>
       ${voiceoverText ? "" : `<div class="ring"></div><div class="count">${countdown}</div>`}
       ${
@@ -987,6 +1003,7 @@ function renderChallengeHtml({
   shuffleRound,
   shuffleRoundCount,
   introOverlay = null,
+  familyMode = false,
 }) {
   const total = getChallengeTotal(size, layout);
   const elapsedSeconds = elapsedMs / 1000;
@@ -1044,6 +1061,7 @@ function renderChallengeHtml({
         redBlackRule,
         rotation,
         shuffleInterval,
+        familyMode,
       })
     : "";
   const introProjectLength = introProjectLabel.replace(/<[^>]+>/g, "").replace(/\s/g, "").length;
@@ -1051,7 +1069,9 @@ function renderChallengeHtml({
     (aspect === "3:4" ? 76 : 84) * (introProjectLength >= 11 ? 0.78 : introProjectLength >= 9 ? 0.88 : 1),
   );
   const introHook = introOverlay
-    ? layout === "missing"
+    ? familyMode
+      ? `${formatCompactNumber(duration)}秒亲子挑战 · 谁更快？`
+      : layout === "missing"
       ? `${formatCompactNumber(duration)}秒挑战 · 找出缺失数字`
       : layout === "redblack"
         ? redBlackRule === "advanced"
@@ -1492,24 +1512,37 @@ function renderChallengeHtml({
         background: linear-gradient(90deg, ${theme.primary} 0 16%, transparent 16% 28%, ${theme.accent} 28% 48%, transparent 48% 60%, ${theme.primary} 60% 100%);
         border-radius: 8px;
       }
-      .intro-count-ring {
+      .intro-launch {
         position: absolute; z-index: 12;
-        right: 12%; top: ${metrics.boardTop - (aspect === "3:4" ? 154 : 194)}px;
-        width: ${aspect === "3:4" ? 126 : 156}px; height: ${aspect === "3:4" ? 126 : 156}px;
+        left: 50%; top: ${metrics.boardTop - (aspect === "3:4" ? 124 : 136)}px;
+        transform: translateX(-50%);
+        width: ${aspect === "3:4" ? 320 : 370}px;
+        display: flex; flex-direction: column; align-items: center;
+      }
+      .intro-ready {
+        width: 100%; display: flex; align-items: center; justify-content: center;
+        gap: ${aspect === "3:4" ? 16 : 20}px; margin-bottom: ${aspect === "3:4" ? 9 : 12}px;
+        color: ${theme.muted}; font-size: ${aspect === "3:4" ? 27 : 32}px;
+        font-weight: 900; line-height: 1; letter-spacing: 0.16em; white-space: nowrap;
+      }
+      .intro-ready::before, .intro-ready::after {
+        content: ""; width: ${aspect === "3:4" ? 52 : 64}px; height: 2px;
+        border-radius: 999px;
+        background: linear-gradient(90deg, transparent, ${theme.primary}88);
+      }
+      .intro-ready::after { transform: scaleX(-1); }
+      .intro-count-ring {
+        position: relative;
+        width: ${aspect === "3:4" ? 120 : 148}px; height: ${aspect === "3:4" ? 120 : 148}px;
         border: ${aspect === "3:4" ? 7 : 8}px solid ${theme.grid};
         border-top-color: ${theme.accent}; border-radius: 50%;
         background: ${theme.paper}dd;
-        ${theme.glow ? `box-shadow: 0 0 24px ${theme.primary}2e;` : ""}
+        box-shadow: 0 12px 30px ${theme.paper}80${theme.glow ? `, 0 0 24px ${theme.primary}2e` : ""};
       }
       .intro-count {
         position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
-        color: ${theme.accent}; font-size: ${aspect === "3:4" ? 82 : 102}px; font-weight: 950;
-      }
-      .intro-ready {
-        position: absolute; z-index: 12; left: 12%; width: 62%;
-        top: ${metrics.boardTop - (aspect === "3:4" ? 86 : 110)}px;
-        text-align: center; color: ${theme.muted}; font-size: ${aspect === "3:4" ? 28 : 34}px;
-        font-weight: 900; letter-spacing: 0.12em;
+        color: ${theme.accent}; font-size: ${aspect === "3:4" ? 78 : 96}px;
+        font-weight: 950; line-height: 1;
       }
       .intro-credit {
         position: absolute; z-index: 10; top: ${metrics.creditTop}px; left: 0; width: 100%;
@@ -1519,8 +1552,10 @@ function renderChallengeHtml({
   </head>
   <body>
     <main class="stage${introOverlay ? " fast-intro" : ""}">
-      ${introOverlay ? `<div class="intro-series${introOverlay.day ? "" : " centered"}"><span>每日舒尔特训练</span>${introOverlay.day ? `<span class="intro-day">DAY ${introOverlay.day}</span>` : ""}</div><div class="intro-project">${introProjectLabel}</div><div class="intro-hook">${introHook}</div>` : `<div class="brand">${
-        shuffleInterval > 0
+      ${introOverlay ? `<div class="intro-series${introOverlay.day ? "" : " centered"}"><span>${familyMode ? "亲子专注力训练" : "每日舒尔特训练"}</span>${introOverlay.day ? `<span class="intro-day">DAY ${introOverlay.day}</span>` : ""}</div><div class="intro-project">${introProjectLabel}</div><div class="intro-hook">${introHook}</div>` : `<div class="brand">${
+        familyMode
+          ? "亲子专注力挑战"
+          : shuffleInterval > 0
           ? "动态刷新舒尔特挑战"
           : layout === "redblack"
           ? redBlackRule === "advanced"
@@ -1564,7 +1599,9 @@ function renderChallengeHtml({
                                 ? "大小混排舒尔特挑战"
                 : "舒尔特方格挑战"
       }</div><div class="title">${
-        layout === "missing"
+        familyMode
+          ? `家长和孩子，谁先找到 <span>${endLabel}</span>？`
+          : layout === "missing"
           ? "找出 <span>缺失的数字</span>"
           : layout === "redblack"
           ? redBlackRule === "advanced"
@@ -1572,7 +1609,9 @@ function renderChallengeHtml({
             : "红黑交替，从 <span class=\"black-sequence\">1</span> 找到 <span class=\"black-sequence\">13</span>"
           : `请按顺序从 <span>${startLabel}</span> 找到 <span>${endLabel}</span>`
       }</div><div class="subtitle">${
-        layout === "missing"
+        familyMode
+          ? "分别记下完成时间，看看今天谁更快"
+          : layout === "missing"
           ? `1 到 ${total} 中，少了哪一个？`
           : layout === "redblack"
           ? redBlackRule === "advanced"
@@ -1587,9 +1626,13 @@ function renderChallengeHtml({
         introOverlay
           ? introOverlay.voiceoverText
             ? '<div class="intro-focus-card">请听规则</div><div class="intro-credit">计时挑战@新加坡大小AI玩</div>'
-            : `<div class="intro-count-ring"><div class="intro-count">${introOverlay.countdown}</div></div><div class="intro-ready">马上开始</div><div class="intro-credit">计时挑战@新加坡大小AI玩</div>`
+            : `<div class="intro-launch"><div class="intro-ready">马上开始</div><div class="intro-count-ring"><div class="intro-count">${introOverlay.countdown}</div></div></div><div class="intro-credit">计时挑战@新加坡大小AI玩</div>`
           : `<div class="footer${timeUp ? " finish" : ""}">${
-              timeUp ? "请记下自己的进度，明天继续哦" : "计时挑战@新加坡大小AI玩"
+              timeUp
+                ? familyMode
+                  ? "家长和孩子分别用了多少秒？评论区报成绩"
+                  : "请记下自己的进度，明天继续哦"
+                : "计时挑战@新加坡大小AI玩"
             }</div>`
       }
     </main>
@@ -2094,7 +2137,9 @@ function getProjectLabelHtml({
   redBlackRule,
   rotation = "none",
   shuffleInterval = 0,
+  familyMode = false,
 }) {
+  if (familyMode) return `经典亲子舒尔特 <span>${size}×${size}</span>`;
   if (shuffleInterval > 0) return `动态刷新舒尔特 <span>${size}×${size}</span>`;
   if (layout === "missing") return `缺失数字舒尔特 <span>${size}×${size}</span>`;
   if (layout === "grid" && cellStyle === "checker-dark") return `高难棋盘舒尔特 <span>${size}×${size}</span>`;
@@ -2127,9 +2172,14 @@ function getNarrationText({
   order,
   redBlackRule,
   shuffleInterval,
+  familyMode,
 }) {
   const range = getTargetRange(total, order);
   const timeLimit = `${formatCompactNumber(duration)}秒内`;
+
+  if (familyMode) {
+    return `亲子对战，从${range.start}找到${range.end}。准备，开始！`;
+  }
 
   if (layout === "missing") {
     return `${timeLimit}，找出缺失的数字。准备，开始！`;

@@ -97,6 +97,7 @@ npm run video:promo -- --size 6 --layout radial --order asc --theme vivid --colo
 `--rotation` 可选 `none`、`slow` 或 `fast`，只对 `radial` 生效；默认 `none`。旋转圆盘会按外圈顺时针、中圈逆时针、内圈顺时针运动。
 旋转视频默认用 `--capture-fps 12` 截帧；如需更顺滑可传 `--capture-fps 24`，生成时间也会相应增加。
 `--order` 可选 `asc` 或 `desc`；默认 `asc`。
+传入 `--family true` 可生成经典亲子对战版：首帧询问“家长和孩子，谁更快？”，旁白邀请共同挑战，结尾引导分别留言成绩。亲子版目前支持经典 `grid` 布局。
 `--daily` 会使用当天发布建议的玩法、主题、颜色数量和固定种子。
 默认每次生成随机方格；如需复现同一版方格，可传 `--seed 1234`。
 传入 `--shuffle-interval 10` 可让普通方格每 10 秒重新排列；每轮会提示轮次，刷新后从 1 重新开始。默认关闭。
@@ -122,6 +123,12 @@ npm run video:promo -- --layout voronoi --size 6 --voice-over true --day 33 --mu
 ```
 
 语音内容会根据时限、数字范围、正序/倒序和特殊玩法规则自动生成，并默认采用约 4～6 秒的精简文案，不再重复画面上已有的系列名、天数和玩法名称。默认通过 macOS 语音框架使用较自然的 `Li-Mu` 普通话男声和 182 语速；也可通过 `--voice-name Yu-shu` 切换为女声，或使用 `--voice-name Tingting` 保留旧音色。`--voice-rate` 可调整语速，传入 `--voice-text` 可以完全覆盖自动文案。默认在语音进行到 50% 时切换到倒计时画面，可用 `--voice-countdown-at 0.5` 调整切换比例。数字 3 和 2 各至少显示 1 秒，数字 1 会保持到语音结束，确保完整显示后再进入挑战。语音会经过轻量 EQ 和动态压缩；背景音乐从倒计时开始播放，并在人声结束前自动降低音量。
+
+经典亲子版可以直接导出：
+
+```bash
+npm run video:xhs:family:3x4 -- --day 41 --music-track foundation.mp3 --seed 20260812
+```
 
 仍然可以通过 `--music-file` 使用目录外的文件：
 
