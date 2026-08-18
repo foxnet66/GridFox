@@ -183,7 +183,7 @@ const urgencySeconds = Math.min(duration, clamp(Number(args.urgency ?? 10), 0, 6
 const endScreenSeconds = clamp(Number(args["end-screen"] ?? 1), 0, 5);
 const themeName = String(args.theme ?? dailyChallenge?.theme ?? "fresh");
 const colorCount = clamp(Number(args.colors ?? dailyChallenge?.colors ?? 4), 1, 8);
-const size = clamp(Number(args.size ?? dailyChallenge?.size ?? 6), 4, 6);
+const size = clamp(Number(args.size ?? dailyChallenge?.size ?? 6), 4, 7);
 const order = String(args.order ?? dailyChallenge?.order ?? "asc") === "desc" ? "desc" : "asc";
 const introStyle = String(args["intro-style"] ?? "fast") === "showcase" ? "showcase" : "fast";
 const familyMode = args.family === true || String(args.family ?? "false") === "true";
@@ -1050,7 +1050,8 @@ function renderChallengeHtml({
   const boardColumns = ["redblack", "alphabet"].includes(layout) ? 5 : size;
   const cellSize = gridSize / boardColumns;
   const fontSize = Math.round(
-    (["redblack", "alphabet"].includes(layout) ? 82 : size >= 6 ? 66 : 82) * (gridSize / 928),
+    (["redblack", "alphabet"].includes(layout) ? 82 : size >= 7 ? 56 : size >= 6 ? 66 : 82) *
+      (gridSize / 928),
   );
   const introProjectLabel = introOverlay
     ? getProjectLabelHtml({
@@ -1471,6 +1472,31 @@ function renderChallengeHtml({
         opacity: ${introOverlay?.voiceoverText ? 0.48 : 0.62};
         filter: saturate(0.82) brightness(${theme.glow ? 0.78 : 0.94});
       }
+      .fast-intro .cell,
+      .fast-intro .mixed-cell {
+        color: transparent !important;
+        text-shadow: none !important;
+      }
+      .fast-intro .cell::after,
+      .fast-intro .mixed-cell::after {
+        content: "";
+        width: ${aspect === "3:4" ? 20 : 24}px;
+        height: ${aspect === "3:4" ? 20 : 24}px;
+        border-radius: 50%;
+        background: ${theme.primary};
+        opacity: ${theme.glow ? 0.3 : 0.18};
+        box-shadow: ${theme.glow ? `0 0 16px ${theme.primary}70` : "none"};
+      }
+      .fast-intro .cell:nth-child(4n + 2)::after,
+      .fast-intro .mixed-cell:nth-child(4n + 2)::after {
+        background: ${theme.accent};
+        box-shadow: ${theme.glow ? `0 0 14px ${theme.accent}88` : "none"};
+      }
+      .fast-intro svg text {
+        fill: transparent !important;
+        stroke: transparent !important;
+        filter: none !important;
+      }
       .intro-series {
         position: absolute; z-index: 10; top: ${aspect === "3:4" ? 58 : 92}px;
         left: 12%; width: 76%; display: flex; align-items: center; justify-content: space-between;
@@ -1514,15 +1540,24 @@ function renderChallengeHtml({
       }
       .intro-launch {
         position: absolute; z-index: 12;
-        left: 50%; top: ${metrics.boardTop - (aspect === "3:4" ? 124 : 136)}px;
-        transform: translateX(-50%);
-        width: ${aspect === "3:4" ? 320 : 370}px;
+        left: 50%; top: ${metrics.boardTop + gridSize / 2}px;
+        transform: translate(-50%, -50%);
+        width: ${aspect === "3:4" ? 360 : 420}px;
+        padding: ${aspect === "3:4" ? "22px 24px" : "28px 28px"};
         display: flex; flex-direction: column; align-items: center;
+      }
+      .intro-launch::before {
+        content: ""; position: absolute; z-index: -1;
+        left: 50%; top: 54%; transform: translate(-50%, -50%);
+        width: ${aspect === "3:4" ? 330 : 400}px; height: ${aspect === "3:4" ? 330 : 400}px;
+        border-radius: 50%;
+        background: radial-gradient(circle, ${theme.paper}fa 0 34%, ${theme.paper}d9 50%, ${theme.paper}00 74%);
+        ${theme.glow ? `box-shadow: 0 0 70px ${theme.primary}1f;` : ""}
       }
       .intro-ready {
         width: 100%; display: flex; align-items: center; justify-content: center;
-        gap: ${aspect === "3:4" ? 16 : 20}px; margin-bottom: ${aspect === "3:4" ? 9 : 12}px;
-        color: ${theme.muted}; font-size: ${aspect === "3:4" ? 27 : 32}px;
+        gap: ${aspect === "3:4" ? 16 : 20}px; margin-bottom: ${aspect === "3:4" ? 18 : 22}px;
+        color: ${theme.muted}; font-size: ${aspect === "3:4" ? 28 : 34}px;
         font-weight: 900; line-height: 1; letter-spacing: 0.16em; white-space: nowrap;
       }
       .intro-ready::before, .intro-ready::after {
@@ -1533,15 +1568,15 @@ function renderChallengeHtml({
       .intro-ready::after { transform: scaleX(-1); }
       .intro-count-ring {
         position: relative;
-        width: ${aspect === "3:4" ? 120 : 148}px; height: ${aspect === "3:4" ? 120 : 148}px;
-        border: ${aspect === "3:4" ? 7 : 8}px solid ${theme.grid};
+        width: ${aspect === "3:4" ? 192 : 232}px; height: ${aspect === "3:4" ? 192 : 232}px;
+        border: ${aspect === "3:4" ? 8 : 9}px solid ${theme.grid};
         border-top-color: ${theme.accent}; border-radius: 50%;
-        background: ${theme.paper}dd;
-        box-shadow: 0 12px 30px ${theme.paper}80${theme.glow ? `, 0 0 24px ${theme.primary}2e` : ""};
+        background: ${theme.paper}e8;
+        box-shadow: 0 14px 36px ${theme.paper}8f${theme.glow ? `, 0 0 30px ${theme.primary}36` : ""};
       }
       .intro-count {
         position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
-        color: ${theme.accent}; font-size: ${aspect === "3:4" ? 78 : 96}px;
+        color: ${theme.accent}; font-size: ${aspect === "3:4" ? 112 : 136}px;
         font-weight: 950; line-height: 1;
       }
       .intro-credit {
