@@ -1036,8 +1036,16 @@ function renderChallengeHtml({
   const followStepIndex = Math.min(Math.floor(elapsedSeconds / followStepSeconds), total - 1);
   const followTarget = order === "desc" ? total - followStepIndex : followStepIndex + 1;
   const followStepProgress = (elapsedSeconds % followStepSeconds) / followStepSeconds;
-  const followRevealLinear = clamp((followStepProgress - followHintAt) / (1 - followHintAt), 0, 1);
-  const followReveal = followRevealLinear * followRevealLinear * (3 - 2 * followRevealLinear);
+  const followFadeInEnd = followHintAt + (0.9 - followHintAt) * 0.75;
+  const followFadeInLinear = clampDecimal(
+    (followStepProgress - followHintAt) / Math.max(0.01, followFadeInEnd - followHintAt),
+    0,
+    1,
+  );
+  const followFadeOutLinear = clampDecimal((followStepProgress - 0.9) / 0.1, 0, 1);
+  const followFadeIn = followFadeInLinear * followFadeInLinear * (3 - 2 * followFadeInLinear);
+  const followFadeOut = followFadeOutLinear * followFadeOutLinear * (3 - 2 * followFadeOutLinear);
+  const followReveal = followFadeIn * (1 - followFadeOut);
   const showFollowHint = followMode && !timeUp && followReveal > 0;
   const midpointStart = duration / 2;
   const showMidpoint =
@@ -1201,8 +1209,10 @@ function renderChallengeHtml({
                 const color = getGridCellTextColor(theme, cellStyle, row, col, number, colorCount, range.start);
                 const background = getCellBackground(theme, cellStyle, row, col);
                 const followClass = showFollowHint && number === followTarget ? " follow-current" : "";
-                const followStyle = followClass ? `;--follow-reveal:${followReveal.toFixed(3)}` : "";
-                return `<div class="cell${followClass}" style="left:${col * cellSize}px;top:${row * cellSize}px;color:${color};background:${background}${followStyle}">${number}</div>`;
+                const followStyle = followClass
+                  ? `;--follow-reveal:${followReveal.toFixed(3)};color:color-mix(in srgb, ${color} ${(100 - followReveal * 72).toFixed(1)}%, ${theme.accent})`
+                  : `;color:${color}`;
+                return `<div class="cell${followClass}" style="left:${col * cellSize}px;top:${row * cellSize}px;background:${background}${followStyle}">${number}</div>`;
               })
               .join("")}</div>`;
 
@@ -1702,9 +1712,7 @@ function renderChallengeHtml({
           : `请按顺序从 <span>${startLabel}</span> 找到 <span>${endLabel}</span>`
       }</div><div class="subtitle">${
         followMode
-          ? showFollowHint
-            ? "跟随亮起位置 · 视线回到中央"
-            : "先自己寻找 · 稍后显示提示"
+          ? "先自己找 · 亮起后跟随"
           : familyMode
           ? "分别记下完成时间，看看今天谁更快"
           : layout === "missing"
