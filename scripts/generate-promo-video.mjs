@@ -176,7 +176,7 @@ const aspect = String(args.aspect ?? "9:16");
 const canvas = canvasProfiles[aspect] ?? canvasProfiles["9:16"];
 const WIDTH = canvas.width;
 const HEIGHT = canvas.height;
-const duration = clamp(Number(args.duration ?? 120), 1, 600);
+let duration = clamp(Number(args.duration ?? 120), 1, 600);
 const requestedShuffleInterval = clamp(Number(args["shuffle-interval"] ?? 0), 0, 120);
 const midpointEffect = String(args.midpoint ?? "true") !== "false";
 const urgencySeconds = Math.min(duration, clamp(Number(args.urgency ?? 10), 0, 60));
@@ -188,6 +188,8 @@ const order = String(args.order ?? dailyChallenge?.order ?? "asc") === "desc" ? 
 const introStyle = String(args["intro-style"] ?? "fast") === "showcase" ? "showcase" : "fast";
 const familyMode = args.family === true || String(args.family ?? "false") === "true";
 const followMode = args.follow === true || String(args.follow ?? "false") === "true";
+const requestedFollowStepSeconds = clampDecimal(Number(args["follow-step-seconds"] ?? 0), 0, 10);
+const followHintAt = clampDecimal(Number(args["follow-hint-at"] ?? 0.5), 0.2, 0.85);
 const layoutArg = String(args.layout ?? dailyChallenge?.layout ?? "grid");
 const requestedCellStyle = String(args["cell-style"] ?? "plain");
 const cellStyle = ["checker", "checker-dark"].includes(requestedCellStyle) ? requestedCellStyle : "plain";
@@ -291,6 +293,9 @@ await mkdir(framesDir, { recursive: true });
 await mkdir(dirname(output), { recursive: true });
 
 const total = getChallengeTotal(size, layout);
+if (followMode && requestedFollowStepSeconds > 0) {
+  duration = requestedFollowStepSeconds * total;
+}
 const missingNumber =
   layout === "missing"
     ? clamp(Number(args["missing-number"] ?? getSeededMissingNumber(seed, total)), 1, total)
@@ -1031,7 +1036,9 @@ function renderChallengeHtml({
   const followStepIndex = Math.min(Math.floor(elapsedSeconds / followStepSeconds), total - 1);
   const followTarget = order === "desc" ? total - followStepIndex : followStepIndex + 1;
   const followStepProgress = (elapsedSeconds % followStepSeconds) / followStepSeconds;
-  const showFollowHint = followMode && !timeUp && followStepProgress >= 0.58;
+  const followRevealLinear = clamp((followStepProgress - followHintAt) / (1 - followHintAt), 0, 1);
+  const followReveal = followRevealLinear * followRevealLinear * (3 - 2 * followRevealLinear);
+  const showFollowHint = followMode && !timeUp && followReveal > 0;
   const midpointStart = duration / 2;
   const showMidpoint =
     !timeUp &&
@@ -1194,7 +1201,8 @@ function renderChallengeHtml({
                 const color = getGridCellTextColor(theme, cellStyle, row, col, number, colorCount, range.start);
                 const background = getCellBackground(theme, cellStyle, row, col);
                 const followClass = showFollowHint && number === followTarget ? " follow-current" : "";
-                return `<div class="cell${followClass}" style="left:${col * cellSize}px;top:${row * cellSize}px;color:${color};background:${background}">${number}</div>`;
+                const followStyle = followClass ? `;--follow-reveal:${followReveal.toFixed(3)}` : "";
+                return `<div class="cell${followClass}" style="left:${col * cellSize}px;top:${row * cellSize}px;color:${color};background:${background}${followStyle}">${number}</div>`;
               })
               .join("")}</div>`;
 
@@ -1487,10 +1495,13 @@ function renderChallengeHtml({
         ${theme.glow ? "text-shadow: 0 0 7px currentColor;" : ""}
       }
       .cell.follow-current {
-        z-index: 2; color: ${theme.accent} !important;
-        background: ${theme.accent}1f !important;
+        z-index: 2;
+      }
+      .cell.follow-current::after {
+        content: ""; position: absolute; inset: 0; pointer-events: none;
+        opacity: var(--follow-reveal, 0);
+        background: ${theme.accent}1f;
         box-shadow: inset 0 0 0 ${aspect === "3:4" ? 7 : 8}px ${theme.accent}, 0 0 28px ${theme.accent}55;
-        text-shadow: ${theme.glow ? `0 0 16px ${theme.accent}` : "none"};
       }
       .mixed-cell {
         position: absolute; display: flex; align-items: center; justify-content: center;
@@ -2912,6 +2923,11 @@ function parseArgs(argv) {
 function clamp(value, min, max) {
   if (!Number.isFinite(value)) return min;
   return Math.min(max, Math.max(min, Math.round(value)));
+}
+
+function clampDecimal(value, min, max) {
+  if (!Number.isFinite(value)) return min;
+  return Math.min(max, Math.max(min, value));
 }
 
 function sleep(ms) {
