@@ -187,6 +187,7 @@ const size = clamp(Number(args.size ?? dailyChallenge?.size ?? 6), 4, 7);
 const order = String(args.order ?? dailyChallenge?.order ?? "asc") === "desc" ? "desc" : "asc";
 const introStyle = String(args["intro-style"] ?? "fast") === "showcase" ? "showcase" : "fast";
 const familyMode = args.family === true || String(args.family ?? "false") === "true";
+const followMode = args.follow === true || String(args.follow ?? "false") === "true";
 const layoutArg = String(args.layout ?? dailyChallenge?.layout ?? "grid");
 const requestedCellStyle = String(args["cell-style"] ?? "plain");
 const cellStyle = ["checker", "checker-dark"].includes(requestedCellStyle) ? requestedCellStyle : "plain";
@@ -231,6 +232,12 @@ if (familyMode && layout !== "grid") {
 if (familyMode && requestedShuffleInterval > 0) {
   throw new Error("--family does not support --shuffle-interval");
 }
+if (followMode && layout !== "grid") {
+  throw new Error("--follow currently supports --layout grid only");
+}
+if (followMode && (familyMode || requestedShuffleInterval > 0)) {
+  throw new Error("--follow does not support --family or --shuffle-interval");
+}
 const shuffleInterval = layout === "grid" ? requestedShuffleInterval : 0;
 const rotation =
   ["radial", "spiral"].includes(layout) && ["slow", "fast"].includes(String(args.rotation))
@@ -239,7 +246,9 @@ const rotation =
 const redBlackRule =
   layout === "redblack" && String(args["redblack-rule"] ?? "basic") === "advanced" ? "advanced" : "basic";
 const captureFps =
-  rotation === "none" && layout !== "float" && layout !== "breathe"
+  followMode
+    ? clamp(Number(args["capture-fps"] ?? 6), 2, 12)
+    : rotation === "none" && layout !== "float" && layout !== "breathe"
     ? 1
     : clamp(Number(args["capture-fps"] ?? 12), 2, 24);
 const seed = Number.isFinite(Number(args.seed)) ? Number(args.seed) : (dailyChallenge?.seed ?? Date.now());
@@ -300,6 +309,7 @@ const narrationText = voiceoverEnabled
           rotation,
           shuffleInterval,
           familyMode,
+          followMode,
         }),
     )
   : null;
@@ -359,6 +369,7 @@ try {
             seed,
             duration,
             familyMode,
+            followMode,
           })
         : second < challengeStartSeconds
         ? renderVideoIntroHtml({
@@ -383,6 +394,7 @@ try {
             seed,
             duration,
             familyMode,
+            followMode,
           })
         : renderChallengeHtml({
             elapsedMs: Math.min(challengeSecond, duration) * 1000,
@@ -404,6 +416,7 @@ try {
             shuffleRound,
             shuffleRoundCount,
             familyMode,
+            followMode,
           });
     await setHtml(client, html);
     const screenshot = await client.send("Page.captureScreenshot", { format: "png", fromSurface: true });
@@ -679,6 +692,7 @@ function renderVideoIntroHtml({
   seed,
   duration,
   familyMode,
+  followMode,
 }) {
   if (introStyle === "showcase") {
     return renderIntroHtml({
@@ -694,6 +708,7 @@ function renderVideoIntroHtml({
       shuffleInterval,
       seed,
       familyMode,
+      followMode,
     });
   }
 
@@ -718,6 +733,7 @@ function renderVideoIntroHtml({
     shuffleRoundCount: 1,
     introOverlay: { countdown, voiceoverText, day },
     familyMode,
+    followMode,
   });
 }
 
@@ -734,6 +750,7 @@ function renderIntroHtml({
   shuffleInterval,
   seed,
   familyMode,
+  followMode,
 }) {
   const total = getChallengeTotal(size, layout);
   const gridSize = ["redblack", "alphabet"].includes(layout) ? 5 : size;
@@ -747,6 +764,7 @@ function renderIntroHtml({
     rotation,
     shuffleInterval,
     familyMode,
+    followMode,
   });
   const projectLabelLength = projectLabel.replace(/<[^>]+>/g, "").replace(/\s/g, "").length;
   const projectFont = Math.round(
@@ -1004,19 +1022,27 @@ function renderChallengeHtml({
   shuffleRoundCount,
   introOverlay = null,
   familyMode = false,
+  followMode = false,
 }) {
   const total = getChallengeTotal(size, layout);
   const elapsedSeconds = elapsedMs / 1000;
   const remainingSeconds = Math.max(0, duration - elapsedSeconds);
+  const followStepSeconds = duration / total;
+  const followStepIndex = Math.min(Math.floor(elapsedSeconds / followStepSeconds), total - 1);
+  const followTarget = order === "desc" ? total - followStepIndex : followStepIndex + 1;
+  const followStepProgress = (elapsedSeconds % followStepSeconds) / followStepSeconds;
+  const showFollowHint = followMode && !timeUp && followStepProgress >= 0.58;
   const midpointStart = duration / 2;
   const showMidpoint =
     !timeUp &&
+    !followMode &&
     shuffleInterval === 0 &&
     midpointEffect &&
     elapsedSeconds >= midpointStart &&
     elapsedSeconds < midpointStart + 2 &&
     remainingSeconds > urgencySeconds;
-  const showUrgency = !timeUp && urgencySeconds > 0 && remainingSeconds > 0 && remainingSeconds <= urgencySeconds;
+  const showUrgency =
+    !followMode && !timeUp && urgencySeconds > 0 && remainingSeconds > 0 && remainingSeconds <= urgencySeconds;
   const isCritical = timeUp || (showUrgency && remainingSeconds <= 5);
   const heartbeatExpanded = timeUp || (isCritical && Math.ceil(remainingSeconds) % 2 === 1);
   const timerColor = isCritical ? theme.colors[2] : showUrgency ? theme.accent : theme.primary;
@@ -1034,7 +1060,9 @@ function renderChallengeHtml({
   const showShuffleWarning =
     !timeUp && shuffleRound < shuffleRoundCount - 1 && secondsUntilShuffle > 0 && secondsUntilShuffle <= 1;
   const milestoneText = timeUp
-    ? "时间到！"
+    ? followMode
+      ? "跟练完成！"
+      : "时间到！"
     : showUrgency
       ? `还剩 ${Math.max(1, Math.ceil(remainingSeconds))} 秒`
       : showShuffleWarning
@@ -1063,6 +1091,7 @@ function renderChallengeHtml({
         rotation,
         shuffleInterval,
         familyMode,
+        followMode,
       })
     : "";
   const introProjectLength = introProjectLabel.replace(/<[^>]+>/g, "").replace(/\s/g, "").length;
@@ -1070,7 +1099,9 @@ function renderChallengeHtml({
     (aspect === "3:4" ? 76 : 84) * (introProjectLength >= 11 ? 0.78 : introProjectLength >= 9 ? 0.88 : 1),
   );
   const introHook = introOverlay
-    ? familyMode
+    ? followMode
+      ? `${formatCompactNumber(duration)}秒节奏跟练 · 从 ${startLabel} 到 ${endLabel}`
+      : familyMode
       ? `${formatCompactNumber(duration)}秒亲子挑战 · 谁更快？`
       : layout === "missing"
       ? `${formatCompactNumber(duration)}秒挑战 · 找出缺失数字`
@@ -1162,7 +1193,8 @@ function renderChallengeHtml({
                 const col = index % size;
                 const color = getGridCellTextColor(theme, cellStyle, row, col, number, colorCount, range.start);
                 const background = getCellBackground(theme, cellStyle, row, col);
-                return `<div class="cell" style="left:${col * cellSize}px;top:${row * cellSize}px;color:${color};background:${background}">${number}</div>`;
+                const followClass = showFollowHint && number === followTarget ? " follow-current" : "";
+                return `<div class="cell${followClass}" style="left:${col * cellSize}px;top:${row * cellSize}px;color:${color};background:${background}">${number}</div>`;
               })
               .join("")}</div>`;
 
@@ -1204,6 +1236,10 @@ function renderChallengeHtml({
         position: absolute; top: ${metrics.timerTop}px; left: 0; width: 100%;
         text-align: center; color: ${timerColor}; font-size: ${metrics.timerFont}px; font-weight: 900;
         text-shadow: ${timerShadow};
+      }
+      .timer.follow {
+        color: ${theme.muted}; font-size: ${aspect === "3:4" ? 48 : 56}px;
+        letter-spacing: 0.08em; text-shadow: none;
       }
       .milestone {
         position: absolute; top: ${Math.round(metrics.timerTop + metrics.timerFont * 1.15)}px; left: 50%;
@@ -1450,6 +1486,12 @@ function renderChallengeHtml({
         font-size: ${fontSize}px; font-weight: 900; line-height: 1;
         ${theme.glow ? "text-shadow: 0 0 7px currentColor;" : ""}
       }
+      .cell.follow-current {
+        z-index: 2; color: ${theme.accent} !important;
+        background: ${theme.accent}1f !important;
+        box-shadow: inset 0 0 0 ${aspect === "3:4" ? 7 : 8}px ${theme.accent}, 0 0 28px ${theme.accent}55;
+        text-shadow: ${theme.glow ? `0 0 16px ${theme.accent}` : "none"};
+      }
       .mixed-cell {
         position: absolute; display: flex; align-items: center; justify-content: center;
         border-right: 2px solid ${theme.grid}; border-bottom: 2px solid ${theme.grid};
@@ -1588,7 +1630,9 @@ function renderChallengeHtml({
   <body>
     <main class="stage${introOverlay ? " fast-intro" : ""}">
       ${introOverlay ? `<div class="intro-series${introOverlay.day ? "" : " centered"}"><span>${familyMode ? "亲子专注力训练" : "每日舒尔特训练"}</span>${introOverlay.day ? `<span class="intro-day">DAY ${introOverlay.day}</span>` : ""}</div><div class="intro-project">${introProjectLabel}</div><div class="intro-hook">${introHook}</div>` : `<div class="brand">${
-        familyMode
+        followMode
+          ? "舒尔特节奏跟练"
+          : familyMode
           ? "亲子专注力挑战"
           : shuffleInterval > 0
           ? "动态刷新舒尔特挑战"
@@ -1634,7 +1678,9 @@ function renderChallengeHtml({
                                 ? "大小混排舒尔特挑战"
                 : "舒尔特方格挑战"
       }</div><div class="title">${
-        familyMode
+        followMode
+          ? `现在找 <span>${followTarget}</span>`
+          : familyMode
           ? `家长和孩子，谁先找到 <span>${endLabel}</span>？`
           : layout === "missing"
           ? "找出 <span>缺失的数字</span>"
@@ -1644,7 +1690,11 @@ function renderChallengeHtml({
             : "红黑交替，从 <span class=\"black-sequence\">1</span> 找到 <span class=\"black-sequence\">13</span>"
           : `请按顺序从 <span>${startLabel}</span> 找到 <span>${endLabel}</span>`
       }</div><div class="subtitle">${
-        familyMode
+        followMode
+          ? showFollowHint
+            ? "跟随亮起位置 · 视线回到中央"
+            : "先自己寻找 · 稍后显示提示"
+          : familyMode
           ? "分别记下完成时间，看看今天谁更快"
           : layout === "missing"
           ? `1 到 ${total} 中，少了哪一个？`
@@ -1655,7 +1705,9 @@ function renderChallengeHtml({
           : shuffleInterval > 0
             ? `第 ${shuffleRound + 1}/${shuffleRoundCount} 轮 · 每 ${formatCompactNumber(shuffleInterval)} 秒刷新后从 ${startLabel} 重新开始`
             : `从 ${startLabel} 到 ${endLabel}，看看你需要多久`
-      }</div><div class="timer">${formatTime(elapsedMs)}</div>${milestoneText ? `<div class="milestone">${milestoneText}</div>` : ""}`}
+      }</div><div class="timer${followMode ? " follow" : ""}">${
+        followMode ? `${String(followStepIndex + 1).padStart(2, "0")} / ${total}` : formatTime(elapsedMs)
+      }</div>${milestoneText ? `<div class="milestone">${milestoneText}</div>` : ""}`}
       ${board}
       ${
         introOverlay
@@ -1664,10 +1716,14 @@ function renderChallengeHtml({
             : `<div class="intro-launch"><div class="intro-ready">马上开始</div><div class="intro-count-ring"><div class="intro-count">${introOverlay.countdown}</div></div></div><div class="intro-credit">计时挑战@新加坡大小AI玩</div>`
           : `<div class="footer${timeUp ? " finish" : ""}">${
               timeUp
-                ? familyMode
+                ? followMode
+                  ? "完成一轮跟练 · 记得让视线回到棋盘中央"
+                  : familyMode
                   ? "家长和孩子分别用了多少秒？评论区报成绩"
                   : "请记下自己的进度，明天继续哦"
-                : "计时挑战@新加坡大小AI玩"
+                : followMode
+                  ? "跟随节奏 · 不用追求速度"
+                  : "计时挑战@新加坡大小AI玩"
             }</div>`
       }
     </main>
@@ -2145,7 +2201,8 @@ function getChallengeTotal(size, layout) {
   return layout === "hex" || layout === "mosaic" ? 30 : size * size;
 }
 
-function getProjectLabel({ layout, size, total }) {
+function getProjectLabel({ layout, size, total, followMode = false }) {
+  if (followMode) return `舒尔特节奏跟练 ${size}×${size}`;
   if (layout === "missing") return `缺失数字舒尔特 ${size}×${size}`;
   if (layout === "alphabet") return "字母舒尔特 A～Y";
   if (layout === "redblack") return "红黑交替舒尔特 5×5";
@@ -2173,7 +2230,9 @@ function getProjectLabelHtml({
   rotation = "none",
   shuffleInterval = 0,
   familyMode = false,
+  followMode = false,
 }) {
+  if (followMode) return `舒尔特节奏跟练 <span>${size}×${size}</span>`;
   if (familyMode) return `经典亲子舒尔特 <span>${size}×${size}</span>`;
   if (shuffleInterval > 0) return `动态刷新舒尔特 <span>${size}×${size}</span>`;
   if (layout === "missing") return `缺失数字舒尔特 <span>${size}×${size}</span>`;
@@ -2208,9 +2267,14 @@ function getNarrationText({
   redBlackRule,
   shuffleInterval,
   familyMode,
+  followMode,
 }) {
   const range = getTargetRange(total, order);
   const timeLimit = `${formatCompactNumber(duration)}秒内`;
+
+  if (followMode) {
+    return `跟着节奏，从${range.start}找到${range.end}。准备，开始！`;
+  }
 
   if (familyMode) {
     return `亲子对战，从${range.start}找到${range.end}。准备，开始！`;
