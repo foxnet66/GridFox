@@ -20,6 +20,7 @@ export type ChallengeLayout =
   | "radial"
   | "hex"
   | "mosaic"
+  | "pebble"
   | "float"
   | "spiral"
   | "maze"
@@ -81,6 +82,7 @@ export const DEFAULT_MODE: GameMode = {
 
 export const HEX_TOTAL = 30;
 export const MOSAIC_TOTAL = 30;
+export const PEBBLE_TOTAL = 49;
 export const FLOAT_TOTAL = 36;
 export const SPIRAL_TOTAL = 36;
 export const MAZE_TOTAL = 36;
@@ -111,6 +113,7 @@ export const CHALLENGE_LAYOUTS: ChallengeLayoutOption[] = [
   { id: "radial", label: "圆盘", name: "圆盘舒尔特" },
   { id: "hex", label: "蜂巢", name: "蜂巢舒尔特" },
   { id: "mosaic", label: "变形", name: "变形舒尔特" },
+  { id: "pebble", label: "流体", name: "流体舒尔特" },
   { id: "float", label: "浮球", name: "浮球舒尔特" },
   { id: "spiral", label: "螺旋", name: "螺旋舒尔特" },
   { id: "maze", label: "迷宫", name: "迷宫舒尔特" },
@@ -194,6 +197,7 @@ export function getChallengeTotal(mode: GameMode, layout: ChallengeLayout): numb
   if (layout === "spiral") return SPIRAL_TOTAL;
   if (layout === "float") return FLOAT_TOTAL;
   if (layout === "mosaic") return MOSAIC_TOTAL;
+  if (layout === "pebble") return PEBBLE_TOTAL;
   return layout === "hex" ? HEX_TOTAL : mode.size * mode.size;
 }
 

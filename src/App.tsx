@@ -46,6 +46,7 @@ type PlayStyleId =
   | "radial-rotate"
   | "hex"
   | "mosaic"
+  | "pebble"
   | "float"
   | "spiral"
   | "maze"
@@ -63,6 +64,13 @@ type HexCellGeometry = {
   labelY: number;
 };
 type MosaicCellGeometry = HexCellGeometry;
+type PebbleCellGeometry = {
+  row: number;
+  col: number;
+  path: string;
+  labelX: number;
+  labelY: number;
+};
 type FloatBallGeometry = {
   row: number;
   col: number;
@@ -180,6 +188,14 @@ const PLAY_STYLES: PlayStyleOption[] = [
     rotation: "none",
   },
   {
+    id: "pebble",
+    label: "流体",
+    name: "流体舒尔特",
+    description: "1–49 不规则分区",
+    layout: "pebble",
+    rotation: "none",
+  },
+  {
     id: "float",
     label: "浮球",
     name: "浮球舒尔特",
@@ -293,6 +309,7 @@ export default function App() {
   const radialGeometry = useMemo(() => getRadialGeometry(total), [total]);
   const hexGeometry = useMemo(() => getHexGeometry(), []);
   const mosaicGeometry = useMemo(() => getMosaicGeometry(), []);
+  const pebbleGeometry = useMemo(() => getPebbleGeometry(), []);
   const floatGeometry = useMemo(() => getFloatGeometry(), []);
   const spiralGeometry = useMemo(() => getSpiralGeometry(), []);
   const mazeGeometry = useMemo(() => getMazeGeometry(), []);
@@ -360,6 +377,7 @@ export default function App() {
     if (
       nextLayout === "hex" ||
       nextLayout === "mosaic" ||
+      nextLayout === "pebble" ||
       nextLayout === "float" ||
       nextLayout === "spiral" ||
       nextLayout === "maze" ||
@@ -842,6 +860,41 @@ export default function App() {
               })}
             </svg>
           </div>
+        ) : layout === "pebble" ? (
+          <div className="pebble-board" ref={boardRef}>
+            <svg viewBox="0 0 100 100" role="group" aria-label="流体舒尔特数字盘">
+              {grid.map((number, index) => {
+                const geometry = pebbleGeometry[index];
+                const completed = screen === "playing" && (order === "desc" ? number > target : number < target);
+                return (
+                  <g
+                    className={`pebble-cell pebble-tone-${number % 5} ${getNumberAccentClass(
+                      number,
+                      colorCount,
+                      range.start,
+                    )} ${completed ? "completed" : ""}`}
+                    key={`${number}-${index}`}
+                    role="button"
+                    tabIndex={screen === "playing" ? 0 : -1}
+                    aria-label={`数字 ${number}`}
+                    onClick={() => handleCellClick(number, index)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        handleCellClick(number, index);
+                      }
+                    }}
+                    aria-disabled={screen !== "playing"}
+                  >
+                    <path d={geometry.path} />
+                    <text x={geometry.labelX} y={geometry.labelY}>
+                      {number}
+                    </text>
+                  </g>
+                );
+              })}
+            </svg>
+          </div>
         ) : layout === "float" ? (
           <div className="float-board" ref={boardRef}>
             <svg viewBox="0 0 100 86" role="group" aria-label="浮球舒尔特数字盘">
@@ -1239,6 +1292,8 @@ function buildXiaohongshuPost({
       ? "螺旋舒尔特"
       : layout === "float"
       ? "浮球舒尔特"
+      : layout === "pebble"
+      ? "流体舒尔特"
       : layout === "mosaic"
       ? "变形舒尔特"
       : layout === "hex"
@@ -1288,6 +1343,8 @@ function buildXiaohongshuPost({
       ? "螺旋路径会打破横竖扫描习惯，更考验连续视觉搜索。"
       : layout === "float"
       ? "小球会持续轻微漂浮，更考验动态视觉追踪和注意力稳定性。"
+      : layout === "pebble"
+      ? "49 个不规则流体分区会持续打断横竖扫描习惯，更考验复杂画面中的视觉定位。"
       : layout === "mosaic"
       ? "不规则格子会打乱横竖扫描习惯，更考验视觉搜索稳定性。"
       : layout === "hex"
@@ -1323,6 +1380,8 @@ function buildXiaohongshuPost({
       ? "#螺旋舒尔特"
       : layout === "float"
       ? "#浮球舒尔特"
+      : layout === "pebble"
+      ? "#流体舒尔特"
       : layout === "mosaic"
       ? "#变形舒尔特"
       : layout === "hex"
@@ -1380,6 +1439,8 @@ function getInitialSettings(): {
       ? "spiral"
       : layoutParam === "float"
       ? "float"
+      : layoutParam === "pebble"
+      ? "pebble"
       : layoutParam === "mosaic"
       ? "mosaic"
       : layoutParam === "hex"
@@ -1443,6 +1504,7 @@ function getSizeLabel(mode: GameMode, layout: ChallengeLayout): string {
   if (layout === "maze") return "36点";
   if (layout === "spiral") return "36点";
   if (layout === "float") return "36球";
+  if (layout === "pebble") return "49块";
   return layout === "hex" || layout === "mosaic" ? "30格" : mode.label;
 }
 
@@ -1450,6 +1512,7 @@ function isFixedLayout(layout: ChallengeLayout): boolean {
   return (
     layout === "hex" ||
     layout === "mosaic" ||
+    layout === "pebble" ||
     layout === "float" ||
     layout === "spiral" ||
     layout === "maze" ||
@@ -1476,6 +1539,7 @@ function getTapPosition(
   if (layout === "breathe") return { row: Math.floor(index / 6), col: index % 6 };
   if (layout === "star") return { row: Math.floor(index / 6), col: index % 6 };
   if (layout === "mixed") return { row: Math.floor(index / 6), col: index % 6 };
+  if (layout === "pebble") return { row: Math.floor(index / 7), col: index % 7 };
   if (layout === "hex" || layout === "mosaic") return { row: Math.floor(index / 5), col: index % 5 };
   return { row: Math.floor(index / mode.size), col: index % mode.size };
 }
@@ -1837,6 +1901,118 @@ function getMosaicGeometry(): MosaicCellGeometry[] {
       labelY,
     };
   });
+}
+
+function getPebbleGeometry(): PebbleCellGeometry[] {
+  const sites = getPebbleSites();
+  const boundary = [
+    { x: 1.5, y: 1.5 },
+    { x: 98.5, y: 1.5 },
+    { x: 98.5, y: 98.5 },
+    { x: 1.5, y: 98.5 },
+  ];
+
+  return sites.map((site, siteIndex) => {
+    const polygon = sites.reduce(
+      (current, other, otherIndex) =>
+        otherIndex === siteIndex || current.length === 0
+          ? current
+          : clipPebblePolygon(current, site, other),
+      boundary,
+    );
+    const center = getPolygonCenter(polygon);
+    return {
+      row: Math.floor(siteIndex / 7),
+      col: siteIndex % 7,
+      path: describeRoundedPolygon(polygon, 1.65),
+      labelX: center.x,
+      labelY: center.y + 0.45,
+    };
+  });
+}
+
+function getPebbleSites(): Array<{ x: number; y: number }> {
+  let state = 0x47524944;
+  const random = () => {
+    state |= 0;
+    state = (state + 0x6d2b79f5) | 0;
+    let value = Math.imul(state ^ (state >>> 15), 1 | state);
+    value = (value + Math.imul(value ^ (value >>> 7), 61 | value)) ^ value;
+    return ((value ^ (value >>> 14)) >>> 0) / 4294967296;
+  };
+
+  return Array.from({ length: 49 }, (_, index) => {
+    const row = Math.floor(index / 7);
+    const col = index % 7;
+    const edgeBiasX = col === 0 ? 1.2 : col === 6 ? -1.2 : 0;
+    const edgeBiasY = row === 0 ? 1.2 : row === 6 ? -1.2 : 0;
+    return {
+      x: 8 + col * 14 + (random() - 0.5) * 6.2 + edgeBiasX,
+      y: 8 + row * 14 + (random() - 0.5) * 6.2 + edgeBiasY,
+    };
+  });
+}
+
+function clipPebblePolygon(
+  polygon: Array<{ x: number; y: number }>,
+  site: { x: number; y: number },
+  other: { x: number; y: number },
+): Array<{ x: number; y: number }> {
+  const normalX = other.x - site.x;
+  const normalY = other.y - site.y;
+  const threshold = (other.x ** 2 + other.y ** 2 - site.x ** 2 - site.y ** 2) / 2;
+  const distance = (point: { x: number; y: number }) => normalX * point.x + normalY * point.y - threshold;
+  const clipped: Array<{ x: number; y: number }> = [];
+
+  polygon.forEach((start, index) => {
+    const end = polygon[(index + 1) % polygon.length];
+    const startDistance = distance(start);
+    const endDistance = distance(end);
+    const startInside = startDistance <= 0.000001;
+    const endInside = endDistance <= 0.000001;
+    if (startInside && endInside) clipped.push(end);
+    if (startInside !== endInside) {
+      const ratio = startDistance / (startDistance - endDistance);
+      clipped.push({ x: start.x + (end.x - start.x) * ratio, y: start.y + (end.y - start.y) * ratio });
+    }
+    if (!startInside && endInside) clipped.push(end);
+  });
+  return clipped;
+}
+
+function getPolygonCenter(points: Array<{ x: number; y: number }>): { x: number; y: number } {
+  return points.reduce(
+    (center, point) => ({ x: center.x + point.x / points.length, y: center.y + point.y / points.length }),
+    { x: 0, y: 0 },
+  );
+}
+
+function describeRoundedPolygon(points: Array<{ x: number; y: number }>, radius: number): string {
+  const rounded = points.map((point, index) => {
+    const previous = points[(index - 1 + points.length) % points.length];
+    const next = points[(index + 1) % points.length];
+    const beforeDistance = Math.hypot(point.x - previous.x, point.y - previous.y);
+    const afterDistance = Math.hypot(next.x - point.x, next.y - point.y);
+    const beforeOffset = Math.min(radius, beforeDistance * 0.24);
+    const afterOffset = Math.min(radius, afterDistance * 0.24);
+    return {
+      point,
+      before: {
+        x: point.x + ((previous.x - point.x) / beforeDistance) * beforeOffset,
+        y: point.y + ((previous.y - point.y) / beforeDistance) * beforeOffset,
+      },
+      after: {
+        x: point.x + ((next.x - point.x) / afterDistance) * afterOffset,
+        y: point.y + ((next.y - point.y) / afterDistance) * afterOffset,
+      },
+    };
+  });
+  return `${rounded
+    .map(
+      (corner, index) =>
+        `${index === 0 ? `M ${corner.before.x.toFixed(3)} ${corner.before.y.toFixed(3)}` : `L ${corner.before.x.toFixed(3)} ${corner.before.y.toFixed(3)}`} Q ${corner.point.x.toFixed(3)} ${corner.point.y.toFixed(3)} ${corner.after.x.toFixed(3)} ${corner.after.y.toFixed(3)}`,
+    )
+    .join(" ")} Z`;
 }
 
 function getRadialRings(geometry: RadialCellGeometry[]): number[] {

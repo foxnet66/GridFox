@@ -196,6 +196,8 @@ const cellStyle = ["checker", "checker-dark"].includes(requestedCellStyle) ? req
 const layout =
   layoutArg === "voronoi"
     ? "voronoi"
+    : layoutArg === "pebble"
+    ? "pebble"
     : layoutArg === "missing"
     ? "missing"
     : layoutArg === "alphabet"
@@ -1177,6 +1179,8 @@ function renderChallengeHtml({
         ? renderHexBoard({ grid, theme, colorCount, startNumber: range.start })
         : layout === "voronoi"
           ? renderVoronoiBoard({ grid, theme, colorCount, startNumber: range.start, seed })
+        : layout === "pebble"
+          ? renderPebbleBoard({ grid, theme, colorCount, startNumber: range.start, seed })
         : layout === "mosaic"
           ? renderMosaicBoard({ grid, theme, colorCount, startNumber: range.start })
         : layout === "float"
@@ -1297,6 +1301,12 @@ function renderChallengeHtml({
         width: ${metrics.boardSize}px; height: ${metrics.boardSize}px;
         filter: ${theme.glow ? "none" : "drop-shadow(0 14px 34px rgba(24, 33, 47, 0.1))"};
       }
+      .pebble {
+        position: absolute; left: ${metrics.boardLeft}px; top: ${metrics.boardTop}px;
+        width: ${metrics.boardSize}px; height: ${metrics.boardSize}px;
+        border-radius: 28px; overflow: hidden; background: #6f8fa5;
+        filter: ${theme.glow ? "none" : "drop-shadow(0 14px 34px rgba(24, 33, 47, 0.1))"};
+      }
       .float {
         position: absolute; left: ${metrics.boardLeft}px; top: ${metrics.boardTop + 38}px;
         width: ${metrics.boardSize}px; height: ${Math.round(metrics.boardSize * 0.86)}px;
@@ -1336,6 +1346,7 @@ function renderChallengeHtml({
       .hex svg { display: block; width: 100%; height: 100%; overflow: visible; }
       .mosaic svg { display: block; width: 100%; height: 100%; overflow: visible; }
       .voronoi svg { display: block; width: 100%; height: 100%; overflow: visible; }
+      .pebble svg { display: block; width: 100%; height: 100%; }
       .float svg { display: block; width: 100%; height: 100%; overflow: visible; }
       .spiral svg { display: block; width: 100%; height: 100%; overflow: visible; }
       .maze svg { display: block; width: 100%; height: 100%; overflow: visible; }
@@ -1383,6 +1394,13 @@ function renderChallengeHtml({
         dominant-baseline: middle; text-anchor: middle;
         font-size: 5.25px; font-weight: 950;
         ${theme.glow ? "filter: none;" : ""}
+      }
+      .pebble path {
+        stroke-width: 0.48; stroke-opacity: 0.96;
+      }
+      .pebble text {
+        dominant-baseline: middle; text-anchor: middle;
+        font-size: 5.45px; font-weight: 950;
       }
       .float .panel {
         fill: ${theme.surface}; stroke: ${theme.glow ? theme.primary : theme.grid}; stroke-width: 0.35;
@@ -1529,7 +1547,7 @@ function renderChallengeHtml({
         ${theme.glow ? `text-shadow: 0 0 12px ${theme.primary}55;` : ""}
       }
       .fast-intro .grid, .fast-intro .mixed, .fast-intro .radial, .fast-intro .hex,
-      .fast-intro .mosaic, .fast-intro .voronoi, .fast-intro .float, .fast-intro .spiral,
+      .fast-intro .mosaic, .fast-intro .voronoi, .fast-intro .pebble, .fast-intro .float, .fast-intro .spiral,
       .fast-intro .maze, .fast-intro .wave, .fast-intro .dual, .fast-intro .breathe,
       .fast-intro .star {
         opacity: ${introOverlay?.voiceoverText ? 0.48 : 0.62};
@@ -1679,6 +1697,8 @@ function renderChallengeHtml({
               ? "蜂巢舒尔特挑战"
               : layout === "mosaic"
                 ? "变形舒尔特挑战"
+                : layout === "pebble"
+                  ? "流体舒尔特挑战"
                 : layout === "float"
                   ? "浮球舒尔特挑战"
                   : layout === "spiral"
@@ -1841,6 +1861,27 @@ function renderMosaicBoard({ grid, theme, colorCount, startNumber }) {
     <svg viewBox="0 0 100 104" aria-label="变形舒尔特数字盘">
       ${cells}
     </svg>
+  </div>`;
+}
+
+function renderPebbleBoard({ grid, theme, colorCount, startNumber, seed }) {
+  const geometry = getPebbleGeometry(grid.length, seed);
+  const fillPalette = ["#cbe9f1", "#cdebd9", "#f2c7c3", "#f5d7ae", "#d7d0f2"];
+  const cells = grid
+    .map((number, index) => {
+      const cellGeometry = geometry[index];
+      const color = "#102435";
+      const fill = fillPalette[number % fillPalette.length];
+      const stroke = "#173a4d";
+      return `<g>
+        <path d="${cellGeometry.path}" fill="${fill}" stroke="${stroke}"></path>
+        <text x="${cellGeometry.labelX.toFixed(3)}" y="${(cellGeometry.labelY + 0.35).toFixed(3)}" fill="${color}">${number}</text>
+      </g>`;
+    })
+    .join("");
+
+  return `<div class="pebble">
+    <svg viewBox="0 0 100 100" aria-label="流体舒尔特数字盘">${cells}</svg>
   </div>`;
 }
 
@@ -2217,6 +2258,7 @@ function getChallengeTotal(size, layout) {
   if (layout === "spiral") return size * size;
   if (layout === "float") return 36;
   if (layout === "voronoi") return 36;
+  if (layout === "pebble") return size * size;
   return layout === "hex" || layout === "mosaic" ? 30 : size * size;
 }
 
@@ -2228,6 +2270,7 @@ function getProjectLabel({ layout, size, total, followMode = false }) {
   if (layout === "radial") return `圆盘舒尔特 ${total}`;
   if (layout === "hex") return "蜂巢舒尔特 30";
   if (layout === "mosaic") return "变形舒尔特 30";
+  if (layout === "pebble") return `流体舒尔特 ${total}`;
   if (layout === "voronoi") return "变形舒尔特 36";
   if (layout === "float") return "浮球舒尔特 36";
   if (layout === "spiral") return `螺旋舒尔特 ${total}`;
@@ -2264,6 +2307,7 @@ function getProjectLabelHtml({
   if (layout === "radial") return `圆盘舒尔特 <span>${total}</span>`;
   if (layout === "hex") return "蜂巢舒尔特 <span>30</span>";
   if (layout === "mosaic") return "变形舒尔特 <span>30</span>";
+  if (layout === "pebble") return `流体舒尔特 <span>1 → ${total}</span>`;
   if (layout === "voronoi") return "变形舒尔特 <span>1 → 36</span>";
   if (layout === "float") return "浮球舒尔特 <span>36</span>";
   if (layout === "spiral") {
@@ -2368,6 +2412,21 @@ function getGridCellTextColor(theme, cellStyle, row, col, number, colorCount, st
 function getNumberColor(theme, number, colorCount, startNumber) {
   if (colorCount === 1 && number === startNumber) return theme.accent;
   return theme.colors[number % colorCount];
+}
+
+function mixHexColors(base, accent, accentRatio) {
+  const parse = (value) => {
+    const hex = value.replace("#", "");
+    return [0, 2, 4].map((offset) => Number.parseInt(hex.slice(offset, offset + 2), 16));
+  };
+  const baseRgb = parse(base);
+  const accentRgb = parse(accent);
+  const mixed = baseRgb.map((channel, index) =>
+    Math.round(channel * (1 - accentRatio) + accentRgb[index] * accentRatio)
+      .toString(16)
+      .padStart(2, "0"),
+  );
+  return `#${mixed.join("")}`;
 }
 
 function getRadialRingCounts(total) {
@@ -2552,6 +2611,79 @@ function getVoronoiGeometry(total, seed) {
       labelY: site.y,
     };
   });
+}
+
+function getPebbleGeometry(total, seed) {
+  const sites = getPebbleSites(total, seed);
+  const boundary = [
+    { x: 1.5, y: 1.5 },
+    { x: 98.5, y: 1.5 },
+    { x: 98.5, y: 98.5 },
+    { x: 1.5, y: 98.5 },
+  ];
+
+  return sites.map((site, siteIndex) => {
+    const polygon = sites.reduce(
+      (current, other, otherIndex) =>
+        otherIndex === siteIndex || current.length === 0
+          ? current
+          : clipPolygonToVoronoiHalfPlane(current, site, other),
+      boundary,
+    );
+    const center = polygon.reduce(
+      (result, point) => ({ x: result.x + point.x / polygon.length, y: result.y + point.y / polygon.length }),
+      { x: 0, y: 0 },
+    );
+    return {
+      path: describeRoundedPolygon(polygon, 1.65),
+      labelX: center.x,
+      labelY: center.y,
+    };
+  });
+}
+
+function getPebbleSites(total, seed) {
+  const random = mulberry32(Math.trunc(seed) ^ 0x50454242);
+  const columns = Math.round(Math.sqrt(total));
+  const rows = Math.ceil(total / columns);
+  const stepX = 98 / columns;
+  const stepY = 98 / rows;
+  return Array.from({ length: total }, (_, index) => {
+    const row = Math.floor(index / columns);
+    const col = index % columns;
+    return {
+      x: 1 + stepX * (col + 0.5) + (random() - 0.5) * stepX * 0.46,
+      y: 1 + stepY * (row + 0.5) + (random() - 0.5) * stepY * 0.46,
+    };
+  });
+}
+
+function describeRoundedPolygon(points, radius) {
+  const rounded = points.map((point, index) => {
+    const previous = points[(index - 1 + points.length) % points.length];
+    const next = points[(index + 1) % points.length];
+    const beforeDistance = Math.hypot(point.x - previous.x, point.y - previous.y);
+    const afterDistance = Math.hypot(next.x - point.x, next.y - point.y);
+    const beforeOffset = Math.min(radius, beforeDistance * 0.24);
+    const afterOffset = Math.min(radius, afterDistance * 0.24);
+    return {
+      point,
+      before: {
+        x: point.x + ((previous.x - point.x) / beforeDistance) * beforeOffset,
+        y: point.y + ((previous.y - point.y) / beforeDistance) * beforeOffset,
+      },
+      after: {
+        x: point.x + ((next.x - point.x) / afterDistance) * afterOffset,
+        y: point.y + ((next.y - point.y) / afterDistance) * afterOffset,
+      },
+    };
+  });
+  return `${rounded
+    .map(
+      (corner, index) =>
+        `${index === 0 ? `M ${corner.before.x.toFixed(3)} ${corner.before.y.toFixed(3)}` : `L ${corner.before.x.toFixed(3)} ${corner.before.y.toFixed(3)}`} Q ${corner.point.x.toFixed(3)} ${corner.point.y.toFixed(3)} ${corner.after.x.toFixed(3)} ${corner.after.y.toFixed(3)}`,
+    )
+    .join(" ")} Z`;
 }
 
 function getVoronoiSites(total, seed) {
