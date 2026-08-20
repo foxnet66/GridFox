@@ -1605,41 +1605,41 @@ function renderChallengeHtml({
         position: absolute; z-index: 12;
         left: 50%; top: ${metrics.boardTop + gridSize / 2}px;
         transform: translate(-50%, -50%);
-        width: ${aspect === "3:4" ? 360 : 420}px;
-        padding: ${aspect === "3:4" ? "22px 24px" : "28px 28px"};
+        width: ${aspect === "3:4" ? 440 : 500}px;
+        padding: ${aspect === "3:4" ? "28px 30px" : "34px 34px"};
         display: flex; flex-direction: column; align-items: center;
       }
       .intro-launch::before {
         content: ""; position: absolute; z-index: -1;
         left: 50%; top: 54%; transform: translate(-50%, -50%);
-        width: ${aspect === "3:4" ? 330 : 400}px; height: ${aspect === "3:4" ? 330 : 400}px;
+        width: ${aspect === "3:4" ? 410 : 470}px; height: ${aspect === "3:4" ? 410 : 470}px;
         border-radius: 50%;
         background: radial-gradient(circle, ${theme.paper}fa 0 34%, ${theme.paper}d9 50%, ${theme.paper}00 74%);
         ${theme.glow ? `box-shadow: 0 0 70px ${theme.primary}1f;` : ""}
       }
       .intro-ready {
         width: 100%; display: flex; align-items: center; justify-content: center;
-        gap: ${aspect === "3:4" ? 16 : 20}px; margin-bottom: ${aspect === "3:4" ? 18 : 22}px;
-        color: ${theme.muted}; font-size: ${aspect === "3:4" ? 28 : 34}px;
+        gap: ${aspect === "3:4" ? 20 : 24}px; margin-bottom: ${aspect === "3:4" ? 24 : 28}px;
+        color: ${theme.muted}; font-size: ${aspect === "3:4" ? 36 : 42}px;
         font-weight: 900; line-height: 1; letter-spacing: 0.16em; white-space: nowrap;
       }
       .intro-ready::before, .intro-ready::after {
-        content: ""; width: ${aspect === "3:4" ? 52 : 64}px; height: 2px;
+        content: ""; width: ${aspect === "3:4" ? 64 : 76}px; height: 3px;
         border-radius: 999px;
         background: linear-gradient(90deg, transparent, ${theme.primary}88);
       }
       .intro-ready::after { transform: scaleX(-1); }
       .intro-count-ring {
         position: relative;
-        width: ${aspect === "3:4" ? 192 : 232}px; height: ${aspect === "3:4" ? 192 : 232}px;
-        border: ${aspect === "3:4" ? 8 : 9}px solid ${theme.grid};
+        width: ${aspect === "3:4" ? 252 : 292}px; height: ${aspect === "3:4" ? 252 : 292}px;
+        border: ${aspect === "3:4" ? 10 : 11}px solid ${theme.grid};
         border-top-color: ${theme.accent}; border-radius: 50%;
         background: ${theme.paper}e8;
         box-shadow: 0 14px 36px ${theme.paper}8f${theme.glow ? `, 0 0 30px ${theme.primary}36` : ""};
       }
       .intro-count {
         position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
-        color: ${theme.accent}; font-size: ${aspect === "3:4" ? 112 : 136}px;
+        color: ${theme.accent}; font-size: ${aspect === "3:4" ? 148 : 172}px;
         font-weight: 950; line-height: 1;
       }
       .intro-credit {
